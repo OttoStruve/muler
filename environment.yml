@@ -1,0 +1,30 @@
+name: muler_dev
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - numpy
+  - scipy
+  - matplotlib
+  - astropy>=4.0
+  - astroquery
+  - specutils
+  - tqdm
+  - pandas
+  - bokeh>=1.0
+  - jupyter
+  - ipython
+  - seaborn
+  - scikit-learn
+  - pytest
+  - sphinx # for documentation and testing
+  - nbsphinx # for documentation and testing
+  - numpydoc # for documentation and testing
+  - sphinx-automodapi # for documentation and testing
+  - black
+  - isort
+  - pip
+  - pip:
+    - sphinx-material
+    - celerite2
