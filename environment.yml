@@ -9,7 +9,7 @@ dependencies:
   - matplotlib
   - astropy>=4.0
   - astroquery
-  - specutils
+  # - specutils # Manually install the dev version from GitHub
   - tqdm
   - pandas
   - bokeh>=1.0
@@ -24,6 +24,7 @@ dependencies:
   - sphinx-automodapi # for documentation and testing
   - black
   - isort
+  - tox
   - pip
   - pip:
     - sphinx-material
