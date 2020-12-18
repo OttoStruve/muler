@@ -130,3 +130,5 @@ dmypy.json
 
 # Direnv
 .envrc
+tests/data/
+notebooks/
