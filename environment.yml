@@ -27,5 +27,5 @@ dependencies:
   - tox
   - pip
   - pip:
-    - sphinx-material
-    - celerite2
+      - sphinx-material
+      - celerite2
