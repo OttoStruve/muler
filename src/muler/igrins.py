@@ -2,7 +2,7 @@ r"""
 IGRINS Spectrum
 ---------------
 
-A container for an IGRINS spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.
+A container for an IGRINS spectrum of M=28 total total orders m, each with vectors for wavelength flux and uncertainty, e.g. F_m(\lambda).
 
 
 IGRINSSpectrum
