@@ -10,6 +10,8 @@ Welcome to muler's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   Installation <install>
+
 
 
 Indices and tables
