@@ -6,6 +6,15 @@
 Welcome to muler's documentation!
 =================================
 
+**μl·er**
+`muler`
+/myo͞olər/
+*noun*
+
+1. a portmanteau of *micron* (μm) and *ruler*
+2. a Python Package for IGRINS data analysis
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
