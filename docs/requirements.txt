@@ -3,3 +3,5 @@ numpy
 astropy
 specutils
 sphinx-material
+scipy
+pandas
