@@ -12,8 +12,8 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../src/'))
 
+sys.path.insert(0, os.path.abspath("../src/"))
 
 # -- Project information -----------------------------------------------------
 
@@ -36,6 +36,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
+    "nbsphinx",
     "sphinx.ext.githubpages",
     "sphinx.ext.ifconfig",
 ]
@@ -46,7 +47,8 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/.ipynb_checkpoints"]
+nbsphinx_timeout = 60
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -63,28 +65,24 @@ html_static_path = ["_static"]
 
 
 # Set link name generated in the top bar.
-html_title = "Experimental IGRINS Data Analysis Framework"
+html_title = "Home"
 
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
-    # Set the name of the project to appear in the navigation.
     "nav_title": "μler",
-    # Set you GA account ID to enable tracking
-    #'google_analytics_account': 'UA-XXXXX',
-    # Specify a base_url used to generate sitemap.xml. If not
-    # specified, then no sitemap will be built.
-    #'base_url': 'https://project.github.io/project',
-    # Set the color and the accent color
+    "nav_links": [
+        {"title": "Quickstart", "href": "tutorials/quickstart.html"},
+        {"title": "Installation", "href": "install.html"},
+        {"title": "API", "href": "api.html"},
+    ],
     "color_primary": "light-blue",
-    "color_accent": "orange",
-    # Set the repo location to get a badge with stats
+    "color_accent": "amber",
+    "theme_color": "d35400",
     "repo_url": "https://github.com/OttoStruve/muler/",
     "repo_name": "muler",
-    # Visible levels of the global TOC; -1 means unlimited
+    "repo_type": "github",
     "globaltoc_depth": 3,
-    # If False, expand all TOC entries
     "globaltoc_collapse": False,
-    # If True, show hidden TOC entries
     "globaltoc_includehidden": False,
-    "logo_icon": '&#xE85C',
+    "logo_icon": "&#xE85C",
 }

@@ -23,5 +23,7 @@ Navigation
 .. toctree::
    :maxdepth: 2
 
+   Quickstart <tutorials/quickstart.ipynb>
    Installation <install>
    API <api>
+
