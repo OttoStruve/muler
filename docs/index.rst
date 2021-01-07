@@ -17,9 +17,24 @@
 
 .. toctree::
    :hidden:
-   :maxdepth: 2
+   :caption: Getting Started
+   :maxdepth: 1
 
-   Quickstart <quickstart.ipynb>
    Installation <install>
+   Quickstart <quickstart.ipynb>
+
+
+.. toctree::
+   :hidden:
+   :caption: Tutorials
+   :maxdepth: 3
+
    Tutorials <tutorials/index>
-   API <api>
+
+
+.. toctree::
+   :hidden:
+   :caption: API
+   :maxdepth: 1
+
+   Application Programming Interface <api>

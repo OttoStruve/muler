@@ -75,7 +75,7 @@ nbsphinx_codecell_lexer = "python3"
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     "base_url": "https://muler.readthedocs.io/",
-    "nav_title": "μler",
+    "nav_title": "Home",
     "nav_links": [
         {"title": "Quickstart", "href": "quickstart", "internal": True},
         {"title": "Installation", "href": "install", "internal": True},
@@ -89,9 +89,9 @@ html_theme_options = {
     "repo_name": "muler",
     "repo_type": "github",
     "master_doc": True,
-    "globaltoc_depth": 3,
-    "globaltoc_collapse": False,
-    "globaltoc_includehidden": False,
+    "globaltoc_depth": 2,
+    "globaltoc_collapse": True,
+    "globaltoc_includehidden": True,
     "logo_icon": "&#xE85C",
 }
 
