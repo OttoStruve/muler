@@ -67,11 +67,13 @@ html_static_path = ["_static"]
 # Set link name generated in the top bar.
 html_title = "Home"
 
+nbsphinx_codecell_lexer = "python3"
+
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     "nav_title": "μler",
     "nav_links": [
-        {"title": "Quickstart", "href": "tutorials/quickstart.html"},
+        {"title": "Quickstart", "href": "quickstart.html"},
         {"title": "Installation", "href": "install.html"},
         {"title": "API", "href": "api.html"},
     ],
@@ -81,6 +83,7 @@ html_theme_options = {
     "repo_url": "https://github.com/OttoStruve/muler/",
     "repo_name": "muler",
     "repo_type": "github",
+    "master_doc": "true",
     "globaltoc_depth": 3,
     "globaltoc_collapse": False,
     "globaltoc_includehidden": False,
