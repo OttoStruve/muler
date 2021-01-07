@@ -75,7 +75,7 @@ nbsphinx_codecell_lexer = "python3"
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     "base_url": "https://muler.readthedocs.io/",
-    "nav_title": "Home",
+    "nav_title": "μler docs",
     "nav_links": [
         {"title": "Quickstart", "href": "quickstart", "internal": True},
         {"title": "Installation", "href": "install", "internal": True},
