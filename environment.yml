@@ -28,4 +28,5 @@ dependencies:
   - pip
   - pip:
       - sphinx-material
+      - twine
       - celerite2
