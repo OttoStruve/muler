@@ -5,3 +5,4 @@ specutils
 sphinx-material
 scipy
 pandas
+nbsphinx
