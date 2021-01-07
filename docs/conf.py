@@ -50,6 +50,9 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/.ipynb_checkpoints"]
 nbsphinx_timeout = 60
 
+autosummary_generate = True
+html_show_sourcelink = True
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -71,11 +74,13 @@ nbsphinx_codecell_lexer = "python3"
 
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
+    "base_url": "https://muler.readthedocs.io/",
     "nav_title": "μler",
     "nav_links": [
-        {"title": "Quickstart", "href": "quickstart.html"},
-        {"title": "Installation", "href": "install.html"},
-        {"title": "API", "href": "api.html"},
+        {"title": "Quickstart", "href": "quickstart", "internal": True},
+        {"title": "Installation", "href": "install", "internal": True},
+        {"title": "API", "href": "api", "internal": True},
+        {"title": "Tutorials", "href": "tutorials/index", "internal": True},
     ],
     "color_primary": "light-blue",
     "color_accent": "amber",
@@ -83,9 +88,20 @@ html_theme_options = {
     "repo_url": "https://github.com/OttoStruve/muler/",
     "repo_name": "muler",
     "repo_type": "github",
-    "master_doc": "true",
+    "master_doc": True,
     "globaltoc_depth": 3,
     "globaltoc_collapse": False,
     "globaltoc_includehidden": False,
     "logo_icon": "&#xE85C",
 }
+
+html_sidebars = {
+    "**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]
+}
+
+
+html_use_index = True
+html_domain_indices = True
+
+nbsphinx_kernel_name = "python3"
+
