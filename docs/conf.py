@@ -82,7 +82,7 @@ html_theme_options = {
         {"title": "API", "href": "api", "internal": True},
         {"title": "Tutorials", "href": "tutorials/index", "internal": True},
     ],
-    "color_primary": "light-blue",
+    "color_primary": "orange",
     "color_accent": "amber",
     "theme_color": "d35400",
     "repo_url": "https://github.com/OttoStruve/muler/",
@@ -104,4 +104,3 @@ html_use_index = True
 html_domain_indices = True
 
 nbsphinx_kernel_name = "python3"
-
