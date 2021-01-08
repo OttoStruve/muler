@@ -49,3 +49,9 @@ class IGRINSSpectrum(Spectrum1D):
         median_flux = np.nanmedian(self.flux)
 
         return self.divide(median_flux)
+
+    def remove_nans(self):
+        """Remove data points that have NaN fluxes"""
+        return IGRINSSpectrum(
+            spectral_axis=self.wavelength[~self.mask], flux=self.flux[~self.mask]
+        )
