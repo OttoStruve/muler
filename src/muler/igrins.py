@@ -17,6 +17,7 @@ from astropy.nddata import StdDevUncertainty
 from celerite2 import terms
 import celerite2
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 import os
 
 with warnings.catch_warnings():
