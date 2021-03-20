@@ -6,3 +6,4 @@ sphinx-material
 scipy
 pandas
 nbsphinx
+celerite2
