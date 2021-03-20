@@ -115,3 +115,31 @@ class IGRINSSpectrum(Spectrum1D):
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
         )
+
+    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4)):
+        """Plot a quick look of the spectrum"
+        
+        Parameters
+        ----------
+        ax : `~matplotlib.axes.Axes`
+            A matplotlib axes object to plot into. If no axes is provided,
+            a new one will be generated.
+        ylo : scalar
+            Lower limit of the y axis
+        yhi : sca;ar
+            Upper limit of the y axis
+        figsize : tuple
+            The figure size for the plot
+        """
+        if ax is None:
+            spec = self.normalize()
+            fig, ax = plt.subplots(1, figsize=figsize)
+            ax.set_ylim(ylo, yhi)
+            ax.set_xlabel("$\lambda \;(\AA)$")
+            ax.set_ylabel("Flux")
+            ax.plot(spec.wavelength, spec.flux)
+        else:
+            ax.plot(self.wavelength, self.flux)
+
+        return ax
+
