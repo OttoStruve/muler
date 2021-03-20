@@ -10,7 +10,7 @@ setuptools.setup(
     long_description="A Python package for working with echelle spectra from IGRINS",
     long_description_content_type="text/markdown",
     url="https://github.com/OttoStruve/muler",
-    install_requires=["numpy", "scipy", "astropy", "specutils", "pandas"],
+    install_requires=["numpy", "scipy", "astropy", "specutils", "pandas", "celerite2"],
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     classifiers=[
