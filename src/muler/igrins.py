@@ -11,6 +11,7 @@ IGRINSSpectrum
 
 import warnings
 import numpy as np
+import astropy
 from astropy.io import fits
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
@@ -19,6 +20,14 @@ import celerite2
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
+
+#  See Issue: https://github.com/astropy/specutils/issues/779
+warnings.filterwarnings(
+    "ignore", category=astropy.utils.exceptions.AstropyDeprecationWarning
+)
+
+# See Issue: https://github.com/astropy/specutils/issues/800
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
