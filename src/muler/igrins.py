@@ -15,11 +15,13 @@ import astropy
 from astropy.io import fits
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
+from scipy.stats import median_abs_deviation
 from celerite2 import terms
 import celerite2
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
+import copy
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
@@ -78,7 +80,11 @@ class IGRINSSpectrum(Spectrum1D):
         return self.divide(median_flux)
 
     def remove_nans(self):
-        """Remove data points that have NaN fluxes"""
+        """Remove data points that have NaN fluxes
+        
+        Returns:
+            (IGRINSSpectrum): Spectrum with NaNs removed
+        """
         if self.uncertainty is not None:
             masked_unc = StdDevUncertainty(self.uncertainty.array[~self.mask])
         else:
@@ -91,11 +97,15 @@ class IGRINSSpectrum(Spectrum1D):
         )
 
     def smooth_spectrum(self):
-        """Smooth the spectrum using Gaussian Process regression"""
+        """Smooth the spectrum using Gaussian Process regression
+        
+        Returns:
+            (IGRINSSpectrum): Smooth version of input Spectrum
+        """
         if self.uncertainty is not None:
             unc = self.uncertainty.array
         else:
-            unc = np.zeros_like(self.flux.value)
+            unc = np.repeat(self.flux.value / 100.0, len(self.flux))
 
         kernel = terms.SHOTerm(sigma=0.03, rho=15.0, Q=0.5)
         gp = celerite2.GaussianProcess(kernel, mean=0.0)
@@ -125,7 +135,7 @@ class IGRINSSpectrum(Spectrum1D):
             mask=np.zeros_like(mean_model, dtype=np.bool),
         )
 
-    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4)):
+    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), label=None):
         """Plot a quick look of the spectrum"
         
         Parameters
@@ -139,6 +149,11 @@ class IGRINSSpectrum(Spectrum1D):
             Upper limit of the y axis
         figsize : tuple
             The figure size for the plot
+        label : str
+            The legend label to for plt.legend()
+
+        Returns: 
+            (`~matplotlib.axes.Axes`): The axis to display and/or modify
         """
         if ax is None:
             spec = self.normalize()
@@ -146,9 +161,56 @@ class IGRINSSpectrum(Spectrum1D):
             ax.set_ylim(ylo, yhi)
             ax.set_xlabel("$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
-            ax.plot(spec.wavelength, spec.flux)
+            ax.plot(spec.wavelength, spec.flux, label=label)
         else:
-            ax.plot(self.wavelength, self.flux)
+            ax.plot(self.wavelength, self.flux, label=label)
 
         return ax
 
+    def remove_outliers(self, threshold=5):
+        """Remove outliers above threshold
+        
+        Parameters
+        ----------
+        threshold : float
+            The sigma-clipping threshold (in units of sigma)
+
+        Returns:
+            (IGRINSSpectrum): Cleaned version of input Spectrum
+        """
+        residual = self.flux - self.smooth_spectrum().flux
+        mad = median_abs_deviation(residual.value)
+        mask = np.abs(residual.value) > threshold * mad
+
+        spectrum_out = copy.deepcopy(self)
+        spectrum_out._mask = mask
+        spectrum_out.flux[mask] = np.NaN
+
+        return spectrum_out.remove_nans()
+
+    def trim_edges(self, limits=(450, 1950)):
+        """Trim the order edges, which tend to be noisy
+        
+        Parameters
+        ----------
+        limits : tuple
+            The index bounds (lo, hi) for trimming the order
+
+        Returns:
+            (IGRINSSpectrum): Trimmed version of input Spectrum
+        """
+        lo, hi = limits
+        x_values = np.arange(0, 2048, 1)
+        mask = (x_values < lo) | (x_values > hi)
+
+        if self.uncertainty is not None:
+            masked_unc = StdDevUncertainty(self.uncertainty.array[~mask])
+        else:
+            masked_unc = None
+
+        return IGRINSSpectrum(
+            spectral_axis=self.wavelength[~mask],
+            flux=self.flux[~mask],
+            mask=self.mask[~mask],
+            uncertainty=masked_unc,
+        )
