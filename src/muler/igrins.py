@@ -268,6 +268,14 @@ class IGRINSSpectrum(Spectrum1D):
         return median_abs_deviation(residual.value)
 
 
+"""
+
+IGRINSSpectrumList
+##################
+
+"""
+
+
 class IGRINSSpectrumList(SpectrumList):
     r"""
     A container for a list of IGRINS spectral orders
