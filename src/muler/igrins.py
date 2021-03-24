@@ -53,10 +53,10 @@ class IGRINSSpectrum(Spectrum1D):
     Args:
         file (str): A path to a reduced IGRINS spectrum from plp
         order (int): which spectral order to read
-        cached_hdus (list) : 
+        cached_hdus (list) :
             List of two fits HDUs, one for the spec_a0v.fits, and one for the
-            sn.fits file, to reduce file I/O for multiorder access.  
-            If provided, must give both HDUs.  Optional, default is None.        
+            sn.fits file, to reduce file I/O for multiorder access.
+            If provided, must give both HDUs.  Optional, default is None.
     """
 
     def __init__(self, *args, file=None, order=10, cached_hdus=None, **kwargs):
@@ -297,7 +297,7 @@ class IGRINSSpectrum(Spectrum1D):
         return median_abs_deviation(residual.value)
 
     def to_HDF5(self, path, file_basename):
-        """Export to spectral order to HDF5 file format 
+        """Export to spectral order to HDF5 file format
         This format is required for IGRINS per-order Starfish input
 
         Parameters
@@ -332,27 +332,23 @@ class IGRINSSpectrumList(SpectrumList):
 
     @staticmethod
     def read(file, precache_hdus=True):
-        """Read in a SpectrumList from a file 
+        """Read in a SpectrumList from a file
 
         Parameters
         ----------
         file : (str)
             A path to a reduced IGRINS spectrum from plp
-        band : (str)
-            Which band to read ('default' or 'both')
-        precache_hdus : (bool)
-            Whether or not to cache the HDUs rather than re-read for each order
-            Default is True
         """
-        if precache_hdus:
-            hdus = fits.open(file, memmap=False)
-            sn_file = file[:-13] + "sn.fits"
-            sn_hdus = fits.open(sn_file, memmap=False)
-            cached_hdus = [hdus, sn_hdus]
-        else:
-            cached_hdus = None
+        assert '.spec_a0v.fits' in file
+        hdus = fits.open(file, memmap=False)
+        sn_file = file[:-13] + "sn.fits"
+        sn_hdus = fits.open(sn_file, memmap=False)
+        cached_hdus = [hdus, sn_hdus]
+
+        n_orders, n_pix = hdus["WAVELENGTH"].data.shape
+
         list_out = []
-        for i in range(28):
+        for i in range(n_orders):
             spec = IGRINSSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
@@ -360,8 +356,8 @@ class IGRINSSpectrumList(SpectrumList):
     def normalize(self):
         """Normalize the all spectra to order 14's median
         """
-        median_flux = np.nanmedian(self[14].flux)
-        for i in range(28):
+        median_flux = copy.deepcopy(np.nanmedian(self[14].flux))
+        for i in range(len(self)):
             self[i] = self[i].divide(median_flux, handle_meta="first_found")
 
         return self
@@ -369,7 +365,7 @@ class IGRINSSpectrumList(SpectrumList):
     def remove_nans(self):
         """Remove all the NaNs
         """
-        for i in range(28):
+        for i in range(len(self)):
             self[i] = self[i].remove_nans()
 
         return self
@@ -382,7 +378,7 @@ class IGRINSSpectrumList(SpectrumList):
         threshold : float
             The sigma-clipping threshold (in units of sigma)
         """
-        for i in range(28):
+        for i in range(len(self)):
             self[i] = self[i].remove_outliers(threshold=threshold)
 
         return self
@@ -390,7 +386,7 @@ class IGRINSSpectrumList(SpectrumList):
     def trim_edges(self):
         """Trim all the edges
         """
-        for i in range(28):
+        for i in range(len(self)):
             self[i] = self[i].trim_edges()
 
         return self
@@ -398,14 +394,14 @@ class IGRINSSpectrumList(SpectrumList):
     def to_HDF5(self, path, file_basename):
         """Save all spectral orders to the HDF5 file format
         """
-        for i in range(28):
+        for i in range(len(self)):
             self[i].to_HDF5(path, file_basename)
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list
         """
         ax = self[0].plot(figsize=(25, 4), **kwargs)
-        for i in range(1, 28):
+        for i in range(1, len(self)):
             self[i].plot(ax=ax, **kwargs)
 
         return ax
