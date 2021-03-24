@@ -52,18 +52,23 @@ class IGRINSSpectrum(Spectrum1D):
             lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
             flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
             sn_file = file[:-13] + "sn.fits"
+            meta_dict = {"x_values": np.arange(0, 2048, 1, dtype=np.int)}
             if os.path.exists(sn_file):
                 hdus = fits.open(sn_file)
                 sn = hdus[0].data[10]
-                unc = flux / sn
+                unc = np.abs(flux / sn)
                 uncertainty = StdDevUncertainty(unc)
-            mask = np.isnan(flux) | np.isnan(unc)
+                mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            else:
+                uncertainty = None
+                mask = np.isnan(flux)
 
             super().__init__(
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
                 uncertainty=uncertainty,
+                meta=meta_dict,
                 **kwargs
             )
         else:
@@ -77,7 +82,7 @@ class IGRINSSpectrum(Spectrum1D):
         """
         median_flux = np.nanmedian(self.flux)
 
-        return self.divide(median_flux)
+        return self.divide(median_flux, handle_meta="first_found")
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
@@ -89,11 +94,16 @@ class IGRINSSpectrum(Spectrum1D):
             masked_unc = StdDevUncertainty(self.uncertainty.array[~self.mask])
         else:
             masked_unc = None
+
+        meta_out = copy.deepcopy(self.meta)
+        meta_out["x_values"] = meta_out["x_values"][~self.mask]
+
         return IGRINSSpectrum(
             spectral_axis=self.wavelength[~self.mask],
             flux=self.flux[~self.mask],
             mask=self.mask[~self.mask],
             uncertainty=masked_unc,
+            meta=meta_out,
         )
 
     def smooth_spectrum(self):
@@ -105,7 +115,7 @@ class IGRINSSpectrum(Spectrum1D):
         if self.uncertainty is not None:
             unc = self.uncertainty.array
         else:
-            unc = np.repeat(self.flux.value / 100.0, len(self.flux))
+            unc = np.repeat(np.nanmedian(self.flux.value) / 100.0, len(self.flux))
 
         kernel = terms.SHOTerm(sigma=0.03, rho=15.0, Q=0.5)
         gp = celerite2.GaussianProcess(kernel, mean=0.0)
@@ -129,10 +139,14 @@ class IGRINSSpectrum(Spectrum1D):
 
         mean_model = opt_gp.predict(self.flux.value, t=self.wavelength.value)
 
+        meta_out = copy.deepcopy(self.meta)
+        meta_out["x_values"] = meta_out["x_values"][~self.mask]
+
         return IGRINSSpectrum(
             spectral_axis=self.wavelength,
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
+            meta=meta_out,
         )
 
     def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), label=None):
@@ -156,14 +170,13 @@ class IGRINSSpectrum(Spectrum1D):
             (`~matplotlib.axes.Axes`): The axis to display and/or modify
         """
         if ax is None:
-            spec = self.normalize()
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.set_ylim(ylo, yhi)
             ax.set_xlabel("$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
-            ax.plot(spec.wavelength, spec.flux, label=label)
+            ax.step(self.wavelength, self.flux, label=label)
         else:
-            ax.plot(self.wavelength, self.flux, label=label)
+            ax.step(self.wavelength, self.flux, label=label)
 
         return ax
 
@@ -190,6 +203,10 @@ class IGRINSSpectrum(Spectrum1D):
 
     def trim_edges(self, limits=(450, 1950)):
         """Trim the order edges, which tend to be noisy
+
+        This method applies limits on absolute x pixel values, regardless
+        of the order of previous destructive operations, which may not
+        be the intended behavior in some applications.
         
         Parameters
         ----------
@@ -200,7 +217,8 @@ class IGRINSSpectrum(Spectrum1D):
             (IGRINSSpectrum): Trimmed version of input Spectrum
         """
         lo, hi = limits
-        x_values = np.arange(0, 2048, 1)
+        meta_out = copy.deepcopy(self.meta)
+        x_values = meta_out["x_values"]
         mask = (x_values < lo) | (x_values > hi)
 
         if self.uncertainty is not None:
@@ -208,9 +226,22 @@ class IGRINSSpectrum(Spectrum1D):
         else:
             masked_unc = None
 
+        meta_out["x_values"] = x_values[~mask]
+
         return IGRINSSpectrum(
             spectral_axis=self.wavelength[~mask],
             flux=self.flux[~mask],
             mask=self.mask[~mask],
             uncertainty=masked_unc,
+            meta=meta_out,
         )
+
+    def estimate_uncertainty(self):
+        """Estimate the uncertainty based on residual after smoothing
+        
+
+        Returns:
+            (float): Typical uncertainty
+        """
+        residual = self.flux - self.smooth_spectrum().flux
+        return median_abs_deviation(residual.value)
