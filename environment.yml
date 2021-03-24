@@ -17,6 +17,7 @@ dependencies:
   - ipython
   - seaborn
   - scikit-learn
+  - h5py # needed for `to_hdf5` method
   - pytest
   - sphinx # for documentation and testing
   - nbsphinx # for documentation and testing
