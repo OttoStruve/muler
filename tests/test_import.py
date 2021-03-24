@@ -47,7 +47,7 @@ def test_basic():
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
-    ax = new_spec.plot()
+    ax = new_spec.plot(label='demo', color='r')
     assert ax is not None
 
 

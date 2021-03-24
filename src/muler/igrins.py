@@ -47,7 +47,7 @@ class IGRINSSpectrum(Spectrum1D):
     Args:
         file (str): A path to a reduced IGRINS spectrum from plp
         order (int): which spectral order to read
-        cached_hdus : (list)
+        cached_hdus (list) : 
             List of two fits HDUs, one for the spec_a0v.fits, and one for the
             sn.fits file, to reduce file I/O for multiorder access.  
             If provided, must give both HDUs.  Optional, default is None.        
@@ -172,7 +172,7 @@ class IGRINSSpectrum(Spectrum1D):
             meta=meta_out,
         )
 
-    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), label=None):
+    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), **kwargs):
         """Plot a quick look of the spectrum"
 
         Parameters
@@ -199,9 +199,9 @@ class IGRINSSpectrum(Spectrum1D):
             ax.set_ylim(ylo, yhi)
             ax.set_xlabel("$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
-            ax.step(self.wavelength, self.flux, label=label)
+            ax.step(self.wavelength, self.flux, **kwargs)
         else:
-            ax.step(self.wavelength, self.flux, label=label)
+            ax.step(self.wavelength, self.flux, **kwargs)
 
         return ax
 
@@ -346,11 +346,11 @@ class IGRINSSpectrumList(SpectrumList):
 
         return self
 
-    def plot(self):
+    def plot(self, **kwargs):
         """Plot the entire spectrum list
         """
-        ax = self[0].plot(figsize=(25, 4))
+        ax = self[0].plot(figsize=(25, 4), **kwargs)
         for i in range(1, 28):
-            self[i].plot(ax=ax)
+            self[i].plot(ax=ax, **kwargs)
 
         return ax
