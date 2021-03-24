@@ -8,3 +8,4 @@ pandas
 nbsphinx
 celerite2
 matplotlib
+h5py
