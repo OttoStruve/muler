@@ -47,20 +47,31 @@ class IGRINSSpectrum(Spectrum1D):
     Args:
         file (str): A path to a reduced IGRINS spectrum from plp
         order (int): which spectral order to read
+        cached_hdus : (list)
+            List of two fits HDUs, one for the spec_a0v.fits, and one for the
+            sn.fits file, to reduce file I/O for multiorder access.  
+            If provided, must give both HDUs.  Optional, default is None.        
     """
 
-    def __init__(self, *args, file=None, order=10, **kwargs):
+    def __init__(self, *args, file=None, order=10, cached_hdus=None, **kwargs):
 
         if file is not None:
-            hdus = fits.open(str(file))
+            sn_file = file[:-13] + "sn.fits"
+            if cached_hdus is not None:
+                hdus = cached_hdus[0]
+                sn_hdus = cached_hdus[1]
+            else:
+                hdus = fits.open(str(file))
+                try:
+                    sn_hdus = fits.open(sn_file)
+                except:
+                    sn_hdus = None
             hdr = hdus[0].header
             lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
             flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
-            sn_file = file[:-13] + "sn.fits"
             meta_dict = {"x_values": np.arange(0, 2048, 1, dtype=np.int), "header": hdr}
-            if os.path.exists(sn_file):
-                hdus = fits.open(sn_file)
-                sn = hdus[0].data[10]
+            if sn_hdus is not None:
+                sn = sn_hdus[0].data[10]
                 unc = np.abs(flux / sn)
                 uncertainty = StdDevUncertainty(unc)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
@@ -171,7 +182,7 @@ class IGRINSSpectrum(Spectrum1D):
             a new one will be generated.
         ylo : scalar
             Lower limit of the y axis
-        yhi : sca;ar
+        yhi : scalar
             Upper limit of the y axis
         figsize : tuple
             The figure size for the plot
@@ -278,26 +289,37 @@ IGRINSSpectrumList
 
 class IGRINSSpectrumList(SpectrumList):
     r"""
-    A container for a list of IGRINS spectral orders
+    An enhanced container for a list of IGRINS spectral orders
 
-    Parameters
-    ----------
-        file : (str)
-            A path to a reduced IGRINS spectrum from plp
-        band : (str)
-            Which band to read ('default' or 'both')
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def read(file):
+    def read(file, precache_hdus=True):
         """Read in a SpectrumList from a file 
+
+        Parameters
+        ----------
+        file : (str)
+            A path to a reduced IGRINS spectrum from plp
+        band : (str)
+            Which band to read ('default' or 'both')
+        precache_hdus : (bool)
+            Whether or not to cache the HDUs rather than re-read for each order
+            Default is True
         """
+        if precache_hdus:
+            hdus = fits.open(file)
+            sn_file = file[:-13] + "sn.fits"
+            sn_hdus = fits.open(sn_file)
+            cached_hdus = [hdus, sn_hdus]
+        else:
+            cached_hdus = None
         list_out = []
         for i in range(28):
-            spec = IGRINSSpectrum(file=file, order=i)
+            spec = IGRINSSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
 

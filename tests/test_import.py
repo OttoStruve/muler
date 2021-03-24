@@ -1,5 +1,7 @@
 # from astropy.nddata.ccddata import _uncertainty_unit_equivalent_to_parent
-from muler.igrins import IGRINSSpectrum
+import pytest
+import time
+from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList
 from specutils import Spectrum1D
 
 # from astropy.nddata.nduncertainty import StdDevUncertainty
@@ -50,7 +52,7 @@ def test_basic():
 
 
 def test_uncertainty():
-    """Dooes uncertainty propagation work?"""
+    """Does uncertainty propagation work?"""
 
     spec = IGRINSSpectrum(file=file, order=10)
 
@@ -72,3 +74,18 @@ def test_uncertainty():
     snr_vec = new_spec.flux / new_spec.uncertainty.array
     snr_med = np.nanmedian(snr_vec.value)
     assert snr_med == snr_old_med
+
+
+@pytest.mark.parametrize(
+    "precache_hdus", [True, False],
+)
+
+def test_spectrumlist_performance(precache_hdus):
+    """Does the Spectrum List work?"""
+    t0 = time.time()
+    spec_list = IGRINSSpectrumList.read(file, precache_hdus=precache_hdus)
+    t1 = time.time()
+    net_time = t1 - t0
+    print(f"\n\t Precached HDUs {precache_hdus}: {net_time:0.5f} seconds", end="\t")
+
+    assert spec_list is not None
