@@ -77,8 +77,10 @@ class IGRINSSpectrum(Spectrum1D):
     def normalize(self):
         """Normalize spectrum by its median value
 
-        Returns:
-            (IGRINSSpectrum): Normalized Spectrum
+        Returns
+        -------
+        normalized_spec : (IGRINSSpectrum)
+            Normalized Spectrum
         """
         median_flux = np.nanmedian(self.flux)
 
@@ -86,9 +88,11 @@ class IGRINSSpectrum(Spectrum1D):
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
-        
-        Returns:
-            (IGRINSSpectrum): Spectrum with NaNs removed
+
+        Returns
+        -------
+        finite_spec : (IGRINSSpectrum)
+            Spectrum with NaNs removed
         """
         if self.uncertainty is not None:
             masked_unc = StdDevUncertainty(self.uncertainty.array[~self.mask])
@@ -108,9 +112,11 @@ class IGRINSSpectrum(Spectrum1D):
 
     def smooth_spectrum(self):
         """Smooth the spectrum using Gaussian Process regression
-        
-        Returns:
-            (IGRINSSpectrum): Smooth version of input Spectrum
+
+        Returns
+        -------
+        smoothed_spec : (IGRINSSpectrum)
+            Smooth version of input Spectrum
         """
         if self.uncertainty is not None:
             unc = self.uncertainty.array
@@ -151,7 +157,7 @@ class IGRINSSpectrum(Spectrum1D):
 
     def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), label=None):
         """Plot a quick look of the spectrum"
-        
+
         Parameters
         ----------
         ax : `~matplotlib.axes.Axes`
@@ -166,8 +172,10 @@ class IGRINSSpectrum(Spectrum1D):
         label : str
             The legend label to for plt.legend()
 
-        Returns: 
-            (`~matplotlib.axes.Axes`): The axis to display and/or modify
+        Returns
+        -------
+        ax : (`~matplotlib.axes.Axes`)
+            The axis to display and/or modify
         """
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
@@ -182,14 +190,17 @@ class IGRINSSpectrum(Spectrum1D):
 
     def remove_outliers(self, threshold=5):
         """Remove outliers above threshold
-        
+
         Parameters
         ----------
         threshold : float
             The sigma-clipping threshold (in units of sigma)
 
-        Returns:
-            (IGRINSSpectrum): Cleaned version of input Spectrum
+
+        Returns
+        -------
+        clean_spec : (IGRINSSpectrum)
+            Cleaned version of input Spectrum
         """
         residual = self.flux - self.smooth_spectrum().flux
         mad = median_abs_deviation(residual.value)
@@ -207,14 +218,16 @@ class IGRINSSpectrum(Spectrum1D):
         This method applies limits on absolute x pixel values, regardless
         of the order of previous destructive operations, which may not
         be the intended behavior in some applications.
-        
+
         Parameters
         ----------
         limits : tuple
             The index bounds (lo, hi) for trimming the order
 
-        Returns:
-            (IGRINSSpectrum): Trimmed version of input Spectrum
+        Returns
+        -------
+        trimmed_spec : (IGRINSSpectrum)
+            Trimmed version of input Spectrum
         """
         lo, hi = limits
         meta_out = copy.deepcopy(self.meta)
@@ -238,10 +251,12 @@ class IGRINSSpectrum(Spectrum1D):
 
     def estimate_uncertainty(self):
         """Estimate the uncertainty based on residual after smoothing
-        
 
-        Returns:
-            (float): Typical uncertainty
+
+        Returns
+        -------
+        uncertainty : (np.float)
+            Typical uncertainty
         """
         residual = self.flux - self.smooth_spectrum().flux
         return median_abs_deviation(residual.value)
