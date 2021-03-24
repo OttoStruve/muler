@@ -278,6 +278,20 @@ class IGRINSSpectrum(Spectrum1D):
         residual = self.flux - self.smooth_spectrum().flux
         return median_abs_deviation(residual.value)
 
+    def to_HDF5(self, path, file_basename):
+        """Export to spectral order to HDF5 file format 
+        This format is required for IGRINS per-order Starfish input
+
+        Parameters
+        ----------
+        path : str
+            The directory destination for the HDF5 file
+        file_basename : str
+            The basename of the file to which the order number and extension
+            are appended.  Typically source name that matches a database entry.
+        """
+        print(path, file_basename)
+
 
 """
 
@@ -311,9 +325,9 @@ class IGRINSSpectrumList(SpectrumList):
             Default is True
         """
         if precache_hdus:
-            hdus = fits.open(file)
+            hdus = fits.open(file, memmap=False)
             sn_file = file[:-13] + "sn.fits"
-            sn_hdus = fits.open(sn_file)
+            sn_hdus = fits.open(sn_file, memmap=False)
             cached_hdus = [hdus, sn_hdus]
         else:
             cached_hdus = None
