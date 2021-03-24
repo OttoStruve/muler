@@ -1,7 +1,8 @@
 # from astropy.nddata.ccddata import _uncertainty_unit_equivalent_to_parent
 from muler.igrins import IGRINSSpectrum
 from specutils import Spectrum1D
-from astropy.nddata.nduncertainty import StdDevUncertainty
+
+# from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
 
@@ -31,6 +32,22 @@ def test_basic():
     assert new_spec.shape[0] == spec.shape[0]
     assert np.nanmedian(new_spec.flux) == 1
 
+    new_spec = spec.remove_outliers(threshold=3)
+
+    assert len(new_spec.flux) > 0
+    assert new_spec.shape[0] <= spec.shape[0]
+    assert new_spec.shape[0] > 0
+    assert new_spec.mask is not None
+
+    new_spec = spec.trim_edges()
+
+    assert new_spec.shape[0] < spec.shape[0]
+    assert new_spec.shape[0] > 0
+    assert new_spec.mask is not None
+
+    ax = new_spec.plot()
+    assert ax is not None
+
 
 def test_uncertainty():
     """Dooes uncertainty propagation work?"""
@@ -45,6 +62,7 @@ def test_uncertainty():
     new_spec = spec.remove_nans()
 
     assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
 
     snr_old_vec = spec.flux / spec.uncertainty.array
     snr_old_med = np.nanmedian(snr_old_vec.value)
