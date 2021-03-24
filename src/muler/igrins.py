@@ -308,9 +308,8 @@ class IGRINSSpectrum(Spectrum1D):
             The basename of the file to which the order number and extension
             are appended.  Typically source name that matches a database entry.
         """
-        print(path, file_basename)
         grating_order = self.meta["m"]
-        out_path = path + file_basename + "_m{:03d}.hdf5".format(grating_order)
+        out_path = path + "/" + file_basename + "_m{:03d}.hdf5".format(grating_order)
 
         # The mask should be ones everywhere
         mask_out = np.ones(len(self.wavelength), dtype=int)
@@ -366,6 +365,41 @@ class IGRINSSpectrumList(SpectrumList):
             self[i] = self[i].divide(median_flux, handle_meta="first_found")
 
         return self
+
+    def remove_nans(self):
+        """Remove all the NaNs
+        """
+        for i in range(28):
+            self[i] = self[i].remove_nans()
+
+        return self
+
+    def remove_outliers(self, threshold=5):
+        """Remove all the outliers
+
+        Parameters
+        ----------
+        threshold : float
+            The sigma-clipping threshold (in units of sigma)
+        """
+        for i in range(28):
+            self[i] = self[i].remove_outliers(threshold=threshold)
+
+        return self
+
+    def trim_edges(self):
+        """Trim all the edges
+        """
+        for i in range(28):
+            self[i] = self[i].trim_edges()
+
+        return self
+
+    def to_HDF5(self, path, file_basename):
+        """Save all spectral orders to the HDF5 file format
+        """
+        for i in range(28):
+            self[i].to_HDF5(path, file_basename)
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list
