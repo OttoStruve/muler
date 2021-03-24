@@ -14,8 +14,11 @@ import numpy as np
 import astropy
 from astropy.io import fits
 from astropy import units as u
+from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
+
+# from specutils.io.registers import data_loader
 from celerite2 import terms
 import celerite2
 from scipy.optimize import minimize
@@ -27,13 +30,14 @@ import copy
 warnings.filterwarnings(
     "ignore", category=astropy.utils.exceptions.AstropyDeprecationWarning
 )
-
+warnings.filterwarnings("ignore", category=FITSFixedWarning)
 # See Issue: https://github.com/astropy/specutils/issues/800
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
     from specutils import Spectrum1D
+    from specutils import SpectrumList
 
 
 class IGRINSSpectrum(Spectrum1D):
@@ -49,10 +53,11 @@ class IGRINSSpectrum(Spectrum1D):
 
         if file is not None:
             hdus = fits.open(str(file))
+            hdr = hdus[0].header
             lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
             flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
             sn_file = file[:-13] + "sn.fits"
-            meta_dict = {"x_values": np.arange(0, 2048, 1, dtype=np.int)}
+            meta_dict = {"x_values": np.arange(0, 2048, 1, dtype=np.int), "header": hdr}
             if os.path.exists(sn_file):
                 hdus = fits.open(sn_file)
                 sn = hdus[0].data[10]
@@ -67,6 +72,7 @@ class IGRINSSpectrum(Spectrum1D):
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
+                wcs=WCS(hdr),
                 uncertainty=uncertainty,
                 meta=meta_dict,
                 **kwargs
@@ -260,3 +266,47 @@ class IGRINSSpectrum(Spectrum1D):
         """
         residual = self.flux - self.smooth_spectrum().flux
         return median_abs_deviation(residual.value)
+
+
+class IGRINSSpectrumList(SpectrumList):
+    r"""
+    A container for a list of IGRINS spectral orders
+
+    Parameters
+    ----------
+        file : (str)
+            A path to a reduced IGRINS spectrum from plp
+        band : (str)
+            Which band to read ('default' or 'both')
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def read(file):
+        """Read in a SpectrumList from a file 
+        """
+        list_out = []
+        for i in range(28):
+            spec = IGRINSSpectrum(file=file, order=i)
+            list_out.append(spec)
+        return IGRINSSpectrumList(list_out)
+
+    def normalize(self):
+        """Normalize the all spectra to order 14's median
+        """
+        median_flux = np.nanmedian(self[14].flux)
+        for i in range(28):
+            self[i] = self[i].divide(median_flux, handle_meta="first_found")
+
+        return self
+
+    def plot(self):
+        """Plot the entire spectrum list
+        """
+        ax = self[0].plot(figsize=(25, 4))
+        for i in range(1, 28):
+            self[i].plot(ax=ax)
+
+        return ax
