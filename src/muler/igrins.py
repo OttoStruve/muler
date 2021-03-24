@@ -17,6 +17,7 @@ from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
+import h5py
 
 # from specutils.io.registers import data_loader
 from celerite2 import terms
@@ -39,6 +40,11 @@ with warnings.catch_warnings():
     from specutils import Spectrum1D
     from specutils import SpectrumList
 
+# Convert PLP index number to echelle order m
+## Note that these technically depend on grating temperature
+## For typical operating temperature, offsets should be exact.
+grating_order_offsets = {"H": 98, "K": 71}
+
 
 class IGRINSSpectrum(Spectrum1D):
     r"""
@@ -56,6 +62,15 @@ class IGRINSSpectrum(Spectrum1D):
     def __init__(self, *args, file=None, order=10, cached_hdus=None, **kwargs):
 
         if file is not None:
+            # Determine the band
+            if "SDCH" in file:
+                band = "H"
+            elif "SDCK" in file:
+                band = "K"
+            else:
+                raise NameError("Cannot identify file as an IGRINS spectrum")
+            grating_order = grating_order_offsets[band] + order
+
             sn_file = file[:-13] + "sn.fits"
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
@@ -69,7 +84,10 @@ class IGRINSSpectrum(Spectrum1D):
             hdr = hdus[0].header
             lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
             flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
-            meta_dict = {"x_values": np.arange(0, 2048, 1, dtype=np.int), "header": hdr}
+            meta_dict = {
+                "x_values": np.arange(0, 2048, 1, dtype=np.int),
+                "m": grating_order,  # "header": hdr,
+            }
             if sn_hdus is not None:
                 sn = sn_hdus[0].data[10]
                 unc = np.abs(flux / sn)
@@ -291,14 +309,17 @@ class IGRINSSpectrum(Spectrum1D):
             are appended.  Typically source name that matches a database entry.
         """
         print(path, file_basename)
+        grating_order = self.meta["m"]
+        out_path = path + file_basename + "_m{:03d}.hdf5".format(grating_order)
 
-
-"""
-
-IGRINSSpectrumList
-##################
-
-"""
+        # The mask should be ones everywhere
+        mask_out = np.ones(len(self.wavelength), dtype=int)
+        f_new = h5py.File(out_path, "w")
+        f_new.create_dataset("fls", data=self.flux.value)
+        f_new.create_dataset("wls", data=self.wavelength.to(u.Angstrom).value)
+        f_new.create_dataset("sigmas", data=self.uncertainty.array)
+        f_new.create_dataset("masks", data=mask_out)
+        f_new.close()
 
 
 class IGRINSSpectrumList(SpectrumList):
