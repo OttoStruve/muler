@@ -132,3 +132,4 @@ dmypy.json
 .envrc
 tests/data/
 notebooks/
+.DS_Store
