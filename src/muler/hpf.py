@@ -78,9 +78,6 @@ class HPFSpectrum(Spectrum1D):
 
             hdr = hdus[0].header
             if sky == True:
-                # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for HPF
-                # flux = hdus[3].data[order].astype(np.float64) * u.ct
-                # unc = hdus[6].data[order].astype(np.float64) * u.ct
                 lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
@@ -96,7 +93,9 @@ class HPFSpectrum(Spectrum1D):
             }
 
             uncertainty = StdDevUncertainty(unc)
-            mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            mask = (
+                np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
+            )
 
             super().__init__(
                 spectral_axis=lamb,

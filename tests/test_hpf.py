@@ -73,7 +73,7 @@ def test_uncertainty():
 
     snr_vec = new_spec.flux / new_spec.uncertainty.array
     snr_med = np.nanmedian(snr_vec.value)
-    assert snr_med == snr_old_med
+    assert np.isclose(snr_med == snr_old_med, atol=0.01)
 
 
 @pytest.mark.parametrize(
