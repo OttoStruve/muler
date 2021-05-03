@@ -49,7 +49,7 @@ with warnings.catch_warnings():
 grating_order_offsets = {"H": 98, "K": 71, 'Goldilocks':0, 'Slope':0}
 
 
-class IGRINSSpectrum(Spectrum1D):
+class HPFSpectrum(Spectrum1D):
     r"""
     A container for IGRINS spectra
 
@@ -67,8 +67,8 @@ class IGRINSSpectrum(Spectrum1D):
         if file is not None:
             if "Goldilocks" in file:
                 band = "Goldilocks"
-            elif "Slope" in file:    
-                band = 'HPF'         
+            elif "Slope" in file:
+                band = 'HPF'
             else:
                 raise NameError("Cannot identify file as an HPF spectrum")
             grating_order = grating_order_offsets[band] + order
@@ -81,7 +81,7 @@ class IGRINSSpectrum(Spectrum1D):
                 # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for igrins
                 # flux = hdus[3].data[order].astype(np.float64) * u.ct
                 # unc = hdus[6].data[order].astype(np.float64) * u.ct
-                lamb = hdus[8].data[order].astype(np.float64) * u.AA 
+                lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
                 print('Sky=True')
@@ -96,7 +96,7 @@ class IGRINSSpectrum(Spectrum1D):
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
                 "m": grating_order,  # "header": hdr,
             }
-            
+
             uncertainty = StdDevUncertainty(unc)
             mask = np.isnan(flux) | np.isnan(uncertainty.array)
 
@@ -128,34 +128,32 @@ class IGRINSSpectrum(Spectrum1D):
 
 
     def sky_subtract(self,sky):
-        """subtract science spectrum from sky spectrum
+        """Subtract science spectrum from sky spectrum
 
         Returns
         -------
-        sky_subtractedSpec : (IGRINSSpectrum)
+        sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
         new_flux = self.flux-sky
 
-        return IGRINSSpectrum(
+        return HPFSpectrum(
             spectral_axis=self.wavelength,
             flux=new_flux,
         )
 
     def blaze_subtract_spline(self):
-        """remove blaze function from spectrum by interpolating a spline function
+        """Remove blaze function from spectrum by interpolating a spline function
 
         Returns
         -------
         blaze corrrected spectrum : (IGRINSSpectrum)
-             
+
         """
-        new_flux= self.normalize()
+        new_spec = self.normalize()
 
-        print(len(self.wavelength))
-
-        spline=UnivariateSpline(self.wavelength,new_flux.flux,k=5)
-        interp_spline= spline(self.wavelength) 
+        spline = UnivariateSpline(self.wavelength, new_spec.flux, k=5)
+        interp_spline = spline(self.wavelength)
 
         no_blaze=new_flux/interp_spline
         return no_blaze
@@ -166,7 +164,7 @@ class IGRINSSpectrum(Spectrum1D):
         Returns
         -------
         blaze corrrected spectrum using flat fields : (IGRINSSpectrum)
-             
+
         """
         new_flux= self.normalize()
 
