@@ -6,3 +6,6 @@ The API is under active development and should be considered a strawman design. 
 
 .. automodule:: muler.igrins
     :members:
+
+.. automodule:: muler.hpf
+    :members:
