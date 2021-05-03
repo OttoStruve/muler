@@ -1,11 +1,11 @@
 r"""
-IGRINS Spectrum
+HPF Spectrum
 ---------------
 
-A container for an IGRINS spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.
+A container for an HPF spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.  HPF additionally has a sky fiber and optionally a Laser Frequency Comb fiber.  Our experimental API currently ignores the LFC fiber.  The sky fiber can be accessed by passing the `sky=True` kwarg when retrieving the 
 
 
-IGRINSSpectrum
+HPFSpectrum
 ##############
 """
 
@@ -51,14 +51,13 @@ grating_order_offsets = {"H": 98, "K": 71, "Goldilocks": 0, "Slope": 0}
 
 class HPFSpectrum(Spectrum1D):
     r"""
-    A container for IGRINS spectra
+    A container for HPF spectra
 
     Args:
-        file (str): A path to a reduced IGRINS spectrum from plp
+        file (str): A path to a reduced HPF spectrum from Goldilocks *or* the HPF instrument team
         order (int): which spectral order to read
         cached_hdus (list) :
-            List of two fits HDUs, one for the spec_a0v.fits, and one for the
-            sn.fits file, to reduce file I/O for multiorder access.
+            A pre-loaded HDU to reduce file I/O for multiorder access.
             If provided, must give both HDUs.  Optional, default is None.
     """
 
@@ -79,19 +78,17 @@ class HPFSpectrum(Spectrum1D):
 
             hdr = hdus[0].header
             if sky == True:
-                # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for igrins
+                # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for HPF
                 # flux = hdus[3].data[order].astype(np.float64) * u.ct
                 # unc = hdus[6].data[order].astype(np.float64) * u.ct
                 lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
-                print("Sky=True")
             else:
 
                 lamb = hdus[7].data[order].astype(np.float64) * u.AA
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
                 unc = hdus[4].data[order].astype(np.float64) * u.ct
-                print("Sky=False")
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
@@ -118,7 +115,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        normalized_spec : (IGRINSSpectrum)
+        normalized_spec : (HPFSpectrum)
             Normalized Spectrum
         """
         median_flux = np.nanmedian(self.flux)
@@ -143,7 +140,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        blaze corrrected spectrum : (IGRINSSpectrum)
+        blaze corrrected spectrum : (HPFSpectrum)
 
         """
         new_spec = self.normalize()
@@ -151,15 +148,15 @@ class HPFSpectrum(Spectrum1D):
         spline = UnivariateSpline(self.wavelength, new_spec.flux, k=5)
         interp_spline = spline(self.wavelength)
 
-        no_blaze = new_flux / interp_spline
+        no_blaze = new_spec / interp_spline
         return no_blaze
 
     def blaze_subtract_flats(self, flat, order=19):
-        """remove blaze function from spectrum by subtracting by flat spectrum
+        """Remove blaze function from spectrum by subtracting by flat spectrum
 
         Returns
         -------
-        blaze corrrected spectrum using flat fields : (IGRINSSpectrum)
+        blaze corrrected spectrum using flat fields : (HPFSpectrum)
 
         """
         new_flux = self.normalize()
@@ -185,7 +182,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        finite_spec : (IGRINSSpectrum)
+        finite_spec : (HPFSpectrum)
             Spectrum with NaNs removed
         """
         if self.uncertainty is not None:
@@ -196,7 +193,7 @@ class HPFSpectrum(Spectrum1D):
         meta_out = copy.deepcopy(self.meta)
         meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
-        return IGRINSSpectrum(
+        return HPFSpectrum(
             spectral_axis=self.wavelength[~self.mask],
             flux=self.flux[~self.mask],
             mask=self.mask[~self.mask],
@@ -209,7 +206,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        smoothed_spec : (IGRINSSpectrum)
+        smoothed_spec : (HPFSpectrum)
             Smooth version of input Spectrum
         """
         if self.uncertainty is not None:
@@ -242,7 +239,7 @@ class HPFSpectrum(Spectrum1D):
         meta_out = copy.deepcopy(self.meta)
         meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
-        return IGRINSSpectrum(
+        return HPFSpectrum(
             spectral_axis=self.wavelength,
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
@@ -293,7 +290,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        clean_spec : (IGRINSSpectrum)
+        clean_spec : (HPFSpectrum)
             Cleaned version of input Spectrum
         """
         residual = self.flux - self.smooth_spectrum().flux
@@ -307,7 +304,7 @@ class HPFSpectrum(Spectrum1D):
         return spectrum_out.remove_nans()
 
     def trim_edges(self, limits=(450, 1950)):
-        """Trim the order edges, which tend to be noisy
+        """Trim the order edges, which falloff in SNR
 
         This method applies limits on absolute x pixel values, regardless
         of the order of previous destructive operations, which may not
@@ -320,7 +317,7 @@ class HPFSpectrum(Spectrum1D):
 
         Returns
         -------
-        trimmed_spec : (IGRINSSpectrum)
+        trimmed_spec : (HPFSpectrum)
             Trimmed version of input Spectrum
         """
         lo, hi = limits
@@ -335,7 +332,7 @@ class HPFSpectrum(Spectrum1D):
 
         meta_out["x_values"] = x_values[~mask]
 
-        return IGRINSSpectrum(
+        return HPFSpectrum(
             spectral_axis=self.wavelength[~mask],
             flux=self.flux[~mask],
             mask=self.mask[~mask],
@@ -357,7 +354,7 @@ class HPFSpectrum(Spectrum1D):
 
     def to_HDF5(self, path, file_basename):
         """Export to spectral order to HDF5 file format
-        This format is required for IGRINS per-order Starfish input
+        This format is required for per-order Starfish input
 
         Parameters
         ----------
@@ -380,9 +377,9 @@ class HPFSpectrum(Spectrum1D):
         f_new.close()
 
 
-class IGRINSSpectrumList(SpectrumList):
+class HPFSpectrumList(SpectrumList):
     r"""
-    An enhanced container for a list of IGRINS spectral orders
+    An enhanced container for a list of HPF spectral orders
 
     """
 
@@ -396,7 +393,7 @@ class IGRINSSpectrumList(SpectrumList):
         Parameters
         ----------
         file : (str)
-            A path to a reduced IGRINS spectrum from plp
+            A path to a reduced HPF spectrum from plp
         """
         # assert '.spec_a0v.fits' in file
         assert ".spectra.fits" in file
@@ -410,9 +407,9 @@ class IGRINSSpectrumList(SpectrumList):
 
         list_out = []
         for i in range(n_orders):
-            spec = IGRINSSpectrum(file=file, order=i, cached_hdus=cached_hdus)
+            spec = HPFSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
-        return IGRINSSpectrumList(list_out)
+        return HPFSpectrum(list_out)
 
     def normalize(self):
         """Normalize the all spectra to order 14's median
