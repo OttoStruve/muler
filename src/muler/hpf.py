@@ -2,7 +2,7 @@ r"""
 HPF Spectrum
 ---------------
 
-A container for an HPF spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.  HPF additionally has a sky fiber and optionally a Laser Frequency Comb fiber.  Our experimental API currently ignores the LFC fiber.  The sky fiber can be accessed by passing the `sky=True` kwarg when retrieving the 
+A container for an HPF spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.  HPF additionally has a sky fiber and optionally a Laser Frequency Comb fiber.  Our experimental API currently ignores the LFC fiber.  The sky fiber can be accessed by passing the `sky=True` kwarg when retrieving the
 
 
 HPFSpectrum
@@ -20,7 +20,11 @@ from scipy.stats import median_abs_deviation
 import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import UnivariateSpline
-
+from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
+#from barycorrpy import get_BC_vel
+from astropy.coordinates import SkyCoord, EarthLocation
+from astropy.time import Time
+#from barycorrpy.utils import get_stellar_data
 
 # from specutils.io.registers import data_loader
 from celerite2 import terms
@@ -77,7 +81,12 @@ class HPFSpectrum(Spectrum1D):
             hdus = fits.open(str(file))
 
             hdr = hdus[0].header
-            if sky == True:
+
+            if sky==True:
+                ## For the LFC
+                # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for HPF
+                # flux = hdus[3].data[order].astype(np.float64) * u.ct
+                # unc = hdus[6].data[order].astype(np.float64) * u.ct
                 lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
@@ -85,11 +94,29 @@ class HPFSpectrum(Spectrum1D):
 
                 lamb = hdus[7].data[order].astype(np.float64) * u.AA
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
-                unc = hdus[4].data[order].astype(np.float64) * u.ct
+                unc =  hdus[4].data[order].astype(np.float64) * u.ct
+                print('Sky=False')
+
+            time_obs=hdr['DATE-OBS']
+            t=Time(time_obs,format='isot',scale='utc')
+            t.format='jd'
+            RA=hdr['QRA']
+            DEC=hdr['QDEC']
+            if band=='Goldilocks':
+                lfccorr=hdr['LRVCORR'] *u.m/u.s
+                barrycorr_header = hdr['BRVCORR'] *u.m/u.s
+                print('barrycorr header', barrycorr_header)
+            else:
+                lfccorr=0.0*u.m/u.s
+
+            loc = EarthLocation.from_geodetic(-104.0147, 30.6814, height=2025.0) #HET
+            sc= SkyCoord(ra=RA, dec=DEC,  unit=(u.hourangle, u.deg))
+            barycorr = sc.radial_velocity_correction(obstime=t, location=loc)
+            print('barrycorrpy',barycorr)
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
-                "m": grating_order,  # "header": hdr,
+                "m": grating_order,  "header": hdr, "BCcorr": barycorr, "LFCcorr": lfccorr,
             }
 
             uncertainty = StdDevUncertainty(unc)
@@ -132,7 +159,13 @@ class HPFSpectrum(Spectrum1D):
         """
         new_flux = self.flux - sky
 
-        return HPFSpectrum(spectral_axis=self.wavelength, flux=new_flux,)
+        return HPFSpectrum(
+            spectral_axis=self.wavelength,
+            flux=new_flux,
+            meta=self.meta,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
+        )
 
     def blaze_subtract_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
@@ -140,15 +173,20 @@ class HPFSpectrum(Spectrum1D):
         Returns
         -------
         blaze corrrected spectrum : (HPFSpectrum)
-
         """
         new_spec = self.normalize()
+        spline=UnivariateSpline(self.wavelength,np.nan_to_num(new_spec.flux),k=5)
+        interp_spline= spline(self.wavelength)
 
-        spline = UnivariateSpline(self.wavelength, new_spec.flux, k=5)
-        interp_spline = spline(self.wavelength)
+        no_blaze=new_flux/interp_spline
 
-        no_blaze = new_spec / interp_spline
-        return no_blaze
+        return HPFSpectrum(
+            spectral_axis=self.wavelength,
+            flux=no_blaze.flux,
+            meta=self.meta,
+            mask=self.mask,
+
+        )
 
     def blaze_subtract_flats(self, flat, order=19):
         """Remove blaze function from spectrum by subtracting by flat spectrum
@@ -174,7 +212,39 @@ class HPFSpectrum(Spectrum1D):
 
         no_flat = new_flux / interp_flat
 
-        return no_flat
+
+        return HPFSpectrum(
+            spectral_axis=self.wavelength,
+            flux=no_flat.flux,
+            meta=self.meta,
+            mask=self.mask,
+        )
+
+    def shift_spec(self,absRV=0):
+        """shift spectrum by barycenter velocity
+
+        Returns
+        -------
+        barycenter corrected Spectrum : (HPFSpectrum)
+        """
+        meta_out= copy.deepcopy(self.meta)
+
+        bcRV=meta_out["BCcorr"]
+        lfcRV=meta_out["LFCcorr"]
+        absRV=absRV*u.m/u.s
+
+        vel= bcRV + lfcRV + absRV
+
+        new_wave = self.wavelength*(1.0 + (vel.value/c.value))
+
+        return HPFSpectrum(
+            spectral_axis=new_wave,
+            flux=self.flux,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
+            meta=meta_out,
+        )
+
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
@@ -221,7 +291,7 @@ class HPFSpectrum(Spectrum1D):
         def set_params(params, gp):
             gp.mean = params[0]
             theta = np.exp(params[1:])
-            gp.kernel = terms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
+            gp.kernel = tHPFerms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
             gp.compute(self.wavelength.value, yerr=unc + theta[2], quiet=True)
             return gp
 
