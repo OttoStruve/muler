@@ -46,7 +46,7 @@ with warnings.catch_warnings():
 # Convert PLP index number to echelle order m
 ## Note that these technically depend on grating temperature
 ## For typical operating temperature, offsets should be exact.
-grating_order_offsets = {"H": 98, "K": 71, 'Goldilocks':0, 'Slope':0}
+grating_order_offsets = {"H": 98, "K": 71, "Goldilocks": 0, "Slope": 0}
 
 
 class HPFSpectrum(Spectrum1D):
@@ -62,35 +62,36 @@ class HPFSpectrum(Spectrum1D):
             If provided, must give both HDUs.  Optional, default is None.
     """
 
-    def __init__(self, *args, file=None, order=19, cached_hdus=None,sky=False, **kwargs):
+    def __init__(
+        self, *args, file=None, order=19, cached_hdus=None, sky=False, **kwargs
+    ):
 
         if file is not None:
             if "Goldilocks" in file:
                 band = "Goldilocks"
             elif "Slope" in file:
-                band = 'HPF'
+                band = "HPF"
             else:
                 raise NameError("Cannot identify file as an HPF spectrum")
             grating_order = grating_order_offsets[band] + order
 
-
             hdus = fits.open(str(file))
 
             hdr = hdus[0].header
-            if sky==True:
+            if sky == True:
                 # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for igrins
                 # flux = hdus[3].data[order].astype(np.float64) * u.ct
                 # unc = hdus[6].data[order].astype(np.float64) * u.ct
                 lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
-                print('Sky=True')
+                print("Sky=True")
             else:
 
                 lamb = hdus[7].data[order].astype(np.float64) * u.AA
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
-                unc =  hdus[4].data[order].astype(np.float64) * u.ct
-                print('Sky=False')
+                unc = hdus[4].data[order].astype(np.float64) * u.ct
+                print("Sky=False")
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
@@ -99,7 +100,6 @@ class HPFSpectrum(Spectrum1D):
 
             uncertainty = StdDevUncertainty(unc)
             mask = np.isnan(flux) | np.isnan(uncertainty.array)
-
 
             super().__init__(
                 spectral_axis=lamb,
@@ -122,12 +122,11 @@ class HPFSpectrum(Spectrum1D):
             Normalized Spectrum
         """
         median_flux = np.nanmedian(self.flux)
-        #median_sky = np.nanmedian(self.sky)
+        # median_sky = np.nanmedian(self.sky)
 
         return self.divide(median_flux, handle_meta="first_found")
 
-
-    def sky_subtract(self,sky):
+    def sky_subtract(self, sky):
         """Subtract science spectrum from sky spectrum
 
         Returns
@@ -135,12 +134,9 @@ class HPFSpectrum(Spectrum1D):
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
-        new_flux = self.flux-sky
+        new_flux = self.flux - sky
 
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=new_flux,
-        )
+        return HPFSpectrum(spectral_axis=self.wavelength, flux=new_flux,)
 
     def blaze_subtract_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
@@ -155,10 +151,10 @@ class HPFSpectrum(Spectrum1D):
         spline = UnivariateSpline(self.wavelength, new_spec.flux, k=5)
         interp_spline = spline(self.wavelength)
 
-        no_blaze=new_flux/interp_spline
+        no_blaze = new_flux / interp_spline
         return no_blaze
 
-    def blaze_subtract_flats(self, flat,order=19):
+    def blaze_subtract_flats(self, flat, order=19):
         """remove blaze function from spectrum by subtracting by flat spectrum
 
         Returns
@@ -166,20 +162,21 @@ class HPFSpectrum(Spectrum1D):
         blaze corrrected spectrum using flat fields : (IGRINSSpectrum)
 
         """
-        new_flux= self.normalize()
-
+        new_flux = self.normalize()
 
         flat_wv = flat[0]
-        flat_flux=flat[1]
-        if len(flat)==2:
-            flat_err=flat[2]
+        flat_flux = flat[1]
+        if len(flat) == 2:
+            flat_err = flat[2]
 
-        master_flat=flat_flux[order]/np.nanmedian(flat_flux[order])
+        master_flat = flat_flux[order] / np.nanmedian(flat_flux[order])
 
-        flat_spline = InterpolatedUnivariateSpline(flat_wv[order],np.nan_to_num(master_flat), k=5)
+        flat_spline = InterpolatedUnivariateSpline(
+            flat_wv[order], np.nan_to_num(master_flat), k=5
+        )
         interp_flat = flat_spline(self.wavelength)
 
-        no_flat=new_flux/interp_flat
+        no_flat = new_flux / interp_flat
 
         return no_flat
 
@@ -401,13 +398,13 @@ class IGRINSSpectrumList(SpectrumList):
         file : (str)
             A path to a reduced IGRINS spectrum from plp
         """
-       # assert '.spec_a0v.fits' in file
-        assert '.spectra.fits' in file
+        # assert '.spec_a0v.fits' in file
+        assert ".spectra.fits" in file
 
         hdus = fits.open(file, memmap=False)
-        #sn_file = file[:-12] + "sn.fits"
-        #sn_hdus = fits.open(sn_file, memmap=False)
-        cached_hdus = [hdus]#, sn_hdus]
+        # sn_file = file[:-12] + "sn.fits"
+        # sn_hdus = fits.open(sn_file, memmap=False)
+        cached_hdus = [hdus]  # , sn_hdus]
 
         n_orders, n_pix = hdus[7].data.shape
 
@@ -425,6 +422,7 @@ class IGRINSSpectrumList(SpectrumList):
             self[i] = self[i].divide(median_flux, handle_meta="first_found")
 
         return self
+
     # def sky_subtract(self):
     #     """Sky subtract all orders
     #     """
