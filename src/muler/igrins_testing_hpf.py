@@ -20,7 +20,11 @@ from scipy.stats import median_abs_deviation
 import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import UnivariateSpline
-
+from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
+#from barycorrpy import get_BC_vel 
+from astropy.coordinates import SkyCoord, EarthLocation
+from astropy.time import Time 
+#from barycorrpy.utils import get_stellar_data
 
 # from specutils.io.registers import data_loader
 from celerite2 import terms
@@ -46,7 +50,7 @@ with warnings.catch_warnings():
 # Convert PLP index number to echelle order m
 ## Note that these technically depend on grating temperature
 ## For typical operating temperature, offsets should be exact.
-grating_order_offsets = {"H": 98, "K": 71, 'Goldilocks':0, 'Slope':0}
+grating_order_offsets = {"H": 98, "K": 71, 'Goldilocks':0, 'HPF':0}
 
 
 class IGRINSSpectrum(Spectrum1D):
@@ -73,10 +77,10 @@ class IGRINSSpectrum(Spectrum1D):
                 raise NameError("Cannot identify file as an HPF spectrum")
             grating_order = grating_order_offsets[band] + order
 
-
             hdus = fits.open(str(file))
 
             hdr = hdus[0].header
+
             if sky==True:
                 # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for igrins
                 # flux = hdus[3].data[order].astype(np.float64) * u.ct
@@ -91,10 +95,27 @@ class IGRINSSpectrum(Spectrum1D):
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
                 unc =  hdus[4].data[order].astype(np.float64) * u.ct
                 print('Sky=False')
+               
+            time_obs=hdr['DATE-OBS']
+            t=Time(time_obs,format='isot',scale='utc')
+            t.format='jd'
+            RA=hdr['QRA']
+            DEC=hdr['QDEC']
+            if band=='Goldilocks':
+                lfccorr=hdr['LRVCORR'] *u.m/u.s
+                barrycorr_header = hdr['BRVCORR'] *u.m/u.s
+                print('barrycorr header', barrycorr_header)
+            else:
+                lfccorr=0.0*u.m/u.s
+            
+            loc = EarthLocation.from_geodetic(-104.0147, 30.6814, height=2025.0) #HET
+            sc= SkyCoord(ra=RA, dec=DEC,  unit=(u.hourangle, u.deg))
+            barycorr = sc.radial_velocity_correction(obstime=t, location=loc)             
+            print('barrycorrpy',barycorr)
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
-                "m": grating_order,  # "header": hdr,
+                "m": grating_order,  "header": hdr, "BCcorr": barycorr, "LFCcorr": lfccorr,
             }
             
             uncertainty = StdDevUncertainty(unc)
@@ -140,6 +161,9 @@ class IGRINSSpectrum(Spectrum1D):
         return IGRINSSpectrum(
             spectral_axis=self.wavelength,
             flux=new_flux,
+            meta=self.meta,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
         )
 
     def blaze_subtract_spline(self):
@@ -152,13 +176,19 @@ class IGRINSSpectrum(Spectrum1D):
         """
         new_flux= self.normalize()
 
-        print(len(self.wavelength))
 
-        spline=UnivariateSpline(self.wavelength,new_flux.flux,k=5)
+        spline=UnivariateSpline(self.wavelength,np.nan_to_num(new_flux.flux),k=5)
         interp_spline= spline(self.wavelength) 
 
         no_blaze=new_flux/interp_spline
-        return no_blaze
+        
+        return IGRINSSpectrum(
+            spectral_axis=self.wavelength,
+            flux=no_blaze.flux,
+            meta=self.meta,
+            mask=self.mask,
+
+        )
 
     def blaze_subtract_flats(self, flat,order=19):
         """remove blaze function from spectrum by subtracting by flat spectrum
@@ -183,7 +213,39 @@ class IGRINSSpectrum(Spectrum1D):
 
         no_flat=new_flux/interp_flat
 
-        return no_flat
+
+        return IGRINSSpectrum(
+            spectral_axis=self.wavelength,
+            flux=no_flat.flux,
+            meta=self.meta,
+            mask=self.mask,
+        )
+
+    def shift_spec(self,absRV=0):
+        """shift spectrum by barycenter velocity
+
+        Returns
+        -------
+        barycenter corrected Spectrum : (IGRINSSpectrum)
+        """
+        meta_out= copy.deepcopy(self.meta)
+
+        bcRV=meta_out["BCcorr"]
+        lfcRV=meta_out["LFCcorr"]
+        absRV=absRV*u.m/u.s
+        
+        vel= bcRV + lfcRV + absRV
+
+        new_wave = self.wavelength*(1.0 + (vel.value/c.value))
+
+        return IGRINSSpectrum(
+            spectral_axis=new_wave,
+            flux=self.flux,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
+            meta=meta_out,
+        )     
+
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
