@@ -50,7 +50,7 @@ with warnings.catch_warnings():
 # Convert PLP index number to echelle order m
 ## Note that these technically depend on grating temperature
 ## For typical operating temperature, offsets should be exact.
-grating_order_offsets = {"H": 98, "K": 71, "Goldilocks": 0, "Slope": 0}
+grating_order_offsets = {"H": 98, "K": 71, "Goldilocks": 0, "HPF": 0}
 
 
 class HPFSpectrum(Spectrum1D):
@@ -109,7 +109,7 @@ class HPFSpectrum(Spectrum1D):
             else:
                 lfccorr=0.0*u.m/u.s
 
-            loc = EarthLocation.from_geodetic(-104.0147, 30.6814, height=2025.0) #HET
+            loc = EarthLocation.from_geodetic(-104.0147, 30.6814, height=2025.0) #HET coordinates
             sc= SkyCoord(ra=RA, dec=DEC,  unit=(u.hourangle, u.deg))
             barycorr = sc.radial_velocity_correction(obstime=t, location=loc)
             print('barrycorrpy',barycorr)
@@ -178,7 +178,7 @@ class HPFSpectrum(Spectrum1D):
         spline=UnivariateSpline(self.wavelength,np.nan_to_num(new_spec.flux),k=5)
         interp_spline= spline(self.wavelength)
 
-        no_blaze=new_flux/interp_spline
+        no_blaze=new_spec/interp_spline
 
         return HPFSpectrum(
             spectral_axis=self.wavelength,
