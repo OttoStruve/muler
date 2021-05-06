@@ -200,7 +200,7 @@ class HPFSpectrum(Spectrum1D):
 
         flat_wv = flat[0]
         flat_flux = flat[1]
-        if len(flat) == 2:
+        if len(flat) == 3:
             flat_err = flat[2]
 
         master_flat = flat_flux[order] / np.nanmedian(flat_flux[order])

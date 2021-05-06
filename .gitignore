@@ -133,3 +133,5 @@ dmypy.json
 tests/data/
 notebooks/
 .DS_Store
+
+docs/new_notebook_dev.ipynb
