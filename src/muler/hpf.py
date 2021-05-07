@@ -168,6 +168,13 @@ class HPFSpectrum(Spectrum1D):
     def sky_subtract(self, sky):
         """Subtract science spectrum from sky spectrum
 
+        Note: This operation does not wavelength shift or scale the sky spectrum
+
+        Parameters
+        ----------
+        sky : vector
+            The sky spectrum to subtract from the target spectrum.
+
         Returns
         -------
         sky_subtractedSpec : (HPFSpectrum)
@@ -183,7 +190,7 @@ class HPFSpectrum(Spectrum1D):
             uncertainty=self.uncertainty,
         )
 
-    def blaze_subtract_spline(self):
+    def blaze_divide_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
 
         Returns
