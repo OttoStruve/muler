@@ -7,4 +7,9 @@ Getting started
    :maxdepth: 1
 
    IGRINS Hello World <exploratory.ipynb>
+
+
    HPF Sky Subtraction and Deblazing <HPF_tutorial.ipynb>
+
+
+   Manipulate all spectral orders at once <All_spectral_orders.ipynb>
