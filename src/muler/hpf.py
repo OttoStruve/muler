@@ -68,7 +68,14 @@ class HPFSpectrum(Spectrum1D):
     """
 
     def __init__(
-        self, *args, file=None, order=19, cached_hdus=None, sky=False, **kwargs
+        self,
+        *args,
+        file=None,
+        order=19,
+        cached_hdus=None,
+        sky=False,
+        lfc=False,
+        **kwargs
     ):
 
         if file is not None:
@@ -84,30 +91,32 @@ class HPFSpectrum(Spectrum1D):
 
             hdr = hdus[0].header
 
-            if sky == True:
-                ## For the LFC
-                # lamb = hdus[9].data[order].astype(np.float64) * u.AA #u.micron for HPF
-                # flux = hdus[3].data[order].astype(np.float64) * u.ct
-                # unc = hdus[6].data[order].astype(np.float64) * u.ct
+            if sky:
                 lamb = hdus[8].data[order].astype(np.float64) * u.AA
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
+            elif lfc:
+                lamb = hdus[9].data[order].astype(np.float64) * u.AA  # u.micron for HPF
+                flux = hdus[3].data[order].astype(np.float64) * u.ct
+                unc = hdus[6].data[order].astype(np.float64) * u.ct
             else:
-
                 lamb = hdus[7].data[order].astype(np.float64) * u.AA
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
                 unc = hdus[4].data[order].astype(np.float64) * u.ct
-                print("Sky=False")
 
             time_obs = hdr["DATE-OBS"]
             t = Time(time_obs, format="isot", scale="utc")
             t.format = "jd"
-            RA = hdr["QRA"]
-            DEC = hdr["QDEC"]
+
+            ## TODO: Which is the right RA, Dec to put here?
+            ## QRA and QDEC is also available.  Which is correct?
+            RA = hdr["RA"]
+            DEC = hdr["DEC"]
+
             if band == "Goldilocks":
                 lfccorr = hdr["LRVCORR"] * u.m / u.s
                 barrycorr_header = hdr["BRVCORR"] * u.m / u.s
-                print("barrycorr header", barrycorr_header)
+                # print("barrycorr header", barrycorr_header)
             else:
                 lfccorr = 0.0 * u.m / u.s
 
@@ -116,7 +125,7 @@ class HPFSpectrum(Spectrum1D):
             )  # HET coordinates
             sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
             barycorr = sc.radial_velocity_correction(obstime=t, location=loc)
-            print("barrycorrpy", barycorr)
+            # print("barrycorrpy", barycorr)
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
