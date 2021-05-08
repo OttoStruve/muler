@@ -49,10 +49,8 @@ with warnings.catch_warnings():
     from specutils import Spectrum1D
     from specutils import SpectrumList
 
-# Convert PLP index number to echelle order m
-## Note that these technically depend on grating temperature
-## For typical operating temperature, offsets should be exact.
-grating_order_offsets = {"H": 98, "K": 71, "Goldilocks": 0, "HPF": 0}
+# Convert FITS running index number to echelle order m
+grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
 
 
 class HPFSpectrum(Spectrum1D):
@@ -80,15 +78,17 @@ class HPFSpectrum(Spectrum1D):
 
         if file is not None:
             if "Goldilocks" in file:
-                band = "Goldilocks"
+                pipeline = "Goldilocks"
             elif "Slope" in file:
-                band = "HPF"
+                pipeline = "HPF"
             else:
                 raise NameError("Cannot identify file as an HPF spectrum")
-            grating_order = grating_order_offsets[band] + order
+            grating_order = grating_order_offsets[pipeline] + order
 
-            hdus = fits.open(str(file))
-
+            if cached_hdus is not None:
+                hdus = cached_hdus[0]
+            else:
+                hdus = fits.open(str(file))
             hdr = hdus[0].header
 
             if sky:
@@ -96,7 +96,7 @@ class HPFSpectrum(Spectrum1D):
                 flux = hdus[2].data[order].astype(np.float64) * u.ct
                 unc = hdus[5].data[order].astype(np.float64) * u.ct
             elif lfc:
-                lamb = hdus[9].data[order].astype(np.float64) * u.AA  # u.micron for HPF
+                lamb = hdus[9].data[order].astype(np.float64) * u.AA
                 flux = hdus[3].data[order].astype(np.float64) * u.ct
                 unc = hdus[6].data[order].astype(np.float64) * u.ct
             else:
@@ -104,19 +104,19 @@ class HPFSpectrum(Spectrum1D):
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
                 unc = hdus[4].data[order].astype(np.float64) * u.ct
 
+            ## Compute RV shifts
             time_obs = hdr["DATE-OBS"]
-            t = Time(time_obs, format="isot", scale="utc")
-            t.format = "jd"
+            obstime = Time(time_obs, format="isot", scale="utc")
+            obstime.format = "jd"
 
             ## TODO: Which is the right RA, Dec to put here?
             ## QRA and QDEC is also available.  Which is correct?
             RA = hdr["RA"]
             DEC = hdr["DEC"]
 
-            if band == "Goldilocks":
+            if pipeline == "Goldilocks":
                 lfccorr = hdr["LRVCORR"] * u.m / u.s
-                barrycorr_header = hdr["BRVCORR"] * u.m / u.s
-                # print("barrycorr header", barrycorr_header)
+                # barrycorr_header = hdr["BRVCORR"] * u.m / u.s
             else:
                 lfccorr = 0.0 * u.m / u.s
 
@@ -124,11 +124,11 @@ class HPFSpectrum(Spectrum1D):
                 -104.0147, 30.6814, height=2025.0
             )  # HET coordinates
             sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
-            barycorr = sc.radial_velocity_correction(obstime=t, location=loc)
-            # print("barrycorrpy", barycorr)
+            barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
+                "pipeline": pipeline,
                 "m": grating_order,
                 "header": hdr,
                 "BCcorr": barycorr,
