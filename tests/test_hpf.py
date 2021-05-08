@@ -34,13 +34,6 @@ def test_basic():
     assert new_spec.shape[0] == spec.shape[0]
     assert np.nanmedian(new_spec.flux) == 1
 
-    new_spec = spec.remove_outliers(threshold=3)
-
-    assert len(new_spec.flux) > 0
-    assert new_spec.shape[0] <= spec.shape[0]
-    assert new_spec.shape[0] > 0
-    assert new_spec.mask is not None
-
     new_spec = spec.trim_edges()
 
     assert new_spec.shape[0] < spec.shape[0]
@@ -49,6 +42,17 @@ def test_basic():
 
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
+
+
+def test_smoothing():
+    """Does smoothing and outlier removal work?"""
+    spec = HPFSpectrum(file=file, order=10)
+    new_spec = spec.remove_outliers(threshold=3)
+
+    assert len(new_spec.flux) > 0
+    assert new_spec.shape[0] <= spec.shape[0]
+    assert new_spec.shape[0] > 0
+    assert new_spec.mask is not None
 
 
 def test_uncertainty():
@@ -73,7 +77,7 @@ def test_uncertainty():
 
     snr_vec = new_spec.flux / new_spec.uncertainty.array
     snr_med = np.nanmedian(snr_vec.value)
-    assert np.isclose(snr_med == snr_old_med, atol=0.01)
+    assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
 
 @pytest.mark.parametrize(

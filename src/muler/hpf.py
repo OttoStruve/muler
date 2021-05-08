@@ -311,7 +311,7 @@ class HPFSpectrum(Spectrum1D):
         def set_params(params, gp):
             gp.mean = params[0]
             theta = np.exp(params[1:])
-            gp.kernel = tHPFerms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
+            gp.kernel = terms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
             gp.compute(self.wavelength.value, yerr=unc + theta[2], quiet=True)
             return gp
 
@@ -484,12 +484,9 @@ class HPFSpectrumList(SpectrumList):
         file : (str)
             A path to a reduced HPF spectrum from plp
         """
-        # assert '.spec_a0v.fits' in file
         assert ".spectra.fits" in file
 
         hdus = fits.open(file, memmap=False)
-        # sn_file = file[:-12] + "sn.fits"
-        # sn_hdus = fits.open(sn_file, memmap=False)
         cached_hdus = [hdus]  # , sn_hdus]
 
         n_orders, n_pix = hdus[7].data.shape
@@ -498,7 +495,7 @@ class HPFSpectrumList(SpectrumList):
         for i in range(n_orders):
             spec = HPFSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
-        return HPFSpectrum(list_out)
+        return HPFSpectrumList(list_out)
 
     def normalize(self):
         """Normalize the all spectra to order 14's median
