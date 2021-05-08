@@ -104,27 +104,7 @@ class HPFSpectrum(Spectrum1D):
                 flux = hdus[1].data[order].astype(np.float64) * u.ct
                 unc = hdus[4].data[order].astype(np.float64) * u.ct
 
-            ## Compute RV shifts
-            time_obs = hdr["DATE-OBS"]
-            obstime = Time(time_obs, format="isot", scale="utc")
-            obstime.format = "jd"
-
-            ## TODO: Which is the right RA, Dec to put here?
-            ## QRA and QDEC is also available.  Which is correct?
-            RA = hdr["RA"]
-            DEC = hdr["DEC"]
-
-            if pipeline == "Goldilocks":
-                lfccorr = hdr["LRVCORR"] * u.m / u.s
-                # barrycorr_header = hdr["BRVCORR"] * u.m / u.s
-            else:
-                lfccorr = 0.0 * u.m / u.s
-
-            loc = EarthLocation.from_geodetic(
-                -104.0147, 30.6814, height=2025.0
-            )  # HET coordinates
-            sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
-            barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
+            (barycorr, lfccorr) = self._estimate_barycorr(hdr, pipeline)
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
@@ -151,6 +131,43 @@ class HPFSpectrum(Spectrum1D):
             )
         else:
             super().__init__(*args, **kwargs)
+
+    def _estimate_barycorr(self, hdr, pipeline):
+        """Estimate the Barycentric Correction from the Date and Target Coordinates
+        
+        Parameters
+        ----------
+        hdr : FITS HDU header
+            The FITS header from either pipeline
+        pipeline:
+            Which HPF pipeline
+
+        Returns
+        -------
+        barycentric_corrections : (float, float)
+            Tuple of floats for the barycentric corrections for target and LFC
+        """
+        ## Compute RV shifts
+        time_obs = hdr["DATE-OBS"]
+        obstime = Time(time_obs, format="isot", scale="utc")
+        obstime.format = "jd"
+
+        ## TODO: Which is the right RA, Dec to put here?
+        ## QRA and QDEC is also available.  Which is correct?
+        RA = hdr["RA"]
+        DEC = hdr["DEC"]
+
+        if pipeline == "Goldilocks":
+            lfccorr = hdr["LRVCORR"] * u.m / u.s
+        else:
+            lfccorr = 0.0 * u.m / u.s
+
+        loc = EarthLocation.from_geodetic(
+            -104.0147, 30.6814, height=2025.0
+        )  # HET coordinates
+        sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
+        barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
+        return (barycorr, lfccorr)
 
     def normalize(self):
         """Normalize spectrum by its median value
