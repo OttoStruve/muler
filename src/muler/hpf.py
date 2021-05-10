@@ -207,6 +207,14 @@ class HPFSpectrum(Spectrum1D):
             uncertainty=self.uncertainty,
         )
 
+    def measure_ew(self):
+        """Measure the equivalent width of a given spectrum
+        
+        Returns
+        -------
+        equivalent width : (scalar)"""
+        return 0 # for now
+
     def blaze_divide_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
 
