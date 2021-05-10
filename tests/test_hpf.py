@@ -43,6 +43,14 @@ def test_basic():
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
 
+def test_equivalent_width():
+    """Can we measure equivalent widths?"""
+    
+    spec = HPFSpectrum(file=file, order=10)
+    equivalent_width = spec.measure_ew()
+
+    assert equivalent_width is not None
+
 
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
