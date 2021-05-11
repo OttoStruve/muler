@@ -1,6 +1,9 @@
 # `muler` (_μler_)
 
-<a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>  
+<a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>
+<a href="https://pypi.org/project/muler/"><img src="https://img.shields.io/badge/pip_install-muler-yellow"></a>
+<a href="https://sites.google.com/site/igrinsatgemini/"><img src="https://img.shields.io/badge/Works_with-IGRINS-brightgreen"></a>
+<a href="https://hpf.psu.edu/"><img src="https://img.shields.io/badge/Works_with-HPF-brightgreen"></a>  
 A Python package for analyzing pipeline-processed data from high resolution near-infrared echelle spectrographs.
 
 ### The echelle spectrum problem
