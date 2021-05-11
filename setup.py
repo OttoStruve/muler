@@ -3,11 +3,11 @@ import setuptools
 
 setuptools.setup(
     name="muler",
-    version="0.0.1",
+    version="0.0.2",
     author="gully",
     author_email="igully@gmail.com",
-    description="A Python package for working with data from IGRINS",
-    long_description="A Python package for working with echelle spectra from IGRINS",
+    description="A Python package for working with data from IGRINS and HPF",
+    long_description="A Python package for working with echelle spectra from IGRINS and HPF",
     long_description_content_type="text/markdown",
     url="https://github.com/OttoStruve/muler",
     install_requires=["numpy", "scipy", "astropy", "specutils", "pandas", "celerite2", "matplotlib", "h5py"],
