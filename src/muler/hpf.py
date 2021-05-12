@@ -247,8 +247,8 @@ class HPFSpectrum(Spectrum1D):
 
         # return self.divide(median_flux, handle_meta="first_found")
         meta_out = copy.deepcopy(self.meta)
-        meta_out["sky"] = meta_out["sky"] / median_flux
-        meta_out["lfc"] = meta_out["lfc"] / median_flux
+        meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
+        meta_out["lfc"] = meta_out["lfc"].divide(median_flux, handle_meta="first_found")
         return HPFSpectrum(
             spectral_axis=self.wavelength,
             flux=self.flux,
@@ -257,30 +257,17 @@ class HPFSpectrum(Spectrum1D):
             uncertainty=self.uncertainty,
         ).divide(median_flux, handle_meta="first_found")
 
-    def sky_subtract(self, sky):
+    def sky_subtract(self):
         """Subtract science spectrum from sky spectrum
 
         Note: This operation does not wavelength shift or scale the sky spectrum
-
-        Parameters
-        ----------
-        sky : vector
-            The sky spectrum to subtract from the target spectrum.
 
         Returns
         -------
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
-        new_flux = self.flux - sky
-
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=new_flux,
-            meta=self.meta,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-        )
+        return self.subtract(self.sky, handle_meta="first_found")
 
     def measure_ew(self):
         """Measure the equivalent width of a given spectrum
@@ -369,26 +356,42 @@ class HPFSpectrum(Spectrum1D):
     def remove_nans(self):
         """Remove data points that have NaN fluxes
 
+        By default the method removes NaN's from target, sky, and lfc fibers.
+
         Returns
         -------
         finite_spec : (HPFSpectrum)
             Spectrum with NaNs removed
         """
-        if self.uncertainty is not None:
-            masked_unc = StdDevUncertainty(self.uncertainty.array[~self.mask])
-        else:
-            masked_unc = None
 
-        meta_out = copy.deepcopy(self.meta)
-        meta_out["x_values"] = meta_out["x_values"][~self.mask]
+        def remove_nans_per_spectrum(spectrum):
+            if spectrum.uncertainty is not None:
+                masked_unc = StdDevUncertainty(
+                    spectrum.uncertainty.array[~spectrum.mask]
+                )
+            else:
+                masked_unc = None
 
-        return HPFSpectrum(
-            spectral_axis=self.wavelength[~self.mask],
-            flux=self.flux[~self.mask],
-            mask=self.mask[~self.mask],
-            uncertainty=masked_unc,
-            meta=meta_out,
-        )
+            meta_out = copy.deepcopy(spectrum.meta)
+            meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
+
+            return HPFSpectrum(
+                spectral_axis=spectrum.wavelength[~spectrum.mask],
+                flux=spectrum.flux[~spectrum.mask],
+                mask=spectrum.mask[~spectrum.mask],
+                uncertainty=masked_unc,
+                meta=meta_out,
+            )
+
+        new_self = remove_nans_per_spectrum(self)
+        if "sky" in self.meta.keys():
+            new_sky = remove_nans_per_spectrum(self.sky)
+            new_self.meta["sky"] = new_sky
+        if "lfc" in self.meta.keys():
+            new_lfc = remove_nans_per_spectrum(self.lfc)
+            new_self.meta["lfc"] = new_lfc
+
+        return new_self
 
     def smooth_spectrum(self):
         """Smooth the spectrum using Gaussian Process regression
