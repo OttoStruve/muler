@@ -87,8 +87,11 @@ def test_sky_and_lfc():
 
     assert spec.sky is not None
     assert isinstance(spec.sky, Spectrum1D)
+    assert spec.sky == spec.meta["sky"]
+
     assert spec.lfc is not None
     assert isinstance(spec.lfc, Spectrum1D)
+
     assert hasattr(spec.sky, "flux")
     assert isinstance(spec.sky.flux, np.ndarray)
     assert len(spec.sky.flux) == len(spec.flux)
@@ -110,6 +113,9 @@ def test_sky_and_lfc():
         new_spec.sky.flux.value
     )
     assert np.median(new_spec2.flux.value) == 1.0
+
+    # Known regression: this should not be enabled, but it's harmless
+    assert spec.sky == spec.sky.sky
 
 
 @pytest.mark.parametrize(
