@@ -10,6 +10,7 @@ HPFSpectrum
 """
 
 import warnings
+import logging
 import numpy as np
 import astropy
 from astropy.io import fits
@@ -35,6 +36,9 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
 import copy
+
+
+log = logging.getLogger(__name__)
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
@@ -275,27 +279,38 @@ class HPFSpectrum(Spectrum1D):
         Returns
         -------
         equivalent width : (scalar)"""
-        return 0 # for now
+        return 0  # for now
 
     def blaze_divide_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
+
+        Note: It is recommended to remove NaNs before running this operation,
+                otherwise edge effects can be appear from zero-padded edges.
 
         Returns
         -------
         blaze corrrected spectrum : (HPFSpectrum)
         """
-        new_spec = self.normalize()
-        spline = UnivariateSpline(self.wavelength, np.nan_to_num(new_spec.flux), k=5)
-        interp_spline = spline(self.wavelength)
+        if np.any(np.isnan(self.flux)):
+            log.warning(
+                "your spectrum contains NaNs, "
+                "it is highly recommended to run `.remove_nans()` before deblazing"
+            )
 
-        no_blaze = new_spec / interp_spline
+        spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
+        interp_spline = spline(self.wavelength) * self.flux.unit
 
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=no_blaze.flux,
-            meta=self.meta,
-            mask=self.mask,
-        )
+        no_blaze = self.divide(interp_spline, handle_meta="first_found")
+
+        if "sky" in self.meta.keys():
+            new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
+            no_blaze.meta["sky"] = new_sky
+
+        if "lfc" in self.meta.keys():
+            new_lfc = self.lfc.divide(interp_spline, handle_meta="first_found")
+            no_blaze.meta["lfc"] = new_lfc
+
+        return no_blaze
 
     def blaze_subtract_flats(self, flat, order=19):
         """Remove blaze function from spectrum by subtracting by flat spectrum
