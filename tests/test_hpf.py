@@ -80,6 +80,38 @@ def test_uncertainty():
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
 
+def test_sky_and_lfc():
+    """Do we track sky and lfc?"""
+
+    spec = HPFSpectrum(file=file, order=10)
+
+    assert spec.sky is not None
+    assert isinstance(spec.sky, Spectrum1D)
+    assert spec.lfc is not None
+    assert isinstance(spec.lfc, Spectrum1D)
+    assert hasattr(spec.sky, "flux")
+    assert isinstance(spec.sky.flux, np.ndarray)
+    assert len(spec.sky.flux) == len(spec.flux)
+    assert spec.flux.unit == spec.sky.unit
+
+    new_spec = spec.remove_nans()
+
+    assert new_spec.sky is not None
+    assert hasattr(new_spec.sky, "flux")
+
+    new_spec2 = new_spec.normalize()
+
+    assert new_spec2.sky is not None
+    assert isinstance(new_spec2.sky, Spectrum1D)
+    assert hasattr(new_spec2.sky, "flux")
+
+    # Normalize should scale both target and sky flux by the same scalar
+    assert np.nanmedian(new_spec2.sky.flux.value) != np.nanmedian(
+        new_spec.sky.flux.value
+    )
+    assert np.median(new_spec2.flux.value) == 1.0
+
+
 @pytest.mark.parametrize(
     "precache_hdus", [True, False],
 )
