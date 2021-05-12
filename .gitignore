@@ -135,5 +135,5 @@ notebooks/
 .DS_Store
 
 docs/new_notebook_dev.ipynb
-
 docs/tutorials/exploratory.ipynb
+*.hdf5

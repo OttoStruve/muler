@@ -6,10 +6,10 @@ Getting started
 .. toctree::
    :maxdepth: 1
 
-   Exploratory <exploratory.ipynb>
+   IGRINS Hello World <exploratory.ipynb>
 
 
-Advanced
---------
+   HPF Sky Subtraction and Deblazing <HPF_tutorial.ipynb>
 
-*under development*
+
+   Manipulate all spectral orders at once <All_spectral_orders.ipynb>
