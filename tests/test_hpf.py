@@ -114,8 +114,15 @@ def test_sky_and_lfc():
     )
     assert np.median(new_spec2.flux.value) == 1.0
 
-    # Known regression: this should not be enabled, but it's harmless
-    assert spec.sky == spec.sky.sky
+    # The sky/lfc fibers should not have their own sky/lfc fibers: that's redundant
+    assert "sky" not in spec.sky.meta.keys()
+    assert "lfc" not in spec.sky.meta.keys()
+    assert "sky" not in spec.lfc.meta.keys()
+    assert "lfc" not in spec.lfc.meta.keys()
+
+    assert spec.lfc.meta["provenance"] == "Laser Frequency Comb"
+    assert spec.sky.meta["provenance"] == "Sky fiber"
+    assert spec.meta["provenance"] == "Target fiber"
 
 
 @pytest.mark.parametrize(

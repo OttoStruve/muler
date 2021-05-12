@@ -130,13 +130,13 @@ class HPFSpectrum(Spectrum1D):
             mask = (
                 np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
             )
-            self.meta["sky"] = HPFSpectrum(
+            sky_spectrum = HPFSpectrum(
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
-                meta=meta_dict,
+                meta=meta_dict.copy(),
                 **kwargs
             )
 
@@ -148,15 +148,30 @@ class HPFSpectrum(Spectrum1D):
             mask = (
                 np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
             )
-            self.meta["lfc"] = HPFSpectrum(
+            lfc_spectrum = HPFSpectrum(
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
-                meta=meta_dict,
+                meta=meta_dict.copy(),
                 **kwargs
             )
+
+            ## We could optionally enable lfc and sky metadata for these referece spectra
+            ## That's slightly redundant, it enables antipatterns like:
+            # `spectrum.sky.lfc` rather than simply `spectrum.lfc`
+
+            # sky_spectrum.meta["lfc"] = lfc_spectrum
+            # lfc_spectrum.meta["sky"] = sky_spectrum
+
+            sky_spectrum.meta["provenance"] = "Sky fiber"
+            lfc_spectrum.meta["provenance"] = "Laser Frequency Comb"
+            self.meta["provenance"] = "Target fiber"
+
+            self.meta["sky"] = sky_spectrum
+            self.meta["lfc"] = lfc_spectrum
+
         else:
             super().__init__(*args, **kwargs)
 
@@ -167,6 +182,11 @@ class HPFSpectrum(Spectrum1D):
 
     # def _populate_sky_and_lfc(self):
     #    """Populate Sky and LFC fibers as attributes"""
+
+    @property
+    def provenance(self):
+        """Sky fiber spectrum stored as its own HPFSpectrum object"""
+        return self.meta["provenance"]
 
     @property
     def sky(self):
