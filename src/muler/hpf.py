@@ -179,18 +179,15 @@ class HPFSpectrum(Spectrum1D):
         else:
             super().__init__(*args, **kwargs)
 
-        ## Set convenience attributes to access sky and lfc spectra
-        ## I think these make copies, so we may want to refactor into a property
-        # self.sky = self.meta["sky"]
-        # self.lfc = self.meta["lfc"]
-
-    # def _populate_sky_and_lfc(self):
-    #    """Populate Sky and LFC fibers as attributes"""
-
     @property
     def provenance(self):
-        """Sky fiber spectrum stored as its own HPFSpectrum object"""
+        """What is the provenance of each spectrum?"""
         return self.meta["provenance"]
+
+    @property
+    def pipeline(self):
+        """Which pipeline does this spectrum originate from?"""
+        return self.meta["pipeline"]
 
     @property
     def sky(self):
