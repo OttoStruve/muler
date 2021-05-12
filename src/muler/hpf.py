@@ -91,18 +91,10 @@ class HPFSpectrum(Spectrum1D):
                 hdus = fits.open(str(file))
             hdr = hdus[0].header
 
-            if sky:
-                lamb = hdus[8].data[order].astype(np.float64) * u.AA
-                flux = hdus[2].data[order].astype(np.float64) * u.ct
-                unc = hdus[5].data[order].astype(np.float64) * u.ct
-            elif lfc:
-                lamb = hdus[9].data[order].astype(np.float64) * u.AA
-                flux = hdus[3].data[order].astype(np.float64) * u.ct
-                unc = hdus[6].data[order].astype(np.float64) * u.ct
-            else:
-                lamb = hdus[7].data[order].astype(np.float64) * u.AA
-                flux = hdus[1].data[order].astype(np.float64) * u.ct
-                unc = hdus[4].data[order].astype(np.float64) * u.ct
+            ## Target Spectrum
+            lamb = hdus[7].data[order].astype(np.float64) * u.AA
+            flux = hdus[1].data[order].astype(np.float64) * u.ct
+            unc = hdus[4].data[order].astype(np.float64) * u.ct
 
             (barycorr, lfccorr) = self._estimate_barycorr(hdr, pipeline)
 
@@ -129,8 +121,82 @@ class HPFSpectrum(Spectrum1D):
                 meta=meta_dict,
                 **kwargs
             )
+
+            ## Sky Spectrum
+            lamb = hdus[8].data[order].astype(np.float64) * u.AA
+            flux = hdus[2].data[order].astype(np.float64) * u.ct
+            unc = hdus[5].data[order].astype(np.float64) * u.ct
+            uncertainty = StdDevUncertainty(unc)
+            mask = (
+                np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
+            )
+            sky_spectrum = HPFSpectrum(
+                spectral_axis=lamb,
+                flux=flux,
+                mask=mask,
+                wcs=WCS(hdr),
+                uncertainty=uncertainty,
+                meta=meta_dict.copy(),
+                **kwargs
+            )
+
+            ## LFC Spectrum
+            lamb = hdus[9].data[order].astype(np.float64) * u.AA
+            flux = hdus[3].data[order].astype(np.float64) * u.ct
+            unc = hdus[6].data[order].astype(np.float64) * u.ct
+            uncertainty = StdDevUncertainty(unc)
+            mask = (
+                np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
+            )
+            lfc_spectrum = HPFSpectrum(
+                spectral_axis=lamb,
+                flux=flux,
+                mask=mask,
+                wcs=WCS(hdr),
+                uncertainty=uncertainty,
+                meta=meta_dict.copy(),
+                **kwargs
+            )
+
+            ## We could optionally enable lfc and sky metadata for these referece spectra
+            ## That's slightly redundant, it enables antipatterns like:
+            # `spectrum.sky.lfc` rather than simply `spectrum.lfc`
+
+            # sky_spectrum.meta["lfc"] = lfc_spectrum
+            # lfc_spectrum.meta["sky"] = sky_spectrum
+
+            sky_spectrum.meta["provenance"] = "Sky fiber"
+            lfc_spectrum.meta["provenance"] = "Laser Frequency Comb"
+            self.meta["provenance"] = "Target fiber"
+
+            self.meta["sky"] = sky_spectrum
+            self.meta["lfc"] = lfc_spectrum
+
         else:
             super().__init__(*args, **kwargs)
+
+        ## Set convenience attributes to access sky and lfc spectra
+        ## I think these make copies, so we may want to refactor into a property
+        # self.sky = self.meta["sky"]
+        # self.lfc = self.meta["lfc"]
+
+    # def _populate_sky_and_lfc(self):
+    #    """Populate Sky and LFC fibers as attributes"""
+
+    @property
+    def provenance(self):
+        """Sky fiber spectrum stored as its own HPFSpectrum object"""
+        return self.meta["provenance"]
+
+    @property
+    def sky(self):
+        """Sky fiber spectrum stored as its own HPFSpectrum object"""
+        return self.meta["sky"]
+
+    @property
+    def lfc(self):
+        """Sky fiber spectrum stored as its own HPFSpectrum object"""
+        return self.meta["lfc"]
 
     def _estimate_barycorr(self, hdr, pipeline):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
@@ -178,9 +244,18 @@ class HPFSpectrum(Spectrum1D):
             Normalized Spectrum
         """
         median_flux = np.nanmedian(self.flux)
-        # median_sky = np.nanmedian(self.sky)
 
-        return self.divide(median_flux, handle_meta="first_found")
+        # return self.divide(median_flux, handle_meta="first_found")
+        meta_out = copy.deepcopy(self.meta)
+        meta_out["sky"] = meta_out["sky"] / median_flux
+        meta_out["lfc"] = meta_out["lfc"] / median_flux
+        return HPFSpectrum(
+            spectral_axis=self.wavelength,
+            flux=self.flux,
+            meta=meta_out,
+            mask=self.mask,
+            uncertainty=self.uncertainty,
+        ).divide(median_flux, handle_meta="first_found")
 
     def sky_subtract(self, sky):
         """Subtract science spectrum from sky spectrum
