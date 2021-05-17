@@ -47,7 +47,8 @@ def test_equivalent_width():
     """Can we measure equivalent widths?"""
     
     spec = HPFSpectrum(file=file, order=10)
-    equivalent_width = spec.measure_ew()
+    mu=7
+    equivalent_width = spec.measure_ew(mu)
 
     assert equivalent_width is not None
 

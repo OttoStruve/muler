@@ -270,13 +270,28 @@ class HPFSpectrum(Spectrum1D):
         """
         return self.subtract(self.sky, handle_meta="first_found")
 
-    def measure_ew(self):
+    def measure_ew(self, mu):
         """Measure the equivalent width of a given spectrum
+        
+        Parameters
+        ----------
+        mu : scalar/float
+            The center wavelength of given line
         
         Returns
         -------
-        equivalent width : (scalar)"""
-        return 0  # for now
+        equivalent width : (scalar)
+        """
+        log.warning("this method is not ready yet :(")
+
+        from specutils.analysis import equivalent_width
+        ew = equivalent_width(self)  
+
+        # equivalent_width(noisy_gaussian_with_continuum, regions=SpectralRegion(7*u.GHz, 3*u.GHz))
+
+        median_value = np.median(self.flux)
+        print("mu is", mu, "median =", median_value, "the ew is", ew)
+        return ew
 
     def blaze_divide_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
