@@ -51,7 +51,7 @@ def test_equivalent_width():
     equivalent_width = spec.measure_ew(mu)
 
     assert equivalent_width is not None
-
+    assert type(equivalent_width) is float
 
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
