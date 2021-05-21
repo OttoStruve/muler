@@ -7,6 +7,7 @@ from specutils import Spectrum1D
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
+import astropy
 
 local_files = glob.glob("data/Goldilocks_*.spectra.fits")
 file = local_files[0]
@@ -52,7 +53,7 @@ def test_equivalent_width():
 
     assert equivalent_width is not None
     assert type(equivalent_width) is not int
-    assert type(equivalent_width) is float
+    assert type(equivalent_width) is astropy.units.quantity.Quantity
 
 
 def test_smoothing():
