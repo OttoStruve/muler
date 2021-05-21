@@ -52,7 +52,7 @@ def test_equivalent_width():
 
     assert equivalent_width is not None
     assert type(equivalent_width) is not int
-    assert type(equivalent_width) is float
+    assert equivalent_width > 0.0
 
 
 def test_smoothing():
