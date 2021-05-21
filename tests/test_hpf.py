@@ -45,13 +45,15 @@ def test_basic():
 
 def test_equivalent_width():
     """Can we measure equivalent widths?"""
-    
+
     spec = HPFSpectrum(file=file, order=10)
     mu=7
     equivalent_width = spec.measure_ew(mu)
 
     assert equivalent_width is not None
+    assert type(equivalent_width) is not int
     assert type(equivalent_width) is float
+
 
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
