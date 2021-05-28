@@ -55,6 +55,7 @@ def test_equivalent_width():
     assert equivalent_width is not None
     assert type(equivalent_width) is not int
     assert type(equivalent_width) is astropy.units.quantity.Quantity
+    assert equivalent_width.unit is spec.wavelength.unit
 
 
 def test_smoothing():
