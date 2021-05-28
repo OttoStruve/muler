@@ -37,6 +37,9 @@ import matplotlib.pyplot as plt
 import os
 import copy
 
+from specutils.spectra.spectral_region import SpectralRegion
+from specutils.analysis import equivalent_width
+
 
 log = logging.getLogger(__name__)
 
@@ -282,11 +285,13 @@ class HPFSpectrum(Spectrum1D):
         -------
         equivalent width : (scalar)
         """
-        log.warning("this method is not ready yet :(")
+        log.warning("Experimental method")
 
         from specutils.analysis import equivalent_width
-        ew = equivalent_width(self)  
-
+        left_bound=0.999*mu*u.Angstrom
+        right_bound=1.001*mu*u.Angstrom
+        ew = equivalent_width(self,regions=SpectralRegion(left_bound,right_bound))
+        
         # equivalent_width(noisy_gaussian_with_continuum, regions=SpectralRegion(7*u.GHz, 3*u.GHz))
 
         median_value = np.median(self.flux)
