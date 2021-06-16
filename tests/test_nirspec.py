@@ -16,7 +16,7 @@ file = local_files[5]
 def test_basic():
     """Do the basic methods work?"""
 
-    spec = KeckNIRSPECSpectrum(file=file, order=10)
+    spec = KeckNIRSPECSpectrum(file=file)
 
     assert spec is not None
     assert isinstance(spec, Spectrum1D)
