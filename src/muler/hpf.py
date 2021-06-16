@@ -288,10 +288,11 @@ class HPFSpectrum(Spectrum1D):
         log.warning("Experimental method")
 
         from specutils.analysis import equivalent_width
-        left_bound=0.999*mu*u.Angstrom
-        right_bound=1.001*mu*u.Angstrom
-        ew = equivalent_width(self,regions=SpectralRegion(left_bound,right_bound))
-        
+
+        left_bound = 0.999 * mu * u.Angstrom
+        right_bound = 1.001 * mu * u.Angstrom
+        ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
+
         # equivalent_width(noisy_gaussian_with_continuum, regions=SpectralRegion(7*u.GHz, 3*u.GHz))
 
         median_value = np.median(self.flux)
@@ -685,6 +686,17 @@ class HPFSpectrumList(SpectrumList):
         """
         for i in range(len(self)):
             self[i].to_HDF5(path, file_basename)
+
+    def stitch(self):
+        """Stitch all the spectra together, assuming zero overlap in wavelength.  
+        """
+        log.warning("Experimental method")
+        wls = np.hstack([self[i].wavelength for i in range(len(self))])
+        fluxes = np.hstack([self[i].flux for i in range(len(self))])
+        # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
+        # unc_out = StdDevUncertainty(unc)
+
+        return HPFSpectrum(spectral_axis=wls, flux=fluxes)
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list
