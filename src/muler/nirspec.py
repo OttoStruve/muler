@@ -66,7 +66,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         file (str): A path to a reduced Keck NIRSPEC spectrum from NSDRP
     """
 
-    def __init__(self, *args, file=None, order=63, cached_hdus=None, **kwargs):
+    def __init__(self, *args, file=None, order=63, **kwargs):
 
         if file is not None:
             file_basename = file.split("/")[-1]
@@ -74,19 +74,22 @@ class KeckNIRSPECSpectrum(Spectrum1D):
                 file_basename[0:3] == "NS."
             ), "Only NSDRP spectra are currently supported"
             pipeline = "NSDRP"
-            assert ".txt" in file_basename, "Only ascii files are currently supported"
+            assert (
+                "_flux_tbl.fits" in file_basename
+            ), "Only fits table files are currently supported"
             file_stem = file_basename.split("_flux")[0]
             grating_order = int(file_stem[-2:])
 
-            df_fwf = pd.read_fwf(file, compression="infer", skiprows=[1])
+            assert os.path.exists(file), "The file must exist"
+            hdu = fits.open(file)
+            hdu0 = hdu[1]
 
             ## Target Spectrum
-            lamb = df_fwf.wave.values * u.AA
-            flux = df_fwf.flux.values * u.ct
-            unc = (df_fwf.flux / df_fwf.snr).values * u.ct
-
+            lamb = hdu0.data["wave (A)"].astype(np.float64) * u.AA
+            flux = hdu0.data["flux (cnts)"].astype(np.float64) * u.ct
+            unc = hdu0.data["noise (cnts)"].astype(np.float64) * u.ct
             meta_dict = {
-                "x_values": np.arange(0, 1024, 1, dtype=np.int),
+                "x_values": hdu0.data["col"].astype(np.int),
                 "pipeline": pipeline,
                 "m": grating_order,
             }
@@ -96,15 +99,39 @@ class KeckNIRSPECSpectrum(Spectrum1D):
                 np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
             )
 
+            # Attempt to read-in the header:
+            fits_with_full_header = file.replace("/fitstbl/", "/fits/").replace(
+                "_flux_tbl.", "_flux."
+            )
+            assert os.path.exists(fits_with_full_header)
+            # Todo: read in the full fits header
+            # wcs=WCS(hdr)
+            wcs = None
+
             super().__init__(
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
+                wcs=wcs,
                 uncertainty=uncertainty,
                 meta=meta_dict,
                 **kwargs
             )
 
+            ## Sky Spectrum
+            flux = hdu0.data["sky (cnts)"].astype(np.float64) * u.ct
+
+            sky_spectrum = KeckNIRSPECSpectrum(
+                spectral_axis=lamb,
+                flux=flux,
+                mask=mask,
+                wcs=None,
+                uncertainty=uncertainty,
+                meta=meta_dict.copy(),
+                **kwargs
+            )
+
+            self.meta["sky"] = sky_spectrum
         else:
             super().__init__(*args, **kwargs)
 

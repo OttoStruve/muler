@@ -9,7 +9,7 @@ import numpy as np
 import glob
 import astropy
 
-local_files = glob.glob("data/NS.*_flux.txt")
+local_files = glob.glob("data/NS.*_flux_tbl.fits*")
 file = local_files[5]
 
 
