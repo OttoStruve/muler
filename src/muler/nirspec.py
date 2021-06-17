@@ -2,11 +2,11 @@ r"""
 KeckNIRSPEC Spectrum
 ---------------
 
-A container for an KeckNIRSPEC spectrum of :math:`M=28` total total orders :math:`m`, each with vectors for wavelength flux and uncertainty, e.g. :math:`F_m(\lambda)`.  KeckNIRSPEC additionally has a sky fiber and optionally a Laser Frequency Comb fiber.  Our experimental API currently ignores the LFC fiber.  The sky fiber can be accessed by passing the `sky=True` kwarg when retrieving the
+A container for an KeckNIRSPEC high resolution spectrum, any one :math:`m` out of :math:`M` total total orders, each with vectors for wavelength, flux, and uncertainty, e.g. :math:`F_m(\lambda)`.  KeckNIRSPEC already has been sky subtracted, but the subtracted sky signal is contained as the spectrum.sky attribute for reference.
 
 
 KeckNIRSPECSpectrum
-##############
+###################
 """
 
 import warnings
@@ -29,9 +29,6 @@ from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
 
-# from barycorrpy.utils import get_stellar_data
-
-# from specutils.io.registers import data_loader
 from celerite2 import terms
 import celerite2
 from scipy.optimize import minimize
@@ -161,42 +158,29 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         """Flat spectrum stored as its own KeckNIRSPECSpectrum object"""
         return self.meta["flat"]
 
-    def _estimate_barycorr(self, hdr, pipeline):
+    def _estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
-        
-        Parameters
-        ----------
-        hdr : FITS HDU header
-            The FITS header from either pipeline
-        pipeline:
-            Which KeckNIRSPEC pipeline
 
         Returns
         -------
         barycentric_corrections : (float, float)
             Tuple of floats for the barycentric corrections for target and LFC
         """
+        hdr = self.meta["header"]
         ## Compute RV shifts
-        time_obs = hdr["DATE-OBS"]
+        time_obs = hdr["MJD-OBS"]
         obstime = Time(time_obs, format="isot", scale="utc")
-        obstime.format = "jd"
+        obstime.format = "mjd"
 
-        ## TODO: Which is the right RA, Dec to put here?
-        ## QRA and QDEC is also available.  Which is correct?
         RA = hdr["RA"]
         DEC = hdr["DEC"]
 
-        if pipeline == "Goldilocks":
-            lfccorr = hdr["LRVCORR"] * u.m / u.s
-        else:
-            lfccorr = 0.0 * u.m / u.s
-
         loc = EarthLocation.from_geodetic(
-            -104.0147, 30.6814, height=2025.0
-        )  # HET coordinates
+            -155.4747, 19.8260, height=4145.0
+        )  # Keck coordinates
         sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
         barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
-        return (barycorr, lfccorr)
+        return barycorr
 
     def normalize(self):
         """Normalize spectrum by its median value
@@ -293,7 +277,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
 
         return no_blaze
 
-    def shift_spec(self, absRV=0):
+    def barycentric_correct(self):
         """shift spectrum by barycenter velocity
 
         Returns
@@ -303,13 +287,9 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         log.error("Not yet tested on NIRSPEC data, should fail!")
         meta_out = copy.deepcopy(self.meta)
 
-        bcRV = meta_out["BCcorr"]
-        lfcRV = meta_out["LFCcorr"]
-        absRV = absRV * u.m / u.s
+        bcRV = self._estimate_barycorr()
 
-        vel = bcRV + lfcRV + absRV
-
-        new_wave = self.wavelength * (1.0 + (vel.value / c.value))
+        new_wave = self.wavelength * (1.0 + (bcRV.value / c.value))
 
         return KeckNIRSPECSpectrum(
             spectral_axis=new_wave,
