@@ -174,3 +174,45 @@ class EchelleSpectrum(Spectrum1D):
             )
             raise
         return self
+
+    def remove_nans(self):
+        """Remove data points that have NaN fluxes
+
+        By default the method removes NaN's from target, sky, and lfc fibers.
+
+        Returns
+        -------
+        finite_spec : (KeckNIRSPECSpectrum)
+            Spectrum with NaNs removed
+        """
+
+        # Todo: probably want to check that all NaNs are in the mask
+
+        def remove_nans_per_spectrum(spectrum):
+            if spectrum.uncertainty is not None:
+                masked_unc = StdDevUncertainty(
+                    spectrum.uncertainty.array[~spectrum.mask]
+                )
+            else:
+                masked_unc = None
+
+            meta_out = copy.deepcopy(spectrum.meta)
+            meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
+
+            return self._copy(
+                spectral_axis=spectrum.wavelength[~spectrum.mask],
+                flux=spectrum.flux[~spectrum.mask],
+                mask=spectrum.mask[~spectrum.mask],
+                uncertainty=masked_unc,
+                meta=meta_out,
+            )
+
+        new_self = remove_nans_per_spectrum(self)
+        if "sky" in self.meta.keys():
+            new_sky = remove_nans_per_spectrum(self.sky)
+            new_self.meta["sky"] = new_sky
+        # if "lfc" in self.meta.keys():
+        #    new_lfc = remove_nans_per_spectrum(self.lfc)
+        #    new_self.meta["lfc"] = new_lfc
+
+        return new_self
