@@ -93,3 +93,19 @@ def test_uncertainty():
     snr_med = np.nanmedian(snr_vec.value)
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
+
+def test_RV():
+    """Does uncertainty propagation work?"""
+
+    spec = KeckNIRSPECSpectrum(file=file, order=10)
+
+    assert spec.uncertainty is not None
+    assert hasattr(spec, "barycentric_correct")
+
+    correction_velocity = spec.estimate_barycorr()
+
+    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+    assert correction_velocity is not None
+    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+

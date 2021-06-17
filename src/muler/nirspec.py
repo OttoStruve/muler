@@ -164,12 +164,12 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
     @property
     def RA(self):
         """The right ascension from header files"""
-        self.meta["header"]["RA"] * u.hourangle
+        return self.meta["header"]["RA"] * u.hourangle
 
     @property
     def DEC(self):
         """The declination from header files"""
-        self.meta["header"]["DEC"] * u.deg
+        return self.meta["header"]["DEC"] * u.deg
 
     @property
     def astropy_time(self):
