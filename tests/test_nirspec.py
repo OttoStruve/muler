@@ -109,3 +109,6 @@ def test_RV():
     assert correction_velocity is not None
     assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
 
+    new_spec = spec.barycentric_correct()
+    assert new_spec is not None
+    assert isinstance(new_spec, Spectrum1D)

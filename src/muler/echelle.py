@@ -83,3 +83,22 @@ class EchelleSpectrum(Spectrum1D):
         barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
         return barycorr
 
+    def measure_ew(self, mu):
+        """Measure the equivalent width of a given spectrum
+        
+        Parameters
+        ----------
+        mu : scalar/float
+            The center wavelength of given line
+        
+        Returns
+        -------
+        equivalent width : (scalar)
+        """
+        log.warning("Experimental method")
+
+        left_bound = 0.999 * mu * u.Angstrom
+        right_bound = 1.001 * mu * u.Angstrom
+        ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
+        return ew
+

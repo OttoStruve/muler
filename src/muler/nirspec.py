@@ -72,6 +72,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
     def __init__(self, *args, file=None, order=63, **kwargs):
 
         self.site_name = "Keck Observatory"
+        self.ancillary_spectra = ["sky"]
 
         if file is not None:
             file_basename = file.split("/")[-1]
@@ -175,8 +176,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
     def astropy_time(self):
         """The astropy time based on the header"""
         mjd = self.meta["header"]["MJD-OBS"]
-        time_out = Time(mjd, format="mjd", scale="utc")
-        return time_out
+        return Time(mjd, format="mjd", scale="utc")
 
     def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
@@ -202,22 +202,19 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         """
         median_flux = np.nanmedian(self.flux)
 
-        # return self.divide(median_flux, handle_meta="first_found")
+        # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(self.meta)
-        meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
-        # meta_out["flat"] = meta_out["flat"].divide(median_flux, handle_meta="first_found")
-        return KeckNIRSPECSpectrum(
-            spectral_axis=self.wavelength,
-            flux=self.flux,
-            meta=meta_out,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-        ).divide(median_flux, handle_meta="first_found")
+        if self.ancillary_spectra is not None:
+            for ancillary_spectrum in self.ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
+                    median_flux, handle_meta="first_found"
+                )
+
+        self.meta = meta_out
+        return self.divide(median_flux, handle_meta="first_found")
 
     def sky_subtract(self, force=False):
-        """Subtract science spectrum from sky spectrum
-
-        Note: This operation does not wavelength shift or scale the sky spectrum
+        """Subtract sky spectrum from science spectrum
 
         Returns
         -------
@@ -236,25 +233,6 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 "To proceed anyway, state `force=True`."
             )
             return self
-
-    def measure_ew(self, mu):
-        """Measure the equivalent width of a given spectrum
-        
-        Parameters
-        ----------
-        mu : scalar/float
-            The center wavelength of given line
-        
-        Returns
-        -------
-        equivalent width : (scalar)
-        """
-        log.warning("Experimental method")
-
-        left_bound = 0.999 * mu * u.Angstrom
-        right_bound = 1.001 * mu * u.Angstrom
-        ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
-        return ew
 
     def blaze_divide_spline(self):
         """Remove blaze function from spectrum by interpolating a spline function
