@@ -180,20 +180,6 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         mjd = self.meta["header"]["MJD-OBS"]
         return Time(mjd, format="mjd", scale="utc")
 
-    def estimate_barycorr(self):
-        """Estimate the Barycentric Correction from the Date and Target Coordinates
-
-        Returns
-        -------
-        barycentric_corrections : (float, float)
-            Tuple of floats for the barycentric corrections for target and LFC
-        """
-        obstime = self.astropy_time
-        loc = EarthLocation.of_site(self.site_name)
-        sc = SkyCoord(ra=self.RA, dec=self.DEC)
-        barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
-        return barycorr
-
     def sky_subtract(self, force=False):
         """Subtract sky spectrum from science spectrum
 
@@ -214,42 +200,6 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 "To proceed anyway, state `force=True`."
             )
             return self
-
-    def estimate_uncertainty(self):
-        """Estimate the uncertainty based on residual after smoothing
-
-
-        Returns
-        -------
-        uncertainty : (np.float)
-            Typical uncertainty
-        """
-        residual = self.flux - self.smooth_spectrum().flux
-        return median_abs_deviation(residual.value)
-
-    def to_HDF5(self, path, file_basename):
-        """Export to spectral order to HDF5 file format
-        This format is required for per-order Starfish input
-
-        Parameters
-        ----------
-        path : str
-            The directory destination for the HDF5 file
-        file_basename : str
-            The basename of the file to which the order number and extension
-            are appended.  Typically source name that matches a database entry.
-        """
-        grating_order = self.meta["m"]
-        out_path = path + "/" + file_basename + "_m{:03d}.hdf5".format(grating_order)
-
-        # The mask should be ones everywhere
-        mask_out = np.ones(len(self.wavelength), dtype=int)
-        f_new = h5py.File(out_path, "w")
-        f_new.create_dataset("fls", data=self.flux.value)
-        f_new.create_dataset("wls", data=self.wavelength.to(u.Angstrom).value)
-        f_new.create_dataset("sigmas", data=self.uncertainty.array)
-        f_new.create_dataset("masks", data=mask_out)
-        f_new.close()
 
 
 class KeckNIRSPECSpectrumList(SpectrumList):

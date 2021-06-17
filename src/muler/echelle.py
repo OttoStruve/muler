@@ -357,3 +357,39 @@ class EchelleSpectrum(Spectrum1D):
             uncertainty=masked_unc,
             meta=meta_out,
         )
+
+    def estimate_uncertainty(self):
+        """Estimate the uncertainty based on residual after smoothing
+
+
+        Returns
+        -------
+        uncertainty : (np.float)
+            Typical uncertainty
+        """
+        residual = self.flux - self.smooth_spectrum().flux
+        return median_abs_deviation(residual.value)
+
+    def to_HDF5(self, path, file_basename):
+        """Export to spectral order to HDF5 file format
+        This format is required for per-order Starfish input
+
+        Parameters
+        ----------
+        path : str
+            The directory destination for the HDF5 file
+        file_basename : str
+            The basename of the file to which the order number and extension
+            are appended.  Typically source name that matches a database entry.
+        """
+        grating_order = self.meta["m"]
+        out_path = path + "/" + file_basename + "_m{:03d}.hdf5".format(grating_order)
+
+        # The mask should be ones everywhere
+        mask_out = np.ones(len(self.wavelength), dtype=int)
+        f_new = h5py.File(out_path, "w")
+        f_new.create_dataset("fls", data=self.flux.value)
+        f_new.create_dataset("wls", data=self.wavelength.to(u.Angstrom).value)
+        f_new.create_dataset("sigmas", data=self.uncertainty.array)
+        f_new.create_dataset("masks", data=mask_out)
+        f_new.close()
