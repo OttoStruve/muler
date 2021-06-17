@@ -21,6 +21,7 @@ from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
 import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
+from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 
@@ -242,8 +243,6 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             )
             return self
 
-        return
-
     def measure_ew(self, mu):
         """Measure the equivalent width of a given spectrum
         
@@ -258,16 +257,9 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         """
         log.warning("Experimental method")
 
-        from specutils.analysis import equivalent_width
-
         left_bound = 0.999 * mu * u.Angstrom
         right_bound = 1.001 * mu * u.Angstrom
         ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
-
-        # equivalent_width(noisy_gaussian_with_continuum, regions=SpectralRegion(7*u.GHz, 3*u.GHz))
-
-        median_value = np.median(self.flux)
-        print("mu is", mu, "median =", median_value, "the ew is", ew)
         return ew
 
     def blaze_divide_spline(self):
@@ -295,42 +287,11 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
             no_blaze.meta["sky"] = new_sky
 
-        if "lfc" in self.meta.keys():
-            new_lfc = self.lfc.divide(interp_spline, handle_meta="first_found")
-            no_blaze.meta["lfc"] = new_lfc
+        # if "flat" in self.meta.keys():
+        #    new_flat = self.flat.divide(interp_spline, handle_meta="first_found")
+        #    no_blaze.meta["flat"] = new_flat
 
         return no_blaze
-
-    def blaze_subtract_flats(self, flat, order=19):
-        """Remove blaze function from spectrum by subtracting by flat spectrum
-
-        Returns
-        -------
-        blaze corrrected spectrum using flat fields : (KeckNIRSPECSpectrum)
-
-        """
-        new_flux = self.normalize()
-
-        flat_wv = flat[0]
-        flat_flux = flat[1]
-        if len(flat) == 2:
-            flat_err = flat[2]
-
-        master_flat = flat_flux[order] / np.nanmedian(flat_flux[order])
-
-        flat_spline = InterpolatedUnivariateSpline(
-            flat_wv[order], np.nan_to_num(master_flat), k=5
-        )
-        interp_flat = flat_spline(self.wavelength)
-
-        no_flat = new_flux / interp_flat
-
-        return KeckNIRSPECSpectrum(
-            spectral_axis=self.wavelength,
-            flux=no_flat.flux,
-            meta=self.meta,
-            mask=self.mask,
-        )
 
     def shift_spec(self, absRV=0):
         """shift spectrum by barycenter velocity
@@ -339,6 +300,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         -------
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
+        log.error("Not yet tested on NIRSPEC data, should fail!")
         meta_out = copy.deepcopy(self.meta)
 
         bcRV = meta_out["BCcorr"]
@@ -368,6 +330,8 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             Spectrum with NaNs removed
         """
 
+        # Todo: probably want to check that all NaNs are in the mask
+
         def remove_nans_per_spectrum(spectrum):
             if spectrum.uncertainty is not None:
                 masked_unc = StdDevUncertainty(
@@ -391,9 +355,9 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         if "sky" in self.meta.keys():
             new_sky = remove_nans_per_spectrum(self.sky)
             new_self.meta["sky"] = new_sky
-        if "lfc" in self.meta.keys():
-            new_lfc = remove_nans_per_spectrum(self.lfc)
-            new_self.meta["lfc"] = new_lfc
+        # if "lfc" in self.meta.keys():
+        #    new_lfc = remove_nans_per_spectrum(self.lfc)
+        #    new_self.meta["lfc"] = new_lfc
 
         return new_self
 
@@ -499,7 +463,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
 
         return spectrum_out.remove_nans()
 
-    def trim_edges(self, limits=(450, 1950)):
+    def trim_edges(self, limits=(10, 1000)):
         """Trim the order edges, which falloff in SNR
 
         This method applies limits on absolute x pixel values, regardless
@@ -591,12 +555,11 @@ class KeckNIRSPECSpectrumList(SpectrumList):
         file : (str)
             A path to a reduced KeckNIRSPEC spectrum from plp
         """
-        assert ".spectra.fits" in file
-
         n_orders = len(files)
 
         list_out = []
         for i in range(n_orders):
+            assert ".flux_tbl.fits" in files[i]
             spec = KeckNIRSPECSpectrum(file=files[i])
             list_out.append(spec)
         return KeckNIRSPECSpectrumList(list_out)
@@ -610,19 +573,12 @@ class KeckNIRSPECSpectrumList(SpectrumList):
 
         return self
 
-    # def sky_subtract(self):
-    #     """Sky subtract all orders
-    #     """
-    #     flux = copy.deepcopy(self.flux)
-    #     sky = copy.deepcopy(self.sky)
-    #     for i in range(len(self)):
-    #         self[i] = flux[i] - sky[i]
-
-    #     return self
-
     def remove_nans(self):
         """Remove all the NaNs
         """
+        # TODO: is this in-place overriding of self allowed?
+        # May have unintended consequences?
+        # Consider making a copy instead...
         for i in range(len(self)):
             self[i] = self[i].remove_nans()
 

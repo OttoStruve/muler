@@ -48,8 +48,8 @@ def test_basic():
 def test_equivalent_width():
     """Can we measure equivalent widths?"""
 
-    spec = KeckNIRSPECSpectrum(file=file, order=4)
-    mu = 8600  # make sure it is in given order
+    spec = KeckNIRSPECSpectrum(file=file)
+    mu = np.median(spec.wavelength.value)
     equivalent_width = spec.measure_ew(mu)
 
     assert equivalent_width is not None
