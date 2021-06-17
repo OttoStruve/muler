@@ -74,6 +74,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
 
         self.site_name = "Keck Observatory"
         self.ancillary_spectra = ["sky"]
+        self.noisy_edges = (10, 1000)
 
         if file is not None:
             file_basename = file.split("/")[-1]
@@ -214,74 +215,12 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             )
             return self
 
-    def barycentric_correct(self):
-        """shift spectrum by barycenter velocity
-
-        Returns
-        -------
-        barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
-        """
-        bcRV = self.estimate_barycorr()
-
-        try:
-            self.radial_velocity = bcRV
-        except:
-            log.error(
-                "rv shift requires specutils version >= 1.2, you have: {}".format(
-                    specutils.__version__
-                )
-            )
-            raise
-        return self
-
-    def remove_nans(self):
-        """Remove data points that have NaN fluxes
-
-        By default the method removes NaN's from target, sky, and lfc fibers.
-
-        Returns
-        -------
-        finite_spec : (KeckNIRSPECSpectrum)
-            Spectrum with NaNs removed
-        """
-
-        # Todo: probably want to check that all NaNs are in the mask
-
-        def remove_nans_per_spectrum(spectrum):
-            if spectrum.uncertainty is not None:
-                masked_unc = StdDevUncertainty(
-                    spectrum.uncertainty.array[~spectrum.mask]
-                )
-            else:
-                masked_unc = None
-
-            meta_out = copy.deepcopy(spectrum.meta)
-            meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
-
-            return self._copy(
-                spectral_axis=spectrum.wavelength[~spectrum.mask],
-                flux=spectrum.flux[~spectrum.mask],
-                mask=spectrum.mask[~spectrum.mask],
-                uncertainty=masked_unc,
-                meta=meta_out,
-            )
-
-        new_self = remove_nans_per_spectrum(self)
-        if "sky" in self.meta.keys():
-            new_sky = remove_nans_per_spectrum(self.sky)
-            new_self.meta["sky"] = new_sky
-        # if "lfc" in self.meta.keys():
-        #    new_lfc = remove_nans_per_spectrum(self.lfc)
-        #    new_self.meta["lfc"] = new_lfc
-
-        return new_self
-
     def smooth_spectrum(self):
         """Smooth the spectrum using Gaussian Process regression
 
         Returns
         -------
-        smoothed_spec : (KeckNIRSPECSpectrum)
+        smoothed_spec : (EchelleSpectrum)
             Smooth version of input Spectrum
         """
         if self.uncertainty is not None:
@@ -314,7 +253,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         meta_out = copy.deepcopy(self.meta)
         meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
-        return KeckNIRSPECSpectrum(
+        return self._copy(
             spectral_axis=self.wavelength,
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
@@ -378,7 +317,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
 
         return spectrum_out.remove_nans()
 
-    def trim_edges(self, limits=(10, 1000)):
+    def trim_edges(self, limits=None):
         """Trim the order edges, which falloff in SNR
 
         This method applies limits on absolute x pixel values, regardless
@@ -392,9 +331,11 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
 
         Returns
         -------
-        trimmed_spec : (KeckNIRSPECSpectrum)
+        trimmed_spec : (EchelleSpectrum)
             Trimmed version of input Spectrum
         """
+        if limits is None:
+            limits = self.noisy_edges
         lo, hi = limits
         meta_out = copy.deepcopy(self.meta)
         x_values = meta_out["x_values"]
@@ -407,7 +348,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
 
         meta_out["x_values"] = x_values[~mask]
 
-        return KeckNIRSPECSpectrum(
+        return self._copy(
             spectral_axis=self.wavelength[~mask],
             flux=self.flux[~mask],
             mask=self.mask[~mask],
