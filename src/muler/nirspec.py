@@ -192,27 +192,6 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
         return barycorr
 
-    def normalize(self):
-        """Normalize spectrum by its median value
-
-        Returns
-        -------
-        normalized_spec : (KeckNIRSPECSpectrum)
-            Normalized Spectrum
-        """
-        median_flux = np.nanmedian(self.flux)
-
-        # Each ancillary spectrum (e.g. sky) should also be normalized
-        meta_out = copy.deepcopy(self.meta)
-        if self.ancillary_spectra is not None:
-            for ancillary_spectrum in self.ancillary_spectra:
-                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                    median_flux, handle_meta="first_found"
-                )
-
-        self.meta = meta_out
-        return self.divide(median_flux, handle_meta="first_found")
-
     def sky_subtract(self, force=False):
         """Subtract sky spectrum from science spectrum
 
@@ -234,7 +213,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             )
             return self
 
-    def blaze_divide_spline(self):
+    def deblaze(self, method="spline"):
         """Remove blaze function from spectrum by interpolating a spline function
 
         Note: It is recommended to remove NaNs before running this operation,
@@ -242,28 +221,29 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
 
         Returns
         -------
-        blaze corrrected spectrum : (KeckNIRSPECSpectrum)
+        blaze corrrected spectrum
         """
-        if np.any(np.isnan(self.flux)):
-            log.warning(
-                "your spectrum contains NaNs, "
-                "it is highly recommended to run `.remove_nans()` before deblazing"
-            )
 
-        spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
-        interp_spline = spline(self.wavelength) * self.flux.unit
+        if method == "spline":
+            if np.any(np.isnan(self.flux)):
+                log.warning(
+                    "your spectrum contains NaNs, "
+                    "it is highly recommended to run `.remove_nans()` before deblazing"
+                )
 
-        no_blaze = self.divide(interp_spline, handle_meta="first_found")
+            spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
+            interp_spline = spline(self.wavelength) * self.flux.unit
 
-        if "sky" in self.meta.keys():
-            new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
-            no_blaze.meta["sky"] = new_sky
+            no_blaze = self.divide(interp_spline, handle_meta="first_found")
 
-        # if "flat" in self.meta.keys():
-        #    new_flat = self.flat.divide(interp_spline, handle_meta="first_found")
-        #    no_blaze.meta["flat"] = new_flat
+            if "sky" in self.meta.keys():
+                new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
+                no_blaze.meta["sky"] = new_sky
 
-        return no_blaze
+            return no_blaze
+
+        else:
+            raise NotImplementedError
 
     def barycentric_correct(self):
         """shift spectrum by barycenter velocity

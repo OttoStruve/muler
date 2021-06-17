@@ -60,7 +60,7 @@ def test_equivalent_width():
 
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
-    spec = KeckNIRSPECSpectrum(file=file, order=10)
+    spec = KeckNIRSPECSpectrum(file=file)
     new_spec = spec.remove_outliers(threshold=3)
 
     assert len(new_spec.flux) > 0
@@ -72,14 +72,11 @@ def test_smoothing():
 def test_uncertainty():
     """Does uncertainty propagation work?"""
 
-    spec = KeckNIRSPECSpectrum(file=file, order=10)
+    spec = KeckNIRSPECSpectrum(file=file)
 
-    assert spec.uncertainty is not None
-    assert hasattr(spec.uncertainty, "array")
-    assert len(spec.flux) == len(spec.uncertainty.array)
-    assert spec.flux.unit == spec.uncertainty.unit
+    assert spec.flux is not None
 
-    new_spec = spec.remove_nans()
+    new_spec = spec.remove_nans().deblaze()
 
     assert len(new_spec.flux) == len(new_spec.uncertainty.array)
     assert np.all(new_spec.uncertainty.array > 0)
@@ -95,9 +92,9 @@ def test_uncertainty():
 
 
 def test_RV():
-    """Does uncertainty propagation work?"""
+    """Does RV shifting work"""
 
-    spec = KeckNIRSPECSpectrum(file=file, order=10)
+    spec = KeckNIRSPECSpectrum(file=file)
 
     assert spec.uncertainty is not None
     assert hasattr(spec, "barycentric_correct")
@@ -110,5 +107,16 @@ def test_RV():
     assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
 
     new_spec = spec.barycentric_correct()
+    assert new_spec is not None
+    assert isinstance(new_spec, Spectrum1D)
+
+
+def test_deblaze():
+    """Does uncertainty propagation work?"""
+
+    spec = KeckNIRSPECSpectrum(file=file)
+
+    new_spec = spec.remove_nans().deblaze()
+
     assert new_spec is not None
     assert isinstance(new_spec, Spectrum1D)

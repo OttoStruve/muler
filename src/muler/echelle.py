@@ -102,3 +102,55 @@ class EchelleSpectrum(Spectrum1D):
         ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
         return ew
 
+    def normalize(self):
+        """Normalize spectrum by its median value
+
+        Returns
+        -------
+        normalized_spec : (KeckNIRSPECSpectrum)
+            Normalized Spectrum
+        """
+        median_flux = np.nanmedian(self.flux)
+
+        # Each ancillary spectrum (e.g. sky) should also be normalized
+        meta_out = copy.deepcopy(self.meta)
+        if self.ancillary_spectra is not None:
+            for ancillary_spectrum in self.ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
+                    median_flux, handle_meta="first_found"
+                )
+
+        self.meta = meta_out
+        return self.divide(median_flux, handle_meta="first_found")
+
+    def deblaze(self, method="spline"):
+        """Remove blaze function from spectrum by interpolating a spline function
+
+        Note: It is recommended to remove NaNs before running this operation,
+                otherwise edge effects can be appear from zero-padded edges.
+
+        Returns
+        -------
+        blaze corrrected spectrum
+        """
+
+        if method == "spline":
+            if np.any(np.isnan(self.flux)):
+                log.warning(
+                    "your spectrum contains NaNs, "
+                    "it is highly recommended to run `.remove_nans()` before deblazing"
+                )
+
+            spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
+            interp_spline = spline(self.wavelength) * self.flux.unit
+
+            no_blaze = self.divide(interp_spline, handle_meta="first_found")
+
+            if "sky" in self.meta.keys():
+                new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
+                no_blaze.meta["sky"] = new_sky
+
+            return no_blaze
+
+        else:
+            raise NotImplementedError
