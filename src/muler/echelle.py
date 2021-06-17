@@ -154,3 +154,23 @@ class EchelleSpectrum(Spectrum1D):
 
         else:
             raise NotImplementedError
+
+    def barycentric_correct(self):
+        """shift spectrum by barycenter velocity
+
+        Returns
+        -------
+        barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
+        """
+        bcRV = self.estimate_barycorr()
+
+        try:
+            self.radial_velocity = bcRV
+        except:
+            log.error(
+                "rv shift requires specutils version >= 1.2, you have: {}".format(
+                    specutils.__version__
+                )
+            )
+            raise
+        return self

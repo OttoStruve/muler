@@ -22,6 +22,7 @@ from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
 import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
+import specutils
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
@@ -213,38 +214,6 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             )
             return self
 
-    def deblaze(self, method="spline"):
-        """Remove blaze function from spectrum by interpolating a spline function
-
-        Note: It is recommended to remove NaNs before running this operation,
-                otherwise edge effects can be appear from zero-padded edges.
-
-        Returns
-        -------
-        blaze corrrected spectrum
-        """
-
-        if method == "spline":
-            if np.any(np.isnan(self.flux)):
-                log.warning(
-                    "your spectrum contains NaNs, "
-                    "it is highly recommended to run `.remove_nans()` before deblazing"
-                )
-
-            spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
-            interp_spline = spline(self.wavelength) * self.flux.unit
-
-            no_blaze = self.divide(interp_spline, handle_meta="first_found")
-
-            if "sky" in self.meta.keys():
-                new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
-                no_blaze.meta["sky"] = new_sky
-
-            return no_blaze
-
-        else:
-            raise NotImplementedError
-
     def barycentric_correct(self):
         """shift spectrum by barycenter velocity
 
@@ -252,20 +221,18 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         -------
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
-        log.error("Not yet tested on NIRSPEC data, should fail!")
-        meta_out = copy.deepcopy(self.meta)
-
         bcRV = self.estimate_barycorr()
 
-        new_wave = self.wavelength * (1.0 + (bcRV.value / c.value))
-
-        return KeckNIRSPECSpectrum(
-            spectral_axis=new_wave,
-            flux=self.flux,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-            meta=meta_out,
-        )
+        try:
+            self.radial_velocity = bcRV
+        except:
+            log.error(
+                "rv shift requires specutils version >= 1.2, you have: {}".format(
+                    specutils.__version__
+                )
+            )
+            raise
+        return self
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
@@ -291,7 +258,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             meta_out = copy.deepcopy(spectrum.meta)
             meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
 
-            return KeckNIRSPECSpectrum(
+            return self._copy(
                 spectral_axis=spectrum.wavelength[~spectrum.mask],
                 flux=spectrum.flux[~spectrum.mask],
                 mask=spectrum.mask[~spectrum.mask],
