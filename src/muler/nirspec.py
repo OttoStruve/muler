@@ -2,7 +2,7 @@ r"""
 KeckNIRSPEC Spectrum
 ---------------
 
-A container for an KeckNIRSPEC high resolution spectrum, any one :math:`m` out of :math:`M` total total orders, each with vectors for wavelength, flux, and uncertainty, e.g. :math:`F_m(\lambda)`.  KeckNIRSPEC already has been sky subtracted, but the subtracted sky signal is contained as the spectrum.sky attribute for reference.
+A container for a Keck NIRSPEC high resolution spectrum, for some echelle order :math:`m \in ` out of :math:`M` total orders, each with vectors for wavelength, flux, and uncertainty, e.g. :math:`F_m(\lambda)`.  KeckNIRSPEC already has been sky subtracted, but the subtracted sky signal is contained as the spectrum.sky attribute for reference.
 
 
 KeckNIRSPECSpectrum
@@ -69,6 +69,8 @@ class KeckNIRSPECSpectrum(Spectrum1D):
     """
 
     def __init__(self, *args, file=None, order=63, **kwargs):
+
+        self.site_name = "Keck Observatory"
 
         if file is not None:
             file_basename = file.split("/")[-1]
@@ -158,7 +160,24 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         """Flat spectrum stored as its own KeckNIRSPECSpectrum object"""
         return self.meta["flat"]
 
-    def _estimate_barycorr(self):
+    @property
+    def RA(self):
+        """The right ascension from header files"""
+        self.meta["header"]["RA"] * u.hourangle
+
+    @property
+    def DEC(self):
+        """The declination from header files"""
+        self.meta["header"]["DEC"] * u.deg
+
+    @property
+    def astropy_time(self):
+        """The astropy time based on the header"""
+        mjd = self.meta["header"]["MJD-OBS"]
+        time_out = Time(mjd, format="mjd", scale="utc")
+        return time_out
+
+    def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
 
         Returns
@@ -166,19 +185,9 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         barycentric_corrections : (float, float)
             Tuple of floats for the barycentric corrections for target and LFC
         """
-        hdr = self.meta["header"]
-        ## Compute RV shifts
-        time_obs = hdr["MJD-OBS"]
-        obstime = Time(time_obs, format="isot", scale="utc")
-        obstime.format = "mjd"
-
-        RA = hdr["RA"]
-        DEC = hdr["DEC"]
-
-        loc = EarthLocation.from_geodetic(
-            -155.4747, 19.8260, height=4145.0
-        )  # Keck coordinates
-        sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
+        obstime = self.astropy_time
+        loc = EarthLocation.of_site(self.site_name)
+        sc = SkyCoord(ra=self.RA, dec=self.DEC)
         barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
         return barycorr
 
@@ -287,7 +296,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         log.error("Not yet tested on NIRSPEC data, should fail!")
         meta_out = copy.deepcopy(self.meta)
 
-        bcRV = self._estimate_barycorr()
+        bcRV = self.estimate_barycorr()
 
         new_wave = self.wavelength * (1.0 + (bcRV.value / c.value))
 
