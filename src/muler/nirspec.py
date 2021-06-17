@@ -11,6 +11,7 @@ KeckNIRSPECSpectrum
 
 import warnings
 import logging
+from muler.echelle import EchelleSpectrum
 import numpy as np
 import astropy
 import pandas as pd
@@ -60,7 +61,7 @@ with warnings.catch_warnings():
     from specutils import SpectrumList
 
 
-class KeckNIRSPECSpectrum(Spectrum1D):
+class KeckNIRSPECSpectrum(EchelleSpectrum):
     r"""
     A container for Keck NIRSPEC spectra
 
