@@ -44,6 +44,10 @@ from specutils.analysis import equivalent_width
 
 log = logging.getLogger(__name__)
 
+from astropy.io.fits.verify import VerifyWarning
+
+warnings.simplefilter("ignore", category=VerifyWarning)
+
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
     "ignore", category=astropy.utils.exceptions.AstropyDeprecationWarning
@@ -81,6 +85,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             grating_order = int(file_stem[-2:])
 
             assert os.path.exists(file), "The file must exist"
+
             hdu = fits.open(file)
             hdu0 = hdu[1]
 
@@ -88,11 +93,6 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             lamb = hdu0.data["wave (A)"].astype(np.float64) * u.AA
             flux = hdu0.data["flux (cnts)"].astype(np.float64) * u.ct
             unc = hdu0.data["noise (cnts)"].astype(np.float64) * u.ct
-            meta_dict = {
-                "x_values": hdu0.data["col"].astype(np.int),
-                "pipeline": pipeline,
-                "m": grating_order,
-            }
 
             uncertainty = StdDevUncertainty(unc)
             mask = (
@@ -103,10 +103,20 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             fits_with_full_header = file.replace("/fitstbl/", "/fits/").replace(
                 "_flux_tbl.", "_flux."
             )
-            assert os.path.exists(fits_with_full_header)
-            # Todo: read in the full fits header
-            # wcs=WCS(hdr)
-            wcs = None
+            if os.path.exists(fits_with_full_header):
+                hdu_hdr = fits.open(fits_with_full_header)
+                hdr = hdu_hdr[0].header
+                wcs = WCS(hdr)
+            else:
+                wcs = None
+                hdr = None
+
+            meta_dict = {
+                "x_values": hdu0.data["col"].astype(np.int),
+                "pipeline": pipeline,
+                "m": grating_order,
+                "header": hdr,
+            }
 
             super().__init__(
                 spectral_axis=lamb,
@@ -199,7 +209,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
 
         # return self.divide(median_flux, handle_meta="first_found")
         meta_out = copy.deepcopy(self.meta)
-        # meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
+        meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
         # meta_out["lfc"] = meta_out["lfc"].divide(median_flux, handle_meta="first_found")
         return KeckNIRSPECSpectrum(
             spectral_axis=self.wavelength,
