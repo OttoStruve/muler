@@ -210,7 +210,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         # return self.divide(median_flux, handle_meta="first_found")
         meta_out = copy.deepcopy(self.meta)
         meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
-        # meta_out["lfc"] = meta_out["lfc"].divide(median_flux, handle_meta="first_found")
+        # meta_out["flat"] = meta_out["flat"].divide(median_flux, handle_meta="first_found")
         return KeckNIRSPECSpectrum(
             spectral_axis=self.wavelength,
             flux=self.flux,
@@ -219,7 +219,7 @@ class KeckNIRSPECSpectrum(Spectrum1D):
             uncertainty=self.uncertainty,
         ).divide(median_flux, handle_meta="first_found")
 
-    def sky_subtract(self):
+    def sky_subtract(self, force=False):
         """Subtract science spectrum from sky spectrum
 
         Note: This operation does not wavelength shift or scale the sky spectrum
@@ -229,7 +229,20 @@ class KeckNIRSPECSpectrum(Spectrum1D):
         sky_subtractedSpec : (KeckNIRSPECSpectrum)
             Sky subtracted Spectrum
         """
-        return self.subtract(self.sky, handle_meta="first_found")
+        if force:
+            log.warn(
+                "NIRSPEC data are already natively sky subtracted! "
+                "Proceeding with a forced sky subtraction anyways..."
+            )
+            return self.subtract(self.sky, handle_meta="first_found")
+        else:
+            log.error(
+                "NIRSPEC data are already natively sky subtracted! "
+                "To proceed anyway, state `force=True`."
+            )
+            return self
+
+        return
 
     def measure_ew(self, mu):
         """Measure the equivalent width of a given spectrum
