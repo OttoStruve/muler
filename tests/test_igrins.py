@@ -1,4 +1,5 @@
 # from astropy.nddata.ccddata import _uncertainty_unit_equivalent_to_parent
+import astropy
 import pytest
 import time
 from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList
@@ -47,7 +48,7 @@ def test_basic():
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
-    ax = new_spec.plot(label='demo', color='r')
+    ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
 
 
@@ -76,10 +77,86 @@ def test_uncertainty():
     assert snr_med == snr_old_med
 
 
+def test_equivalent_width():
+    """Can we measure equivalent widths?"""
+
+    spec = IGRINSSpectrum(file=file)
+    mu = np.median(spec.wavelength.value)
+    equivalent_width = spec.measure_ew(mu)
+
+    assert equivalent_width is not None
+    assert type(equivalent_width) is not int
+    assert type(equivalent_width) is astropy.units.quantity.Quantity
+    assert equivalent_width.unit is spec.wavelength.unit
+
+
+def test_smoothing():
+    """Does smoothing and outlier removal work?"""
+    spec = IGRINSSpectrum(file=file)
+    new_spec = spec.remove_outliers(threshold=3)
+
+    assert len(new_spec.flux) > 0
+    assert new_spec.shape[0] <= spec.shape[0]
+    assert new_spec.shape[0] > 0
+    assert new_spec.mask is not None
+
+
+def test_uncertainty():
+    """Does uncertainty propagation work?"""
+
+    spec = IGRINSSpectrum(file=file)
+
+    assert spec.flux is not None
+
+    new_spec = spec.remove_nans().deblaze()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_old_vec = spec.flux / spec.uncertainty.array
+    snr_old_med = np.nanmedian(snr_old_vec.value)
+
+    new_spec = spec.normalize()
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med, atol=0.005)
+
+
+def test_RV():
+    """Does RV shifting work"""
+
+    spec = IGRINSSpectrum(file=file)
+
+    assert spec.uncertainty is not None
+    assert hasattr(spec, "barycentric_correct")
+
+    correction_velocity = spec.estimate_barycorr()
+
+    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+    assert correction_velocity is not None
+    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+
+    new_spec = spec.barycentric_correct()
+    assert new_spec is not None
+    assert isinstance(new_spec, Spectrum1D)
+
+
+def test_deblaze():
+    """Does uncertainty propagation work?"""
+
+    spec = IGRINSSpectrum(file=file)
+
+    new_spec = spec.remove_nans().deblaze()
+
+    assert new_spec is not None
+    assert isinstance(new_spec, Spectrum1D)
+
+
 @pytest.mark.parametrize(
     "precache_hdus", [True, False],
 )
-
 def test_spectrumlist_performance(precache_hdus):
     """Does the Spectrum List work?"""
     t0 = time.time()

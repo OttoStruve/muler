@@ -59,6 +59,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         self.site_name = "Keck Observatory"
         self.ancillary_spectra = ["sky"]
         self.noisy_edges = (10, 1000)
+        self.default_resolution = 20_000.0
 
         if file is not None:
             file_basename = file.split("/")[-1]
@@ -113,7 +114,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 wcs=wcs,
                 uncertainty=uncertainty,
                 meta=meta_dict,
-                **kwargs
+                **kwargs,
             )
 
             ## Sky Spectrum
@@ -126,7 +127,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),
-                **kwargs
+                **kwargs,
             )
 
             self.meta["sky"] = sky_spectrum

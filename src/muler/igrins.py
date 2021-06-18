@@ -62,6 +62,12 @@ class IGRINSSpectrum(EchelleSpectrum):
 
     def __init__(self, *args, file=None, order=10, cached_hdus=None, **kwargs):
 
+        # TODO: read site name from header!
+        self.site_name = "Gemini South"
+        self.ancillary_spectra = None
+        self.noisy_edges = (450, 1950)
+        self.default_resolution = 45_000.0
+
         if file is not None:
             # Determine the band
             if "SDCH" in file:
@@ -105,46 +111,10 @@ class IGRINSSpectrum(EchelleSpectrum):
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
                 meta=meta_dict,
-                **kwargs
+                **kwargs,
             )
         else:
             super().__init__(*args, **kwargs)
-
-    def normalize(self):
-        """Normalize spectrum by its median value
-
-        Returns
-        -------
-        normalized_spec : (IGRINSSpectrum)
-            Normalized Spectrum
-        """
-        median_flux = np.nanmedian(self.flux)
-
-        return self.divide(median_flux, handle_meta="first_found")
-
-    def remove_nans(self):
-        """Remove data points that have NaN fluxes
-
-        Returns
-        -------
-        finite_spec : (IGRINSSpectrum)
-            Spectrum with NaNs removed
-        """
-        if self.uncertainty is not None:
-            masked_unc = StdDevUncertainty(self.uncertainty.array[~self.mask])
-        else:
-            masked_unc = None
-
-        meta_out = copy.deepcopy(self.meta)
-        meta_out["x_values"] = meta_out["x_values"][~self.mask]
-
-        return IGRINSSpectrum(
-            spectral_axis=self.wavelength[~self.mask],
-            flux=self.flux[~self.mask],
-            mask=self.mask[~self.mask],
-            uncertainty=masked_unc,
-            meta=meta_out,
-        )
 
     def smooth_spectrum(self):
         """Smooth the spectrum using Gaussian Process regression
