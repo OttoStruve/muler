@@ -75,6 +75,7 @@ class HPFSpectrum(EchelleSpectrum):
 
     def __init__(self, *args, file=None, order=19, cached_hdus=None, **kwargs):
 
+        self.site_name = "mcdonald"
         self.ancillary_spectra = ["sky", "lfc"]
         self.noisy_edges = (3, 2045)
         self.instrumental_resolution = 55_000.0
@@ -99,15 +100,11 @@ class HPFSpectrum(EchelleSpectrum):
             flux = hdus[1].data[order].astype(np.float64) * u.ct
             unc = hdus[4].data[order].astype(np.float64) * u.ct
 
-            (barycorr, lfccorr) = self._estimate_barycorr(hdr, pipeline)
-
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
                 "pipeline": pipeline,
                 "m": grating_order,
                 "header": hdr,
-                "BCcorr": barycorr,
-                "LFCcorr": lfccorr,
             }
 
             uncertainty = StdDevUncertainty(unc)
@@ -198,64 +195,23 @@ class HPFSpectrum(EchelleSpectrum):
         """Sky fiber spectrum stored as its own HPFSpectrum object"""
         return self.meta["lfc"]
 
-    def _estimate_barycorr(self, hdr, pipeline):
-        """Estimate the Barycentric Correction from the Date and Target Coordinates
-        
-        Parameters
-        ----------
-        hdr : FITS HDU header
-            The FITS header from either pipeline
-        pipeline:
-            Which HPF pipeline
+    @property
+    def RA(self):
+        """The right ascension from header files"""
+        # TODO: check if this is correct!
+        log.warn("RA Units not verified yet, double check!")
+        return self.meta["header"]["RA"] * u.hourangle
 
-        Returns
-        -------
-        barycentric_corrections : (float, float)
-            Tuple of floats for the barycentric corrections for target and LFC
-        """
-        ## Compute RV shifts
-        time_obs = hdr["DATE-OBS"]
-        obstime = Time(time_obs, format="isot", scale="utc")
-        obstime.format = "jd"
+    @property
+    def DEC(self):
+        """The declination from header files"""
+        return self.meta["header"]["DEC"] * u.deg
 
-        ## TODO: Which is the right RA, Dec to put here?
-        ## QRA and QDEC is also available.  Which is correct?
-        RA = hdr["RA"]
-        DEC = hdr["DEC"]
-
-        if pipeline == "Goldilocks":
-            lfccorr = hdr["LRVCORR"] * u.m / u.s
-        else:
-            lfccorr = 0.0 * u.m / u.s
-
-        loc = EarthLocation.from_geodetic(
-            -104.0147, 30.6814, height=2025.0
-        )  # HET coordinates
-        sc = SkyCoord(ra=RA, dec=DEC, unit=(u.hourangle, u.deg))
-        barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
-        return (barycorr, lfccorr)
-
-    def normalize(self):
-        """Normalize spectrum by its median value
-
-        Returns
-        -------
-        normalized_spec : (HPFSpectrum)
-            Normalized Spectrum
-        """
-        median_flux = np.nanmedian(self.flux)
-
-        # return self.divide(median_flux, handle_meta="first_found")
-        meta_out = copy.deepcopy(self.meta)
-        meta_out["sky"] = meta_out["sky"].divide(median_flux, handle_meta="first_found")
-        meta_out["lfc"] = meta_out["lfc"].divide(median_flux, handle_meta="first_found")
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=self.flux,
-            meta=meta_out,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-        ).divide(median_flux, handle_meta="first_found")
+    @property
+    def astropy_time(self):
+        """The astropy time based on the header"""
+        mjd = self.meta["header"]["DATE-OBS"]
+        return Time(mjd, format="isot", scale="utc")
 
     def sky_subtract(self):
         """Subtract science spectrum from sky spectrum
@@ -269,64 +225,7 @@ class HPFSpectrum(EchelleSpectrum):
         """
         return self.subtract(self.sky, handle_meta="first_found")
 
-    def measure_ew(self, mu):
-        """Measure the equivalent width of a given spectrum
-        
-        Parameters
-        ----------
-        mu : scalar/float
-            The center wavelength of given line
-        
-        Returns
-        -------
-        equivalent width : (scalar)
-        """
-        log.warning("Experimental method")
-
-        from specutils.analysis import equivalent_width
-
-        left_bound = 0.999 * mu * u.Angstrom
-        right_bound = 1.001 * mu * u.Angstrom
-        ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
-
-        # equivalent_width(noisy_gaussian_with_continuum, regions=SpectralRegion(7*u.GHz, 3*u.GHz))
-
-        median_value = np.median(self.flux)
-        print("mu is", mu, "median =", median_value, "the ew is", ew)
-        return ew
-
-    def blaze_divide_spline(self):
-        """Remove blaze function from spectrum by interpolating a spline function
-
-        Note: It is recommended to remove NaNs before running this operation,
-                otherwise edge effects can be appear from zero-padded edges.
-
-        Returns
-        -------
-        blaze corrrected spectrum : (HPFSpectrum)
-        """
-        if np.any(np.isnan(self.flux)):
-            log.warning(
-                "your spectrum contains NaNs, "
-                "it is highly recommended to run `.remove_nans()` before deblazing"
-            )
-
-        spline = UnivariateSpline(self.wavelength, np.nan_to_num(self.flux), k=5)
-        interp_spline = spline(self.wavelength) * self.flux.unit
-
-        no_blaze = self.divide(interp_spline, handle_meta="first_found")
-
-        if "sky" in self.meta.keys():
-            new_sky = self.sky.divide(interp_spline, handle_meta="first_found")
-            no_blaze.meta["sky"] = new_sky
-
-        if "lfc" in self.meta.keys():
-            new_lfc = self.lfc.divide(interp_spline, handle_meta="first_found")
-            no_blaze.meta["lfc"] = new_lfc
-
-        return no_blaze
-
-    def blaze_subtract_flats(self, flat, order=19):
+    def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by subtracting by flat spectrum
 
         Returns
@@ -334,6 +233,7 @@ class HPFSpectrum(EchelleSpectrum):
         blaze corrrected spectrum using flat fields : (HPFSpectrum)
 
         """
+        log.warning("This method is experimental and subject to change")
         new_flux = self.normalize()
 
         flat_wv = flat[0]
@@ -356,246 +256,6 @@ class HPFSpectrum(EchelleSpectrum):
             meta=self.meta,
             mask=self.mask,
         )
-
-    def shift_spec(self, absRV=0):
-        """shift spectrum by barycenter velocity
-
-        Returns
-        -------
-        barycenter corrected Spectrum : (HPFSpectrum)
-        """
-        meta_out = copy.deepcopy(self.meta)
-
-        bcRV = meta_out["BCcorr"]
-        lfcRV = meta_out["LFCcorr"]
-        absRV = absRV * u.m / u.s
-
-        vel = bcRV + lfcRV + absRV
-
-        new_wave = self.wavelength * (1.0 + (vel.value / c.value))
-
-        return HPFSpectrum(
-            spectral_axis=new_wave,
-            flux=self.flux,
-            mask=self.mask,
-            uncertainty=self.uncertainty,
-            meta=meta_out,
-        )
-
-    def remove_nans(self):
-        """Remove data points that have NaN fluxes
-
-        By default the method removes NaN's from target, sky, and lfc fibers.
-
-        Returns
-        -------
-        finite_spec : (HPFSpectrum)
-            Spectrum with NaNs removed
-        """
-
-        def remove_nans_per_spectrum(spectrum):
-            if spectrum.uncertainty is not None:
-                masked_unc = StdDevUncertainty(
-                    spectrum.uncertainty.array[~spectrum.mask]
-                )
-            else:
-                masked_unc = None
-
-            meta_out = copy.deepcopy(spectrum.meta)
-            meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
-
-            return HPFSpectrum(
-                spectral_axis=spectrum.wavelength[~spectrum.mask],
-                flux=spectrum.flux[~spectrum.mask],
-                mask=spectrum.mask[~spectrum.mask],
-                uncertainty=masked_unc,
-                meta=meta_out,
-            )
-
-        new_self = remove_nans_per_spectrum(self)
-        if "sky" in self.meta.keys():
-            new_sky = remove_nans_per_spectrum(self.sky)
-            new_self.meta["sky"] = new_sky
-        if "lfc" in self.meta.keys():
-            new_lfc = remove_nans_per_spectrum(self.lfc)
-            new_self.meta["lfc"] = new_lfc
-
-        return new_self
-
-    def smooth_spectrum(self):
-        """Smooth the spectrum using Gaussian Process regression
-
-        Returns
-        -------
-        smoothed_spec : (HPFSpectrum)
-            Smooth version of input Spectrum
-        """
-        if self.uncertainty is not None:
-            unc = self.uncertainty.array
-        else:
-            unc = np.repeat(np.nanmedian(self.flux.value) / 100.0, len(self.flux))
-
-        kernel = terms.SHOTerm(sigma=0.03, rho=15.0, Q=0.5)
-        gp = celerite2.GaussianProcess(kernel, mean=0.0)
-        gp.compute(self.wavelength)
-
-        # Construct the GP model with celerite
-        def set_params(params, gp):
-            gp.mean = params[0]
-            theta = np.exp(params[1:])
-            gp.kernel = terms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
-            gp.compute(self.wavelength.value, yerr=unc + theta[2], quiet=True)
-            return gp
-
-        def neg_log_like(params, gp):
-            gp = set_params(params, gp)
-            return -gp.log_likelihood(self.flux.value)
-
-        initial_params = [np.log(1), np.log(0.001), np.log(5.0), np.log(0.01)]
-        soln = minimize(neg_log_like, initial_params, method="L-BFGS-B", args=(gp,))
-        opt_gp = set_params(soln.x, gp)
-
-        mean_model = opt_gp.predict(self.flux.value, t=self.wavelength.value)
-
-        meta_out = copy.deepcopy(self.meta)
-        meta_out["x_values"] = meta_out["x_values"][~self.mask]
-
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=mean_model * self.flux.unit,
-            mask=np.zeros_like(mean_model, dtype=np.bool),
-            meta=meta_out,
-        )
-
-    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), **kwargs):
-        """Plot a quick look of the spectrum"
-
-        Parameters
-        ----------
-        ax : `~matplotlib.axes.Axes`
-            A matplotlib axes object to plot into. If no axes is provided,
-            a new one will be generated.
-        ylo : scalar
-            Lower limit of the y axis
-        yhi : scalar
-            Upper limit of the y axis
-        figsize : tuple
-            The figure size for the plot
-        label : str
-            The legend label to for plt.legend()
-
-        Returns
-        -------
-        ax : (`~matplotlib.axes.Axes`)
-            The axis to display and/or modify
-        """
-        if ax is None:
-            fig, ax = plt.subplots(1, figsize=figsize)
-            ax.set_ylim(ylo, yhi)
-            ax.set_xlabel("$\lambda \;(\AA)$")
-            ax.set_ylabel("Flux")
-            ax.step(self.wavelength, self.flux, **kwargs)
-        else:
-            ax.step(self.wavelength, self.flux, **kwargs)
-
-        return ax
-
-    def remove_outliers(self, threshold=5):
-        """Remove outliers above threshold
-
-        Parameters
-        ----------
-        threshold : float
-            The sigma-clipping threshold (in units of sigma)
-
-
-        Returns
-        -------
-        clean_spec : (HPFSpectrum)
-            Cleaned version of input Spectrum
-        """
-        residual = self.flux - self.smooth_spectrum().flux
-        mad = median_abs_deviation(residual.value)
-        mask = np.abs(residual.value) > threshold * mad
-
-        spectrum_out = copy.deepcopy(self)
-        spectrum_out._mask = mask
-        spectrum_out.flux[mask] = np.NaN
-
-        return spectrum_out.remove_nans()
-
-    def trim_edges(self, limits=(450, 1950)):
-        """Trim the order edges, which falloff in SNR
-
-        This method applies limits on absolute x pixel values, regardless
-        of the order of previous destructive operations, which may not
-        be the intended behavior in some applications.
-
-        Parameters
-        ----------
-        limits : tuple
-            The index bounds (lo, hi) for trimming the order
-
-        Returns
-        -------
-        trimmed_spec : (HPFSpectrum)
-            Trimmed version of input Spectrum
-        """
-        lo, hi = limits
-        meta_out = copy.deepcopy(self.meta)
-        x_values = meta_out["x_values"]
-        mask = (x_values < lo) | (x_values > hi)
-
-        if self.uncertainty is not None:
-            masked_unc = StdDevUncertainty(self.uncertainty.array[~mask])
-        else:
-            masked_unc = None
-
-        meta_out["x_values"] = x_values[~mask]
-
-        return HPFSpectrum(
-            spectral_axis=self.wavelength[~mask],
-            flux=self.flux[~mask],
-            mask=self.mask[~mask],
-            uncertainty=masked_unc,
-            meta=meta_out,
-        )
-
-    def estimate_uncertainty(self):
-        """Estimate the uncertainty based on residual after smoothing
-
-
-        Returns
-        -------
-        uncertainty : (np.float)
-            Typical uncertainty
-        """
-        residual = self.flux - self.smooth_spectrum().flux
-        return median_abs_deviation(residual.value)
-
-    def to_HDF5(self, path, file_basename):
-        """Export to spectral order to HDF5 file format
-        This format is required for per-order Starfish input
-
-        Parameters
-        ----------
-        path : str
-            The directory destination for the HDF5 file
-        file_basename : str
-            The basename of the file to which the order number and extension
-            are appended.  Typically source name that matches a database entry.
-        """
-        grating_order = self.meta["m"]
-        out_path = path + "/" + file_basename + "_m{:03d}.hdf5".format(grating_order)
-
-        # The mask should be ones everywhere
-        mask_out = np.ones(len(self.wavelength), dtype=int)
-        f_new = h5py.File(out_path, "w")
-        f_new.create_dataset("fls", data=self.flux.value)
-        f_new.create_dataset("wls", data=self.wavelength.to(u.Angstrom).value)
-        f_new.create_dataset("sigmas", data=self.uncertainty.array)
-        f_new.create_dataset("masks", data=mask_out)
-        f_new.close()
 
 
 class HPFSpectrumList(SpectrumList):
