@@ -59,7 +59,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         self.site_name = "Keck Observatory"
         self.ancillary_spectra = ["sky"]
         self.noisy_edges = (10, 1000)
-        self.default_resolution = 20_000.0
+        self.instrumental_resolution = 20_000.0
 
         if file is not None:
             file_basename = file.split("/")[-1]

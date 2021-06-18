@@ -57,7 +57,7 @@ class IGRINSSpectrum(EchelleSpectrum):
 
         self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
-        self.default_resolution = 45_000.0
+        self.instrumental_resolution = 45_000.0
 
         if file is not None:
             # Determine the band

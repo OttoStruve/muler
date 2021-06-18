@@ -11,6 +11,7 @@ HPFSpectrum
 
 import warnings
 import logging
+from muler.echelle import EchelleSpectrum
 import numpy as np
 import astropy
 from astropy.io import fits
@@ -60,7 +61,7 @@ with warnings.catch_warnings():
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
 
 
-class HPFSpectrum(Spectrum1D):
+class HPFSpectrum(EchelleSpectrum):
     r"""
     A container for HPF spectra
 
@@ -72,16 +73,11 @@ class HPFSpectrum(Spectrum1D):
             If provided, must give both HDUs.  Optional, default is None.
     """
 
-    def __init__(
-        self,
-        *args,
-        file=None,
-        order=19,
-        cached_hdus=None,
-        sky=False,
-        lfc=False,
-        **kwargs
-    ):
+    def __init__(self, *args, file=None, order=19, cached_hdus=None, **kwargs):
+
+        self.ancillary_spectra = ["sky", "lfc"]
+        self.noisy_edges = (3, 2045)
+        self.instrumental_resolution = 55_000.0
 
         if file is not None:
             if "Goldilocks" in file:
@@ -126,7 +122,7 @@ class HPFSpectrum(Spectrum1D):
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
                 meta=meta_dict,
-                **kwargs
+                **kwargs,
             )
 
             ## Sky Spectrum
@@ -144,7 +140,7 @@ class HPFSpectrum(Spectrum1D):
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),
-                **kwargs
+                **kwargs,
             )
 
             ## LFC Spectrum
@@ -162,7 +158,7 @@ class HPFSpectrum(Spectrum1D):
                 wcs=WCS(hdr),
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),
-                **kwargs
+                **kwargs,
             )
 
             ## We could optionally enable lfc and sky metadata for these referece spectra
