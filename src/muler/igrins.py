@@ -26,6 +26,7 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
 import copy
+from muler.echelle import EchelleSpectrum
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
@@ -46,7 +47,7 @@ with warnings.catch_warnings():
 grating_order_offsets = {"H": 98, "K": 71}
 
 
-class IGRINSSpectrum(Spectrum1D):
+class IGRINSSpectrum(EchelleSpectrum):
     r"""
     A container for IGRINS spectra
 
@@ -339,7 +340,7 @@ class IGRINSSpectrumList(SpectrumList):
         file : (str)
             A path to a reduced IGRINS spectrum from plp
         """
-        assert '.spec_a0v.fits' in file
+        assert ".spec_a0v.fits" in file
         hdus = fits.open(file, memmap=False)
         sn_file = file[:-13] + "sn.fits"
         sn_hdus = fits.open(sn_file, memmap=False)
