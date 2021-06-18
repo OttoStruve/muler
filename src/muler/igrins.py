@@ -63,8 +63,6 @@ class IGRINSSpectrum(EchelleSpectrum):
 
     def __init__(self, *args, file=None, order=10, cached_hdus=None, **kwargs):
 
-        # TODO: read site name from header!
-        self.site_name = "Gemini South"
         self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.default_resolution = 45_000.0
@@ -117,6 +115,13 @@ class IGRINSSpectrum(EchelleSpectrum):
             )
         else:
             super().__init__(*args, **kwargs)
+
+    @property
+    def site_name(self):
+        """Which pipeline does this spectrum originate from?"""
+        # TODO: add a check lookup dictionary for other telescopes
+        # to ensure astropy compatibility
+        return self.meta["header"]["TELESCOP"]
 
     @property
     def RA(self):
