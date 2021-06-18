@@ -18,43 +18,22 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
-from scipy.stats import median_abs_deviation
-import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
-
-# from barycorrpy import get_BC_vel
-from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
-
-# from barycorrpy.utils import get_stellar_data
-
-# from specutils.io.registers import data_loader
-from celerite2 import terms
-import celerite2
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-import os
 import copy
-
-from specutils.spectra.spectral_region import SpectralRegion
-from specutils.analysis import equivalent_width
-
 
 log = logging.getLogger(__name__)
 
-#  See Issue: https://github.com/astropy/specutils/issues/779
-warnings.filterwarnings(
-    "ignore", category=astropy.utils.exceptions.AstropyDeprecationWarning
-)
-warnings.filterwarnings("ignore", category=FITSFixedWarning)
-# See Issue: https://github.com/astropy/specutils/issues/800
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+for category in [
+    astropy.utils.exceptions.AstropyDeprecationWarning,
+    FITSFixedWarning,
+    RuntimeWarning,
+]:
+    warnings.filterwarnings("ignore", category=category)
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
-    from specutils import Spectrum1D
     from specutils import SpectrumList
 
 # Convert FITS running index number to echelle order m
