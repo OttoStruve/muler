@@ -17,15 +17,7 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
-from scipy.stats import median_abs_deviation
-import h5py
 
-# from specutils.io.registers import data_loader
-from celerite2 import terms
-import celerite2
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-import os
 import copy
 from muler.echelle import EchelleSpectrum
 
