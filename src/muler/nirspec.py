@@ -14,32 +14,17 @@ import logging
 from muler.echelle import EchelleSpectrum
 import numpy as np
 import astropy
-import pandas as pd
 from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
-from scipy.stats import median_abs_deviation
-import h5py
-from scipy.interpolate import InterpolatedUnivariateSpline
-import specutils
-from specutils.analysis import equivalent_width
-from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 
 # from barycorrpy import get_BC_vel
-from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
 
-from celerite2 import terms
-import celerite2
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
 import os
 import copy
-
-from specutils.spectra.spectral_region import SpectralRegion
-from specutils.analysis import equivalent_width
 
 
 log = logging.getLogger(__name__)
@@ -58,7 +43,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
-    from specutils import Spectrum1D
     from specutils import SpectrumList
 
 
