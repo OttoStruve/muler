@@ -11,7 +11,7 @@ KeckNIRSPECSpectrum
 
 import warnings
 import logging
-from muler.echelle import EchelleSpectrum
+from muler.echelle import EchelleSpectrum, EchelleSpectrumList
 import numpy as np
 import astropy
 from astropy.io import fits
@@ -187,13 +187,14 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             return self
 
 
-class KeckNIRSPECSpectrumList(SpectrumList):
+class KeckNIRSPECSpectrumList(EchelleSpectrumList):
     r"""
     An enhanced container for a list of KeckNIRSPEC spectral orders
 
     """
 
     def __init__(self, *args, **kwargs):
+        # Todo: put Keck NIRSPEC specific content and attributes here
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -209,74 +210,9 @@ class KeckNIRSPECSpectrumList(SpectrumList):
 
         list_out = []
         for i in range(n_orders):
-            assert ".flux_tbl.fits" in files[i]
+            assert (
+                files[i].find("_flux_tbl.fits") != -1
+            ), "{} should be a fits_tbl".format(files[i])
             spec = KeckNIRSPECSpectrum(file=files[i])
             list_out.append(spec)
         return KeckNIRSPECSpectrumList(list_out)
-
-    def normalize(self):
-        """Normalize the all spectra to order 14's median
-        """
-        median_flux = copy.deepcopy(np.nanmedian(self[0].flux))
-        for i in range(len(self)):
-            self[i] = self[i].divide(median_flux, handle_meta="first_found")
-
-        return self
-
-    def remove_nans(self):
-        """Remove all the NaNs
-        """
-        # TODO: is this in-place overriding of self allowed?
-        # May have unintended consequences?
-        # Consider making a copy instead...
-        for i in range(len(self)):
-            self[i] = self[i].remove_nans()
-
-        return self
-
-    def remove_outliers(self, threshold=5):
-        """Remove all the outliers
-
-        Parameters
-        ----------
-        threshold : float
-            The sigma-clipping threshold (in units of sigma)
-        """
-        for i in range(len(self)):
-            self[i] = self[i].remove_outliers(threshold=threshold)
-
-        return self
-
-    def trim_edges(self):
-        """Trim all the edges
-        """
-        for i in range(len(self)):
-            self[i] = self[i].trim_edges()
-
-        return self
-
-    def to_HDF5(self, path, file_basename):
-        """Save all spectral orders to the HDF5 file format
-        """
-        for i in range(len(self)):
-            self[i].to_HDF5(path, file_basename)
-
-    def stitch(self):
-        """Stitch all the spectra together, assuming zero overlap in wavelength.  
-        """
-        log.warning("Experimental method")
-        wls = np.hstack([self[i].wavelength for i in range(len(self))])
-        fluxes = np.hstack([self[i].flux for i in range(len(self))])
-        # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
-        # unc_out = StdDevUncertainty(unc)
-
-        return KeckNIRSPECSpectrum(spectral_axis=wls, flux=fluxes)
-
-    def plot(self, **kwargs):
-        """Plot the entire spectrum list
-        """
-        ax = self[0].plot(figsize=(25, 4), **kwargs)
-        for i in range(1, len(self)):
-            self[i].plot(ax=ax, **kwargs)
-
-        return ax

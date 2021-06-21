@@ -8,6 +8,7 @@ from specutils import Spectrum1D
 import numpy as np
 import glob
 import astropy
+from specutils.spectra.spectrum_list import SpectrumList
 
 local_files = glob.glob("data/NS.*_flux_tbl.fits*")
 file = local_files[5]
@@ -120,3 +121,14 @@ def test_deblaze():
 
     assert new_spec is not None
     assert isinstance(new_spec, Spectrum1D)
+
+
+def test_lists():
+    """Does uncertainty propagation work?"""
+
+    speclist = KeckNIRSPECSpectrumList.read(files=local_files)
+
+    new_speclist = speclist.remove_nans().normalize()
+
+    assert new_speclist is not None
+    assert isinstance(new_speclist, SpectrumList)
