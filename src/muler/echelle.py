@@ -399,16 +399,17 @@ class EchelleSpectrum(Spectrum1D):
 class EchelleSpectrumList(SpectrumList):
     r"""
     An enhanced container for a list of Echelle spectral orders
-
     """
 
     def __init__(self, *args, **kwargs):
+        self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
     def normalize(self, order_index=0):
         """Normalize all orders to one of the other orders
         """
-        median_flux = copy.deepcopy(np.nanmedian(self[order_index].flux))
+        index = self.normalization_order_index
+        median_flux = copy.deepcopy(np.nanmedian(self[index].flux))
         for i in range(len(self)):
             self[i] = self[i].divide(median_flux, handle_meta="first_found")
 

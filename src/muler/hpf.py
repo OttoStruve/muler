@@ -11,7 +11,7 @@ HPFSpectrum
 
 import warnings
 import logging
-from muler.echelle import EchelleSpectrum
+from muler.echelle import EchelleSpectrum, EchelleSpectrumList
 import numpy as np
 import astropy
 from astropy.io import fits
@@ -237,13 +237,14 @@ class HPFSpectrum(EchelleSpectrum):
         )
 
 
-class HPFSpectrumList(SpectrumList):
+class HPFSpectrumList(EchelleSpectrumList):
     r"""
     An enhanced container for a list of HPF spectral orders
 
     """
 
     def __init__(self, *args, **kwargs):
+        self.normalization_order_index = 14
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -258,7 +259,7 @@ class HPFSpectrumList(SpectrumList):
         assert ".spectra.fits" in file
 
         hdus = fits.open(file, memmap=False)
-        cached_hdus = [hdus]  # , sn_hdus]
+        cached_hdus = [hdus]
 
         n_orders, n_pix = hdus[7].data.shape
 
@@ -267,15 +268,6 @@ class HPFSpectrumList(SpectrumList):
             spec = HPFSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
         return HPFSpectrumList(list_out)
-
-    def normalize(self):
-        """Normalize the all spectra to order 14's median
-        """
-        median_flux = copy.deepcopy(np.nanmedian(self[14].flux))
-        for i in range(len(self)):
-            self[i] = self[i].divide(median_flux, handle_meta="first_found")
-
-        return self
 
     # def sky_subtract(self):
     #     """Sky subtract all orders
@@ -286,58 +278,3 @@ class HPFSpectrumList(SpectrumList):
     #         self[i] = flux[i] - sky[i]
 
     #     return self
-
-    def remove_nans(self):
-        """Remove all the NaNs
-        """
-        for i in range(len(self)):
-            self[i] = self[i].remove_nans()
-
-        return self
-
-    def remove_outliers(self, threshold=5):
-        """Remove all the outliers
-
-        Parameters
-        ----------
-        threshold : float
-            The sigma-clipping threshold (in units of sigma)
-        """
-        for i in range(len(self)):
-            self[i] = self[i].remove_outliers(threshold=threshold)
-
-        return self
-
-    def trim_edges(self):
-        """Trim all the edges
-        """
-        for i in range(len(self)):
-            self[i] = self[i].trim_edges()
-
-        return self
-
-    def to_HDF5(self, path, file_basename):
-        """Save all spectral orders to the HDF5 file format
-        """
-        for i in range(len(self)):
-            self[i].to_HDF5(path, file_basename)
-
-    def stitch(self):
-        """Stitch all the spectra together, assuming zero overlap in wavelength.  
-        """
-        log.warning("Experimental method")
-        wls = np.hstack([self[i].wavelength for i in range(len(self))])
-        fluxes = np.hstack([self[i].flux for i in range(len(self))])
-        # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
-        # unc_out = StdDevUncertainty(unc)
-
-        return HPFSpectrum(spectral_axis=wls, flux=fluxes)
-
-    def plot(self, **kwargs):
-        """Plot the entire spectrum list
-        """
-        ax = self[0].plot(figsize=(25, 4), **kwargs)
-        for i in range(1, len(self)):
-            self[i].plot(ax=ax, **kwargs)
-
-        return ax

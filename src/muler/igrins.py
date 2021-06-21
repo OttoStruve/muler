@@ -19,7 +19,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 
 import copy
-from muler.echelle import EchelleSpectrum
+from muler.echelle import EchelleSpectrum, EchelleSpectrumList
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
@@ -132,13 +132,14 @@ class IGRINSSpectrum(EchelleSpectrum):
         return Time(mjd, format="mjd", scale="utc")
 
 
-class IGRINSSpectrumList(SpectrumList):
+class IGRINSSpectrumList(EchelleSpectrumList):
     r"""
     An enhanced container for a list of IGRINS spectral orders
 
     """
 
     def __init__(self, *args, **kwargs):
+        self.normalization_order_index = 14
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -163,56 +164,3 @@ class IGRINSSpectrumList(SpectrumList):
             spec = IGRINSSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
-
-    def normalize(self):
-        """Normalize the all spectra to order 14's median
-        """
-        median_flux = copy.deepcopy(np.nanmedian(self[14].flux))
-        for i in range(len(self)):
-            self[i] = self[i].divide(median_flux, handle_meta="first_found")
-
-        return self
-
-    def remove_nans(self):
-        """Remove all the NaNs
-        """
-        for i in range(len(self)):
-            self[i] = self[i].remove_nans()
-
-        return self
-
-    def remove_outliers(self, threshold=5):
-        """Remove all the outliers
-
-        Parameters
-        ----------
-        threshold : float
-            The sigma-clipping threshold (in units of sigma)
-        """
-        for i in range(len(self)):
-            self[i] = self[i].remove_outliers(threshold=threshold)
-
-        return self
-
-    def trim_edges(self):
-        """Trim all the edges
-        """
-        for i in range(len(self)):
-            self[i] = self[i].trim_edges()
-
-        return self
-
-    def to_HDF5(self, path, file_basename):
-        """Save all spectral orders to the HDF5 file format
-        """
-        for i in range(len(self)):
-            self[i].to_HDF5(path, file_basename)
-
-    def plot(self, **kwargs):
-        """Plot the entire spectrum list
-        """
-        ax = self[0].plot(figsize=(25, 4), **kwargs)
-        for i in range(1, len(self)):
-            self[i].plot(ax=ax, **kwargs)
-
-        return ax

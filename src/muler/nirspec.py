@@ -195,6 +195,7 @@ class KeckNIRSPECSpectrumList(EchelleSpectrumList):
 
     def __init__(self, *args, **kwargs):
         # Todo: put Keck NIRSPEC specific content and attributes here
+        self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
     @staticmethod
