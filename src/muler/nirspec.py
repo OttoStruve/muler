@@ -1,6 +1,6 @@
 r"""
 KeckNIRSPEC Spectrum
----------------
+--------------------
 
 A container for a Keck NIRSPEC high resolution spectrum, for some echelle order :math:`m \in ` out of :math:`M` total orders, each with vectors for wavelength, flux, and uncertainty, e.g. :math:`F_m(\lambda)`.  KeckNIRSPEC already has been sky subtracted, but the subtracted sky signal is contained as the spectrum.sky attribute for reference.
 
