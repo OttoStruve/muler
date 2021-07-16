@@ -41,10 +41,6 @@ warnings.filterwarnings("ignore", category=FITSFixedWarning)
 # See Issue: https://github.com/astropy/specutils/issues/800
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore")
-    from specutils import SpectrumList
-
 
 class KeckNIRSPECSpectrum(EchelleSpectrum):
     r"""

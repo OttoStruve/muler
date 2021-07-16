@@ -32,9 +32,6 @@ for category in [
 ]:
     warnings.filterwarnings("ignore", category=category)
 
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore")
-    from specutils import SpectrumList
 
 # Convert FITS running index number to echelle order m
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
@@ -95,7 +92,7 @@ class HPFSpectrum(EchelleSpectrum):
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
-                wcs=WCS(hdr),
+                wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict,
                 **kwargs,
@@ -113,7 +110,7 @@ class HPFSpectrum(EchelleSpectrum):
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
-                wcs=WCS(hdr),
+                wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),
                 **kwargs,
@@ -131,7 +128,7 @@ class HPFSpectrum(EchelleSpectrum):
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
-                wcs=WCS(hdr),
+                wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),
                 **kwargs,

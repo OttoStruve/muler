@@ -10,6 +10,7 @@ IGRINSSpectrum
 """
 
 import warnings
+from muler.echelle import EchelleSpectrum, EchelleSpectrumList
 from astropy.time import Time
 import numpy as np
 import astropy
@@ -19,7 +20,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 
 import copy
-from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
@@ -29,10 +30,6 @@ warnings.filterwarnings("ignore", category=FITSFixedWarning)
 # See Issue: https://github.com/astropy/specutils/issues/800
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore")
-    from specutils import Spectrum1D
-    from specutils import SpectrumList
 
 # Convert PLP index number to echelle order m
 ## Note that these technically depend on grating temperature
@@ -100,7 +97,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 spectral_axis=lamb.to(u.Angstrom),
                 flux=flux,
                 mask=mask,
-                wcs=WCS(hdr),
+                wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict,
                 **kwargs,
