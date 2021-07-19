@@ -74,8 +74,8 @@ class EchelleSpectrum(Spectrum1D):
 
         Returns
         -------
-        barycentric_corrections : (float, float)
-            Tuple of floats for the barycentric corrections for target and LFC
+        barycentric_corrections : float
+            Barycentric correction for targets in units of m/s
         """
         obstime = self.astropy_time
         loc = EarthLocation.of_site(self.site_name)
@@ -163,7 +163,7 @@ class EchelleSpectrum(Spectrum1D):
         -------
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
-        bcRV = self.estimate_barycorr()
+        bcRV = -1.0 * self.estimate_barycorr()
 
         try:
             self.radial_velocity = bcRV
