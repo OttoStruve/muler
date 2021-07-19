@@ -1,0 +1,33 @@
+name: muler_dev
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.8
+  - numpy
+  - scipy
+  - matplotlib
+  - astropy>=4.0
+  - astroquery
+  - specutils # Manually install the dev version from GitHub
+  - tqdm
+  - pandas
+  - bokeh>=1.0
+  - jupyter
+  - ipython
+  - seaborn
+  - scikit-learn
+  - h5py # needed for `to_hdf5` method
+  - pytest
+  - sphinx # for documentation and testing
+  - nbsphinx # for documentation and testing
+  - numpydoc # for documentation and testing
+  - sphinx-automodapi # for documentation and testing
+  - black
+  - isort
+  - tox
+  - pip
+  - pip:
+      - sphinx-material
+      - twine
+      - celerite2
