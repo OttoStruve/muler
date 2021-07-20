@@ -174,8 +174,6 @@ class HPFSpectrum(EchelleSpectrum):
     @property
     def RA(self):
         """The right ascension from header files"""
-        # TODO: check if this is correct!
-        log.warn("RA Units not verified yet, double check!")
         return self.meta["header"]["RA"] * u.hourangle
 
     @property
