@@ -163,7 +163,7 @@ class EchelleSpectrum(Spectrum1D):
         -------
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
-        bcRV = -1.0 * self.estimate_barycorr()
+        bcRV = +1.0 * self.estimate_barycorr()
 
         try:
             self.radial_velocity = bcRV
