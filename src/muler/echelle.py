@@ -114,12 +114,13 @@ class EchelleSpectrum(Spectrum1D):
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(self.meta)
-        if self.ancillary_spectra is not None:
-            for ancillary_spectrum in self.ancillary_spectra:
-                if ancillary_spectrum in meta_out.keys():
-                    meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                        median_flux, handle_meta="first_found"
-                    )
+        if hasattr(self, "ancillary_spectra"):
+            if self.ancillary_spectra is not None:
+                for ancillary_spectrum in self.ancillary_spectra:
+                    if ancillary_spectrum in meta_out.keys():
+                        meta_out[ancillary_spectrum] = meta_out[
+                            ancillary_spectrum
+                        ].divide(median_flux, handle_meta="first_found")
 
         self.meta = meta_out
         return self.divide(median_flux, handle_meta="first_found")
@@ -167,6 +168,10 @@ class EchelleSpectrum(Spectrum1D):
 
         try:
             self.radial_velocity = bcRV
+            return self._copy(
+                spectral_axis=self.wavelength.value * self.wavelength.unit
+            )
+
         except:
             log.error(
                 "rv shift requires specutils version >= 1.2, you have: {}".format(
@@ -174,7 +179,6 @@ class EchelleSpectrum(Spectrum1D):
                 )
             )
             raise
-        return self
 
     def remove_nans(self):
         """Remove data points that have NaN fluxes
