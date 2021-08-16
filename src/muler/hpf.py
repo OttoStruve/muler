@@ -162,6 +162,12 @@ class HPFSpectrum(EchelleSpectrum):
         return self.meta["pipeline"]
 
     @property
+    def spectrographname(self):
+        """What's the name of the spectrograph?"""
+        return "HPF"
+
+
+    @property
     def sky(self):
         """Sky fiber spectrum stored as its own HPFSpectrum object"""
         return self.meta["sky"]

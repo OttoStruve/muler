@@ -294,6 +294,8 @@ class EchelleSpectrum(Spectrum1D):
             ax.set_ylim(ylo, yhi)
             ax.set_xlabel("$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
+            if hasattr(self, "spectrographname"): 
+                ax.set_title(self.spectrographname + " Spectrum")
             ax.step(self.wavelength, self.flux, **kwargs)
         else:
             ax.step(self.wavelength, self.flux, **kwargs)
