@@ -492,6 +492,7 @@ class HPFSpectrum(Spectrum1D):
             ax.set_ylim(ylo, yhi)
             ax.set_xlabel("$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
+            ax.set_title("HPF Spectrum")
             ax.step(self.wavelength, self.flux, **kwargs)
         else:
             ax.step(self.wavelength, self.flux, **kwargs)
