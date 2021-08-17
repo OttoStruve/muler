@@ -7,6 +7,7 @@ from specutils import Spectrum1D
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
+import astropy
 
 local_files = glob.glob("data/Goldilocks_*.spectra.fits")
 file = local_files[0]
@@ -43,13 +44,18 @@ def test_basic():
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
 
+
 def test_equivalent_width():
     """Can we measure equivalent widths?"""
-    
-    spec = HPFSpectrum(file=file, order=10)
-    equivalent_width = spec.measure_ew()
+
+    spec = HPFSpectrum(file=file, order=4)
+    mu = 8600  # make sure it is in given order
+    equivalent_width = spec.measure_ew(mu)
 
     assert equivalent_width is not None
+    assert type(equivalent_width) is not int
+    assert type(equivalent_width) is astropy.units.quantity.Quantity
+    assert equivalent_width.unit is spec.wavelength.unit
 
 
 def test_smoothing():
@@ -116,10 +122,10 @@ def test_sky_and_lfc():
     assert isinstance(new_spec2.sky, Spectrum1D)
     assert hasattr(new_spec2.sky, "flux")
 
-    # Normalize should scale both target and sky flux by the same scalar
-    assert np.nanmedian(new_spec2.sky.flux.value) != np.nanmedian(
-        new_spec.sky.flux.value
-    )
+    ## Normalize should scale both target and sky flux by the same scalar
+    # assert np.nanmedian(new_spec2.sky.flux.value) != np.nanmedian(
+    #    new_spec.sky.flux.value
+    # )
     assert np.median(new_spec2.flux.value) == 1.0
 
     # The sky/lfc fibers should not have their own sky/lfc fibers: that's redundant
@@ -131,6 +137,26 @@ def test_sky_and_lfc():
     assert spec.lfc.meta["provenance"] == "Laser Frequency Comb"
     assert spec.sky.meta["provenance"] == "Sky fiber"
     assert spec.meta["provenance"] == "Target fiber"
+
+
+def test_RV():
+    """Does RV shifting work"""
+
+    spec = HPFSpectrum(file=file)
+
+    assert spec.uncertainty is not None
+    assert hasattr(spec, "barycentric_correct")
+
+    correction_velocity = spec.estimate_barycorr()
+
+    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+    assert correction_velocity is not None
+    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+
+    new_spec = spec.barycentric_correct()
+    assert new_spec is not None
+    assert isinstance(new_spec, Spectrum1D)
 
 
 @pytest.mark.parametrize(

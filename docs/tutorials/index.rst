@@ -13,3 +13,5 @@ Getting started
 
 
    Manipulate all spectral orders at once <All_spectral_orders.ipynb>
+
+   Combining uncertainties with specutils <Combining_uncertainties_with_specutils.ipynb>
