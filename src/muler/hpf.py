@@ -22,6 +22,10 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.time import Time
 import copy
+from importlib_resources import files
+from specutils.spectra.spectrum1d import Spectrum1D
+from . import templates
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -166,7 +170,6 @@ class HPFSpectrum(EchelleSpectrum):
         """What's the name of the spectrograph?"""
         return "HPF"
 
-
     @property
     def sky(self):
         """Sky fiber spectrum stored as its own HPFSpectrum object"""
@@ -192,6 +195,29 @@ class HPFSpectrum(EchelleSpectrum):
         """The astropy time based on the header"""
         mjd = self.meta["header"]["DATE-OBS"]
         return Time(mjd, format="isot", scale="utc")
+
+    def get_static_blaze_template(self, method="Goldilocks"):
+        """Get the static blaze template for HPF, as estimated by Goldilocks
+        
+        Parameters
+        ----------
+        file : (str)
+            A path to a reduced HPF spectrum from plp
+        method : (Str)
+            Either "Goldilocks" or "2021_median" (default: Goldilocks)
+        """
+        type_dict = {"Goldilocks": "blaze_Goldilocks", "2021_median": "blaze_2021"}
+        assert method in type_dict.keys()
+        blaze_type = type_dict[method]
+
+        source = files(templates).joinpath("HPF_blaze_templates.csv")
+        df = pd.read_csv(source)
+
+        # Watch out! Some HPFSpectrum methods *will not work* on this calibration spectrum!
+        return HPFSpectrum(
+            spectral_axis=df.wavelength_Angstrom.values * u.Angstrom,
+            flux=df[blaze_type].values * u.dimensionless_unscaled,
+        )
 
     def sky_subtract(self):
         """Subtract science spectrum from sky spectrum
