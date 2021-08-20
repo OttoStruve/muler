@@ -23,7 +23,7 @@ from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.time import Time
 import copy
 from importlib_resources import files
-from specutils.spectra.spectrum1d import Spectrum1D
+from specutils.manipulation import FluxConservingResampler
 from . import templates
 import pandas as pd
 
@@ -219,6 +219,27 @@ class HPFSpectrum(EchelleSpectrum):
             flux=df[blaze_type].values * u.dimensionless_unscaled,
         )
 
+    def _deblaze_by_template(self):
+        """Deblazing with a template-based method"""
+        blaze_template = self.get_static_blaze_template(method="Goldilocks")
+        resampler = FluxConservingResampler()
+        resampled_blaze = resampler(blaze_template, self.wavelength)
+        return self.divide(resampled_blaze, handle_meta="first_found")
+
+    def deblaze(self, method="template"):
+        """Override the default spline deblazing with HPF-custom blaze templates.
+        
+        Parameters
+        ----------
+        method : (Str)
+            Either "template" or "spline" (default: template)
+        """
+        if method == "template":
+            return self._deblaze_by_template()
+        else:
+            log.error("This method is deprecated!  Please use the new deblaze method")
+            raise NotImplementedError
+
     def sky_subtract(self):
         """Subtract science spectrum from sky spectrum
 
@@ -229,39 +250,21 @@ class HPFSpectrum(EchelleSpectrum):
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
+        log.warning(
+            "This method is known to oversubtract the sky.  Please see GitHub Issues for more info."
+        )
         return self.subtract(self.sky, handle_meta="first_found")
 
     def blaze_divide_flats(self, flat, order=19):
-        """Remove blaze function from spectrum by subtracting by flat spectrum
+        """Remove blaze function from spectrum by dividing by flat spectrum
 
         Returns
         -------
         blaze corrrected spectrum using flat fields : (HPFSpectrum)
 
         """
-        log.warning("This method is experimental and subject to change")
-        new_flux = self.normalize()
-
-        flat_wv = flat[0]
-        flat_flux = flat[1]
-        if len(flat) == 2:
-            flat_err = flat[2]
-
-        master_flat = flat_flux[order] / np.nanmedian(flat_flux[order])
-
-        flat_spline = InterpolatedUnivariateSpline(
-            flat_wv[order], np.nan_to_num(master_flat), k=5
-        )
-        interp_flat = flat_spline(self.wavelength)
-
-        no_flat = new_flux / interp_flat
-
-        return HPFSpectrum(
-            spectral_axis=self.wavelength,
-            flux=no_flat.flux,
-            meta=self.meta,
-            mask=self.mask,
-        )
+        log.warning("This method is deprecated!  Please use the new deblaze method")
+        raise NotImplementedError
 
 
 class HPFSpectrumList(EchelleSpectrumList):
