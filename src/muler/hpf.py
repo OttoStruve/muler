@@ -236,7 +236,7 @@ class HPFSpectrum(EchelleSpectrum):
             meta=self.meta,
             mask=self.mask,
         )
-
+##to do: adding telluric correction
 
 class HPFSpectrumList(EchelleSpectrumList):
     r"""
