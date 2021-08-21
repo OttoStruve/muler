@@ -23,7 +23,7 @@ from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.time import Time
 import copy
 from importlib_resources import files
-from specutils.manipulation import FluxConservingResampler
+from specutils.manipulation import LinearInterpolatedResampler
 from . import templates
 import pandas as pd
 
@@ -39,6 +39,10 @@ for category in [
 
 # Convert FITS running index number to echelle order m
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
+
+# Blaze function template
+static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
+STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 
 
 class HPFSpectrum(EchelleSpectrum):
@@ -210,19 +214,17 @@ class HPFSpectrum(EchelleSpectrum):
         assert method in type_dict.keys()
         blaze_type = type_dict[method]
 
-        source = files(templates).joinpath("HPF_blaze_templates.csv")
-        df = pd.read_csv(source)
-
         # Watch out! Some HPFSpectrum methods *will not work* on this calibration spectrum!
         return HPFSpectrum(
-            spectral_axis=df.wavelength_Angstrom.values * u.Angstrom,
-            flux=df[blaze_type].values * u.dimensionless_unscaled,
+            spectral_axis=STATIC_BLAZE_DATAFRAME.wavelength_Angstrom.values
+            * u.Angstrom,
+            flux=STATIC_BLAZE_DATAFRAME[blaze_type].values * u.dimensionless_unscaled,
         )
 
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
         blaze_template = self.get_static_blaze_template(method="Goldilocks")
-        resampler = FluxConservingResampler()
+        resampler = LinearInterpolatedResampler()
         resampled_blaze = resampler(blaze_template, self.wavelength)
         return self.divide(resampled_blaze, handle_meta="first_found")
 
@@ -298,6 +300,14 @@ class HPFSpectrumList(EchelleSpectrumList):
             spec = HPFSpectrum(file=file, order=i, cached_hdus=cached_hdus)
             list_out.append(spec)
         return HPFSpectrumList(list_out)
+
+    def deblaze(self):
+        """Deblaze the entire spectrum"""
+        spec_out = copy.copy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].deblaze()
+
+        return spec_out
 
     # def sky_subtract(self):
     #     """Sky subtract all orders
