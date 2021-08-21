@@ -24,6 +24,8 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
+from astropy.modeling.physical_models import BlackBody
+import specutils
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -124,6 +126,26 @@ class EchelleSpectrum(Spectrum1D):
 
         self.meta = meta_out
         return self.divide(median_flux, handle_meta="first_found")
+
+    def flatten_by_black_body(self, Teff):
+        """Flatten the spectrum by a scaled black body, usually after deblazing
+        Note: This method applies mostly to high-bandwidth stellar spectra.
+
+        Parameters
+        ----------
+        Teff : float
+            The effective temperature of the black body in Kelvin units
+        """
+        blackbody = BlackBody(temperature=Teff * u.K)(self.wavelength)
+        blackbody = blackbody / np.mean(blackbody)
+        wl_scaled = self.wavelength
+        wl_scaled = wl_scaled / np.median(wl_scaled)
+        try:
+            return self.divide(blackbody / wl_scaled ** 2, handle_meta="first_found")
+        except u.UnitConversionError:
+            return self.divide(
+                blackbody / wl_scaled ** 2 * self.unit, handle_meta="first_found"
+            )
 
     def deblaze(self, method="spline"):
         """Remove blaze function from spectrum by interpolating a spline function
@@ -445,13 +467,37 @@ class EchelleSpectrumList(SpectrumList):
 
         return self
 
-    def trim_edges(self):
+    def trim_edges(self, limits=None):
         """Trim all the edges
         """
         for i in range(len(self)):
-            self[i] = self[i].trim_edges()
+            self[i] = self[i].trim_edges(limits)
 
         return self
+
+    def flatten_by_black_body(self, Teff):
+        """Flatten by black body"""
+        spec_out = copy.copy(self)
+        index = self.normalization_order_index
+        median_wl = copy.deepcopy(np.nanmedian(self[index].wavelength))
+
+        blackbody_func = BlackBody(temperature=Teff * u.K)
+        blackbody_ref = blackbody_func(median_wl)
+
+        for i in range(len(spec_out)):
+            blackbody = (
+                blackbody_func(spec_out[i].wavelength)
+                / blackbody_ref
+                / (spec_out[i].wavelength / median_wl) ** 2
+            )
+            try:
+                spec_out[i] = spec_out[i].divide(blackbody, handle_meta="first_found")
+            except u.UnitConversionError:
+                spec_out[i] = spec_out[i].divide(
+                    blackbody * self.unit, handle_meta="first_found"
+                )
+
+        return spec_out
 
     def to_HDF5(self, path, file_basename):
         """Save all spectral orders to the HDF5 file format
