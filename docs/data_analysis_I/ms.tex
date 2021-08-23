@@ -1,0 +1,78 @@
+\documentclass[modern]{aastex631}
+\bibliographystyle{aasjournal}
+
+% \usepackage{fontspec}
+% \usepackage[T1]{fontenc}
+% \usepackage{newtxsf}
+% \setmainfont{Fira Sans Book}[Scale=1.0]
+
+\usepackage[caption=false]{subfig}
+\usepackage{booktabs}
+
+\begin{document}
+\shorttitle{Echelle Spectroscopy API}
+\shortauthors{Gully-Santiago et al. }
+\title{An Application Programming Interface for Echelle Spectroscopy}
+
+\author{Michael Gully-Santiago}
+\affiliation{University of Texas at Austin Department of Astronomy}
+
+\author{TBD}
+\affiliation{TBD}
+
+
+\begin{abstract}
+
+Modern \'echelle spectrographs produce information-rich echellograms that undergo standard reduction procedures to produce extracted 1D spectra, typically chunked into echelle orders.  The final post-processing steps for echelle orders are often left to the end-user scientists, since the order of opertations and algorithm choice may depend on the scientific application.  These steps---while uncontroversial and routine---act as a barrier to entry to newcomers, and act as a tax on scientific innovation since teams have to re-invent the wheel to overcome implementation complexity, before getting to the already inherently complex scientific enterprise.  Here we assemble a collection of standard post-processing algorithms into a single easy-to-use Application Programming Interface (API).  The open source permissively licensed Python 3 implementation \texttt{muler} lowers the barrier to entry and accelerates the investigation of astronomical spectra.  The framework currently supports data from the HPF, Keck NIRSPEC, and IGRINS spectrographs, and is extensible to others.
+
+\end{abstract}
+
+\keywords{High resolution spectroscopy (2096)}
+
+\section{Introduction}\label{sec:intro}
+
+Here is an annotated bibliography.
+
+\begin{deluxetable}{chc}
+  \tablecaption{Annotated bibliography for intro\label{table1}}
+  \tablehead{
+  \colhead{Reference} & \nocolhead{two} & \colhead{Key idea}
+  }
+  \startdata
+  \citet{czekala15} & - & \texttt{Starfish} \\
+  \citet{gullysantiago17} & - & Starfish modified for mixture models\\
+  \citet{2019AJ....158..164B} & - & \texttt{wobble} \\
+  Barentsen et al. & - & \texttt{lightkurve} \\
+  \enddata
+\end{deluxetable}
+
+\newpage
+
+\begin{acknowledgements}
+
+The authors acknowledge the Texas Advanced Computing Center (TACC, \url{http://www.tacc.utexas.edu}) at The University of Texas at Austin for providing HPC resources that have contributed to the research results reported within this paper.
+\end{acknowledgements}
+
+\clearpage
+
+
+\facilities{HET (HPF), IGRINS (Gemini South), NIRSPEC (Keck)}
+
+\software{  pandas \citep{mckinney10, reback2020pandas},
+  emcee \citep{foreman13},
+  matplotlib \citep{hunter07},
+  astroplan \citep{astroplan2018},
+  astropy \citep{exoplanet:astropy13,exoplanet:astropy18},
+  exoplanet \citep{exoplanet:exoplanet},
+  numpy \citep{harris2020array},
+  scipy \citep{jones01},
+  ipython \citep{perez07},
+  starfish \citep{czekala15},
+  bokeh \citep{bokehcite},
+  seaborn \citep{waskom14},
+  pytorch \citep{NEURIPS2019_9015}} % No pytorch yet!
+
+
+\bibliography{ms}
+
+\end{document}
