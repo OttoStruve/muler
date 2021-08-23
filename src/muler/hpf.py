@@ -48,6 +48,9 @@ STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
 STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 
+static_telluric_file =  files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
+STATIC_TELLURIC_DATAFRAME = pd.read_csv(static_telluric_file)
+
 
 class HPFSpectrum(EchelleSpectrum):
     r"""
@@ -243,7 +246,14 @@ class HPFSpectrum(EchelleSpectrum):
         method : (Str)
             Either "Vega" or "PHOENIX" (default: PHOENIX)
         """
-        raise NotImplementedError
+        if method=='PHOENIX':
+
+            return HPFSpectrum(spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * 
+                u.Angstrom,flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
+                )
+        elif method=='Gollum':
+
+            raise NotImplementedError
 
 
     def _deblaze_by_template(self):
