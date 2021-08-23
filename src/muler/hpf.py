@@ -206,11 +206,9 @@ class HPFSpectrum(EchelleSpectrum):
 
     def get_static_blaze_template(self, method="Goldilocks"):
         """Get the static blaze template for HPF, as estimated by Goldilocks
-        
+
         Parameters
         ----------
-        file : (str)
-            A path to a reduced HPF spectrum from plp
         method : (Str)
             Either "Goldilocks" or "2021_median" (default: Goldilocks)
         """
@@ -225,6 +223,7 @@ class HPFSpectrum(EchelleSpectrum):
             flux=STATIC_BLAZE_DATAFRAME[blaze_type].values * u.dimensionless_unscaled,
         )
 
+
     def get_static_sky_ratio_template(self):
         """Get the static sky ratio template for HPF, as estimated from twilight flats
         """
@@ -236,6 +235,17 @@ class HPFSpectrum(EchelleSpectrum):
             * u.dimensionless_unscaled,
         )
 
+    def get_static_A0V_template(self, method="PHOENIX"):
+        """Get the static A0V template for HPF, as estimated by either Vega or PHOENIX
+
+        Parameters
+        ----------
+        method : (Str)
+            Either "Vega" or "PHOENIX" (default: PHOENIX)
+        """
+        raise NotImplementedError
+
+
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
         blaze_template = self.get_static_blaze_template(method="Goldilocks")
@@ -245,7 +255,7 @@ class HPFSpectrum(EchelleSpectrum):
 
     def deblaze(self, method="template"):
         """Override the default spline deblazing with HPF-custom blaze templates.
-        
+
         Parameters
         ----------
         method : (Str)
@@ -293,6 +303,7 @@ class HPFSpectrum(EchelleSpectrum):
         # These steps should propagate uncertainty?
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
+
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
