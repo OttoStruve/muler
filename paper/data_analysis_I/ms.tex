@@ -137,7 +137,7 @@ We resample the mean blaze function to the observed wavelength grid to preserve 
 
 
 \subsection{Standardizing telluric standards}
-Most near-infrared spectral observing strategies include A0V standard star observations at some point during the course of observations, and typically at least once per night.  These typically A0V standard stars possess relatively few spectral features, with smooth undulations from Hydrogen lines.  The spectrum of these A0V stars is known extremely well due to their simplicity, and we therefore possess excellent theoretical estimators $\mathbf{\hat{f}}_{\mathrm{A0V,\;template}}$ that we will refer to as ``templates'', where scare quotes are intended to foreshadow the imperfect nature of these ostensibly static vectors.  After sky subtraction, all other instrumental signals are assumed to be \emph{multiplicative}.  You can therefore determine the wavelength-dependent instrumental response $\mathbf{r}_\{mathrm{inst}}$ by computing the ratio of sky-subtracted A0V spectrum to expected A0V template spectrum:
+Most near-infrared spectral observing strategies include A0V standard star observations at some point during the course of observations, and typically at least once per night.  These typically A0V standard stars possess relatively few spectral features, with smooth undulations from Hydrogen lines.  The spectrum of these A0V stars is known extremely well due to their simplicity, and we therefore possess excellent theoretical estimators $\mathbf{\hat{f}}_{\mathrm{A0V,\;template}}$ that we will refer to as ``templates'', where scare quotes are intended to foreshadow the imperfect nature of these ostensibly static vectors.  After sky subtraction, all other instrumental signals are assumed to be \emph{multiplicative}.  You can therefore determine the wavelength-dependent instrumental response $\mathbf{r}_{\mathrm{inst}}$ by computing the ratio of sky-subtracted A0V spectrum to expected A0V template spectrum:
 
 \begin{equation}
   \mathbf{r}_{\mathrm{inst}} = \frac{\mathbf{f}_{\mathrm{A0V,\;sky-free}}}{\mathbf{\hat{f}}_{\mathrm{A0V,\;template}}}
@@ -146,10 +146,10 @@ Most near-infrared spectral observing strategies include A0V standard star obser
 Equipped with this instrumental response, we can hypothetically correct an observed, sky-subtracted science target spectrum with and element-wise multiplication:
 
 \begin{equation}
-  \mathbf{f}_{\mathrm{\star}} = \mathbf{f}_{\mathrm{\star,\;sky-free}} \odot \mathbf{r}_{\mathrm{inst}}
+  \mathbf{f}_{\mathrm{\star}} = \mathbf{f}_{\mathrm{\star,\;sky-free}} \oslash \mathbf{r}_{\mathrm{inst}}
 \end{equation}
 
-where $\odot$ represents the element-wise multiplication of vectors, that yields a vector of the same length $N$.  A few problems arise from this assumption, rank ordered below:
+where $\oslash$ represents the element-wise division of vectors, that yields a vector of the same length $N$.  A few problems arise from this assumption, rank ordered below:
 
 \begin{enumerate}
   \item The A0V standard star and target star $\star$ are acquired at different times and locations, and may therefore probe an atmospheric column with different total airmass, temperature-pressure profile, composition (\emph{i.e.} humidity), and cloud coverage.
