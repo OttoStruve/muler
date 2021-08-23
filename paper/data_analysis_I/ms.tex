@@ -137,7 +137,11 @@ We resample the mean blaze function to the observed wavelength grid to preserve 
 
 
 \subsection{Standardizing telluric standards}
-TBD
+Most near-infrared spectral observing strategies include A0V standard star observations at some point during the course of observations, and typically at least once per night.  These typically A0V standard stars possess relatively few spectral features, with smooth undulations from Hydrogen lines.  The spectrum of these A0V stars is known extremely well due to their simplicity, and we therefore possess excellent theoretically templates.  You can therefore determine the instrumental response by computing the ratio of observed spectrum to expected template spectrum:
+
+\begin{equation}
+  R_I = \frac{f_{\mathrm{A0V,\;obs}}}{f_{\mathrm{A0V,\;template}}}
+\end{equation}
 
   
 \begin{acknowledgements}
