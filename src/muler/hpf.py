@@ -242,20 +242,38 @@ class HPFSpectrum(EchelleSpectrum):
             log.error("This method is deprecated!  Please use the new deblaze method")
             raise NotImplementedError
 
-    def sky_subtract(self):
-        """Subtract science spectrum from sky spectrum
+    def sky_subtract(self, method="scalar"):
+        """Subtract sky spectrum from science spectrum, with refinements for sky throughput
 
         Note: This operation does not wavelength shift or scale the sky spectrum
+
+        Parameters
+        ----------
+        method : (str)
+            The method for sky subtraction: "naive", "scalar", or "vector", as described in
+            Gully-Santiago et al. in prep.  Default is scalar.
 
         Returns
         -------
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
-        log.warning(
-            "This method is known to oversubtract the sky.  Please see GitHub Issues for more info."
-        )
-        return self.subtract(self.sky, handle_meta="first_found")
+
+        if method == "naive":
+            log.warning(
+                "This method is known to oversubtract the sky, see GitHub Issues."
+            )
+            beta = 1.0
+        elif method == "scalar":
+            beta = 0.93
+        elif method == "vector":
+            log.error("Feature under development, this code is just a placeholder")
+            beta = np.ones(len(self.flux)) * 0.93
+        else:
+            log.error("Method must be one of 'naive', 'scalar' or 'vector'. ")
+            raise NotImplementedError
+
+        return self.subtract(self.sky * beta, handle_meta="first_found")
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
