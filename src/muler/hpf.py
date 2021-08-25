@@ -40,6 +40,10 @@ for category in [
 # Convert FITS running index number to echelle order m
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
 
+# Science-to-sky throughput ratio template
+static_sky_ratio_file = files(templates).joinpath("HPF_sci_to_sky_ratio_beta.csv")
+STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
+
 # Blaze function template
 static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
 STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
@@ -221,6 +225,17 @@ class HPFSpectrum(EchelleSpectrum):
             flux=STATIC_BLAZE_DATAFRAME[blaze_type].values * u.dimensionless_unscaled,
         )
 
+    def get_static_sky_ratio_template(self):
+        """Get the static sky ratio template for HPF, as estimated from twilight flats
+        """
+
+        # Watch out! Some HPFSpectrum methods *will not work* on this calibration spectrum!
+        return HPFSpectrum(
+            spectral_axis=STATIC_SKY_RATIO_DATAFRAME.wave_Ang.values * u.Angstrom,
+            flux=STATIC_SKY_RATIO_DATAFRAME.beta_estimator.values
+            * u.dimensionless_unscaled,
+        )
+
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
         blaze_template = self.get_static_blaze_template(method="Goldilocks")
@@ -242,20 +257,42 @@ class HPFSpectrum(EchelleSpectrum):
             log.error("This method is deprecated!  Please use the new deblaze method")
             raise NotImplementedError
 
-    def sky_subtract(self):
-        """Subtract science spectrum from sky spectrum
+    def sky_subtract(self, method="scalar"):
+        """Subtract sky spectrum from science spectrum, with refinements for sky throughput
 
         Note: This operation does not wavelength shift or scale the sky spectrum
+
+        Parameters
+        ----------
+        method : (str)
+            The method for sky subtraction: "naive", "scalar", or "vector", as described in
+            Gully-Santiago et al. in prep.  Default is scalar.
 
         Returns
         -------
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
-        log.warning(
-            "This method is known to oversubtract the sky.  Please see GitHub Issues for more info."
-        )
-        return self.subtract(self.sky, handle_meta="first_found")
+
+        if method == "naive":
+            log.warning(
+                "This method is known to oversubtract the sky, see GitHub Issues."
+            )
+            beta = 1.0
+        elif method == "scalar":
+            beta = 0.93
+        elif method == "vector":
+            log.error("Experimental feature, report any Issues on GitHub")
+            beta_native_spectrum = self.get_static_sky_ratio_template()
+            resampler = LinearInterpolatedResampler(extrapolation_treatment="zero_fill")
+            beta = resampler(beta_native_spectrum, self.spectral_axis)
+        else:
+            log.error("Method must be one of 'naive', 'scalar' or 'vector'. ")
+            raise NotImplementedError
+
+        # These steps should propagate uncertainty?
+        sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
+        return self.subtract(sky_estimator, handle_meta="first_found")
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
