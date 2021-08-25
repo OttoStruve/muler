@@ -48,7 +48,7 @@ STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
 STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 
-static_telluric_file =  files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
+static_telluric_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
 STATIC_TELLURIC_DATAFRAME = pd.read_csv(static_telluric_file)
 
 
@@ -226,7 +226,6 @@ class HPFSpectrum(EchelleSpectrum):
             flux=STATIC_BLAZE_DATAFRAME[blaze_type].values * u.dimensionless_unscaled,
         )
 
-
     def get_static_sky_ratio_template(self):
         """Get the static sky ratio template for HPF, as estimated from twilight flats
         """
@@ -246,15 +245,15 @@ class HPFSpectrum(EchelleSpectrum):
         method : (Str)
             Either "Vega" or "PHOENIX" (default: PHOENIX)
         """
-        if method=='PHOENIX':
+        if method == "PHOENIX":
 
-            return HPFSpectrum(spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * 
-                u.Angstrom,flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
-                )
-        elif method=='Gollum':
+            return HPFSpectrum(
+                spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * u.Angstrom,
+                flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
+            )
+        elif method == "Gollum":
 
             raise NotImplementedError
-
 
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
@@ -298,9 +297,9 @@ class HPFSpectrum(EchelleSpectrum):
             log.warning(
                 "This method is known to oversubtract the sky, see GitHub Issues."
             )
-            beta = 1.0
+            beta = 1.0 * u.dimensionless_unscaled
         elif method == "scalar":
-            beta = 0.93
+            beta = 0.93 * u.dimensionless_unscaled
         elif method == "vector":
             log.error("Experimental feature, report any Issues on GitHub")
             beta_native_spectrum = self.get_static_sky_ratio_template()
@@ -313,7 +312,6 @@ class HPFSpectrum(EchelleSpectrum):
         # These steps should propagate uncertainty?
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
-
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
