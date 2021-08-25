@@ -23,6 +23,9 @@ HPF Examples
 
    Refined Sky Subtraction <refined_sky_subtraction.ipynb>
 
+   Telluric correction with muler and gollum <telluric_correction_with_gollum.ipynb>
+
+   
 
 Concepts
 ########
