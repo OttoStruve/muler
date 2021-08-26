@@ -25,6 +25,8 @@ HPF Examples
 
    Telluric correction with muler and gollum <telluric_correction_with_gollum.ipynb>
 
+   Precision Sky Subtraction with Blank Sky Observations <blank_sky_observations.ipynb>
+
    
 
 Concepts
