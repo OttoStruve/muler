@@ -365,6 +365,14 @@ class HPFSpectrumList(EchelleSpectrumList):
 
         return spec_out
 
+    def sky_subtract(self):
+        """Deblaze the entire spectrum"""
+        spec_out = copy.copy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].sky_subtract(method="vector")
+
+        return spec_out
+
     # def sky_subtract(self):
     #     """Sky subtract all orders
     #     """
