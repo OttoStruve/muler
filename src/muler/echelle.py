@@ -150,8 +150,8 @@ class EchelleSpectrum(Spectrum1D):
     def deblaze(self, method="spline"):
         """Remove blaze function from spectrum by interpolating a spline function
 
-        Note: It is recommenedgeded to remove NaNs before running this operation,
-                otherwise  effects can be appear from zero-padded edges.
+                Note: It is recommended to remove NaNs before running this operation,
+                otherwise edge effects can be appear from zero-padded edges.
 
         Returns
         -------
