@@ -150,8 +150,8 @@ class EchelleSpectrum(Spectrum1D):
     def deblaze(self, method="spline"):
         """Remove blaze function from spectrum by interpolating a spline function
 
-        Note: It is recommended to remove NaNs before running this operation,
-                otherwise edge effects can be appear from zero-padded edges.
+        Note: It is recommenedgeded to remove NaNs before running this operation,
+                otherwise  effects can be appear from zero-padded edges.
 
         Returns
         -------
@@ -475,9 +475,21 @@ class EchelleSpectrumList(SpectrumList):
 
         return self
 
+    def deblaze(self, method="spline"):
+        """Remove blaze function from all orders by interpolating a spline function
+
+        Note: It is recommenedgeded to remove NaNs before running this operation,
+                otherwise  effects can be appear from zero-padded edges.
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].deblaze(method=method)
+        return spec_out
+
+
     def flatten_by_black_body(self, Teff):
         """Flatten by black body"""
-        spec_out = copy.copy(self)
+        spec_out = copy.deepcopy(self)
         index = self.normalization_order_index
         median_wl = copy.deepcopy(np.nanmedian(self[index].wavelength))
 
@@ -524,3 +536,35 @@ class EchelleSpectrumList(SpectrumList):
             self[i].plot(ax=ax, **kwargs)
 
         return ax
+
+    def __add__(self, other):
+        """Bandmath addition
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i] + other[i]
+        return spec_out
+
+    def __sub__(self, other):
+        """Bandmath subtraction
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i] - other[i]
+        return spec_out
+
+    def __mul__(self, other):
+        """Bandmath multiplication
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i] * other[i]
+        return spec_out
+
+    def __truediv__(self, other):
+        """Bandmath division
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i] / other[i]
+        return spec_out
