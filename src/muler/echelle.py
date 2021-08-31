@@ -508,7 +508,6 @@ class EchelleSpectrumList(SpectrumList):
     def stitch(self):
         """Stitch all the spectra together, assuming zero overlap in wavelength.  
         """
-        log.warning("Experimental method")
         wls = np.hstack([self[i].wavelength for i in range(len(self))])
         fluxes = np.hstack([self[i].flux for i in range(len(self))])
         # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
