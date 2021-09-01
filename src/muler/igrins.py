@@ -44,23 +44,24 @@ class IGRINSSpectrum(EchelleSpectrum):
     Args:
         file (str): A path to a reduced IGRINS spectrum from plp of file type .spec.fits
             or .spec_a0v.fits.
-        wavefile (str):  A path to a reduced IGRINS spectrum storing the wavelength solution
-            of file type .wave.fits.
         order (int): which spectral order to read
         cached_hdus (list) :
             List of two or three fits HDUs, one for the spec.fits/spec_a0v.fits, one for the
             sn.fits file, and one optional one for the .wave.fits file
             to reduce file I/O for multiorder access.
             If provided, must give both (or three) HDUs.  Optional, default is None.
+        wavefile (str):  A path to a reduced IGRINS spectrum storing the wavelength solution
+            of file type .wave.fits.
     """
 
-    def __init__(self, *args, file=None, wavefile=None, order=10, cached_hdus=None, **kwargs):
+    def __init__(self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs):
 
         self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
 
         if file is not None:
+            assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
             # Determine the band
             if "SDCH" in file:
                 band = "H"
@@ -70,7 +71,10 @@ class IGRINSSpectrum(EchelleSpectrum):
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
 
-            sn_file = file[19] + "sn.fits"
+            if ".spec_a0v.fits" in file:
+                sn_file = file[:-13] + "sn.fits"
+            elif ".spec.fits" in file
+                sn_file = file[:-9] + "sn.fits"
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 sn_hdus = cached_hdus[1]
@@ -88,11 +92,15 @@ class IGRINSSpectrum(EchelleSpectrum):
             if ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
-            elif "spec.fits" in file and wavefile is not None:
+            elif ("spec.fits" in file) and (wavefile is not None):
                 lamb = wave_hdus[0].data[order].astype(np.float64) * 1e-3 * u.micron #Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
                 flux = hdus[0].data[order].astype(np.float64) * u.ct
+            elif ("spec_a0v.fits" in file) and (wavefile is not None):
+               log.warn("You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile.")
+            elif ("spec.fits" in file) and (wavefile is None):
+                raise Exception("wavefile must be specified when passing in spec.fits files, which do not come with an in-built wavelength solution.")
             else:
-                raise Exception("File "+file+" is the wrong file type.  It should be .spec_a0v.fits or .spec.fits.  If it is .spec.fits, you might not have specified wavefile correctly.")
+                raise Exception("File "+file+" is the wrong file type.  It must be either .spec_a0v.fits or .spec.fits.")
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
                 "m": grating_order,
@@ -154,7 +162,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def read(file, wavefile=None, precache_hdus=True):
+    def read(file, precache_hdus=True, wavefile=None):
         """Read in a SpectrumList from a file
 
         Parameters
@@ -166,8 +174,10 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         """
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
         hdus = fits.open(file, memmap=False)
-
-        sn_file = file[:19] + "sn.fits"
+        if ".spec_a0v.fits" in file:
+            sn_file = file[:-13] + "sn.fits"
+        elif ".spec.fits" in file
+            sn_file = file[:-9] + "sn.fits"
         sn_hdus = fits.open(sn_file, memmap=False)
         cached_hdus = [hdus, sn_hdus]
         if wavefile is not None:
