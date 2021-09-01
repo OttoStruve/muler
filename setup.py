@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="muler",
-    version="0.1",
+    version="0.2",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
