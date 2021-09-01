@@ -343,7 +343,6 @@ class HPFSpectrumList(EchelleSpectrumList):
         file : (str)
             A path to a reduced HPF spectrum from plp
         """
-        assert ".spectra.fits" in file
 
         hdus = fits.open(file, memmap=False)
         cached_hdus = [hdus]
