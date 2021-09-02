@@ -10,8 +10,8 @@ import glob
 import astropy
 from specutils.spectra.spectrum_list import SpectrumList
 
-local_files = glob.glob("data/**/NS.*_flux_tbl.fits*", recursive=True)
-file = local_files[5]
+local_files = glob.glob("**/NS.*_flux_tbl.fits*", recursive=True)
+file = local_files[0]
 
 
 def test_basic():

@@ -9,7 +9,7 @@ from specutils import Spectrum1D
 import numpy as np
 import glob
 
-local_files = glob.glob("data/**/SDCH*.spec_a0v.fits", recursive=True)
+local_files = glob.glob("**/SDCH*.spec_a0v.fits", recursive=True)
 file = local_files[0]
 
 
