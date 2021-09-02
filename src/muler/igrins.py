@@ -73,7 +73,7 @@ class IGRINSSpectrum(EchelleSpectrum):
 
             if ".spec_a0v.fits" in file:
                 sn_file = file[:-13] + "sn.fits"
-            elif ".spec.fits" in file
+            elif ".spec.fits" in file:
                 sn_file = file[:-9] + "sn.fits"
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
@@ -89,14 +89,14 @@ class IGRINSSpectrum(EchelleSpectrum):
                 if wavefile is not None:
                     wave_hdus = fits.open(wavefile)
             hdr = hdus[0].header
-            if ".spec_a0v.fits" in file:
+            if ("spec_a0v.fits" in file) and (wavefile is not None):
+                log.warn("You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile.")
+            elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
             elif ("spec.fits" in file) and (wavefile is not None):
                 lamb = wave_hdus[0].data[order].astype(np.float64) * 1e-3 * u.micron #Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
                 flux = hdus[0].data[order].astype(np.float64) * u.ct
-            elif ("spec_a0v.fits" in file) and (wavefile is not None):
-               log.warn("You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile.")
             elif ("spec.fits" in file) and (wavefile is None):
                 raise Exception("wavefile must be specified when passing in spec.fits files, which do not come with an in-built wavelength solution.")
             else:
