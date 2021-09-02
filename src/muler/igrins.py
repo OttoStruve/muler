@@ -176,7 +176,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         hdus = fits.open(file, memmap=False)
         if ".spec_a0v.fits" in file:
             sn_file = file[:-13] + "sn.fits"
-        elif ".spec.fits" in file
+        elif ".spec.fits" in file:
             sn_file = file[:-9] + "sn.fits"
         sn_hdus = fits.open(sn_file, memmap=False)
         cached_hdus = [hdus, sn_hdus]
