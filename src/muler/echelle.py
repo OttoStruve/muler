@@ -216,20 +216,19 @@ class EchelleSpectrum(Spectrum1D):
         # Todo: probably want to check that all NaNs are in the mask
 
         def remove_nans_per_spectrum(spectrum):
+            net_mask = spectrum.mask | (spectrum.flux.value != spectrum.flux.value)
             if spectrum.uncertainty is not None:
-                masked_unc = StdDevUncertainty(
-                    spectrum.uncertainty.array[~spectrum.mask]
-                )
+                masked_unc = StdDevUncertainty(spectrum.uncertainty.array[~net_mask])
             else:
                 masked_unc = None
 
             meta_out = copy.deepcopy(spectrum.meta)
-            meta_out["x_values"] = meta_out["x_values"][~spectrum.mask]
+            meta_out["x_values"] = meta_out["x_values"][~net_mask]
 
             return self._copy(
-                spectral_axis=spectrum.wavelength[~spectrum.mask],
-                flux=spectrum.flux[~spectrum.mask],
-                mask=spectrum.mask[~spectrum.mask],
+                spectral_axis=spectrum.wavelength[~net_mask],
+                flux=spectrum.flux[~net_mask],
+                mask=spectrum.mask[~net_mask],
                 uncertainty=masked_unc,
                 meta=meta_out,
             )
@@ -520,7 +519,6 @@ class EchelleSpectrumList(SpectrumList):
     def stitch(self):
         """Stitch all the spectra together, assuming zero overlap in wavelength.  
         """
-        log.warning("Experimental method")
         wls = np.hstack([self[i].wavelength for i in range(len(self))])
         fluxes = np.hstack([self[i].flux for i in range(len(self))])
         # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])

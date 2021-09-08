@@ -295,13 +295,12 @@ class HPFSpectrum(EchelleSpectrum):
 
         if method == "naive":
             log.warning(
-                "This method is known to oversubtract the sky, see GitHub Issues."
+                "Naive sky subtraction method is known to oversubtract the sky, see GitHub Issues."
             )
             beta = 1.0 * u.dimensionless_unscaled
         elif method == "scalar":
             beta = 0.93 * u.dimensionless_unscaled
         elif method == "vector":
-            log.error("Experimental feature, report any Issues on GitHub")
             beta_native_spectrum = self.get_static_sky_ratio_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="zero_fill")
             beta = resampler(beta_native_spectrum, self.spectral_axis)
@@ -344,7 +343,6 @@ class HPFSpectrumList(EchelleSpectrumList):
         file : (str)
             A path to a reduced HPF spectrum from plp
         """
-        assert ".spectra.fits" in file
 
         hdus = fits.open(file, memmap=False)
         cached_hdus = [hdus]

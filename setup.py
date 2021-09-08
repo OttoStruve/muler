@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="muler",
-    version="0.1",
+    version="0.2.1",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
@@ -22,6 +22,10 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
+    package_data={
+        # If any package contains *.txt files, include them:
+        "": ["*.csv"]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

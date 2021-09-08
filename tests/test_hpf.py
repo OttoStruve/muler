@@ -9,7 +9,7 @@ import numpy as np
 import glob
 import astropy
 
-local_files = glob.glob("data/Goldilocks_*.spectra.fits")
+local_files = glob.glob("**/Goldilocks_*.spectra.fits", recursive=True)
 file = local_files[0]
 
 
