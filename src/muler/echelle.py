@@ -62,6 +62,18 @@ with warnings.catch_warnings():
     from specutils import SpectrumList
 
 
+def resample_list(spec_to_resample, specList, **kwargs):
+    """
+    Resample a single EchelleSpectrum or Spectrum1D object into a EchelleSpectrumList object.
+    Useful for converting models into echelle spectra with multiple orders.
+    """
+    spec_out = copy.deepcopy(specList)
+    for i in range(len(specList)):
+        spec_out[i] = spec_to_resample.resample(specList[i], **kwargs)
+    return spec_out
+
+
+
 class EchelleSpectrum(Spectrum1D):
     r"""
     An abstract base class to provide common methods that will be inherited by instrument-specific classes
@@ -421,6 +433,13 @@ class EchelleSpectrum(Spectrum1D):
         f_new.create_dataset("sigmas", data=self.uncertainty.array)
         f_new.create_dataset("masks", data=mask_out)
         f_new.close()
+    def resample_list(self, specList, **kwargs):
+        """
+        Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
+        Useful for converting models into echelle spectra with multiple orders.
+        """
+        return resample_list(self, specList, **kwargs)
+
 
 
 class EchelleSpectrumList(SpectrumList):
