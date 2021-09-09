@@ -477,7 +477,7 @@ class EchelleSpectrumList(SpectrumList):
     def deblaze(self, method="spline"):
         """Remove blaze function from all orders by interpolating a spline function
 
-        Note: It is recommenedgeded to remove NaNs before running this operation,
+        Note: It is recommended to remove NaNs before running this operation,
                 otherwise  effects can be appear from zero-padded edges.
         """
         spec_out = copy.deepcopy(self)
@@ -529,11 +529,16 @@ class EchelleSpectrumList(SpectrumList):
     def plot(self, **kwargs):
         """Plot the entire spectrum list
         """
-        ax = self[0].plot(figsize=(25, 4), **kwargs)
-        for i in range(1, len(self)):
-            self[i].plot(ax=ax, **kwargs)
+        if not "ax" in kwargs:
+            ax = self[0].plot(figsize=(25, 4), **kwargs)
+            for i in range(1, len(self)):
+                self[i].plot(ax=ax, **kwargs)
+            return ax
+        else:
+            for i in range(1, len(self)):
+                self[i].plot(**kwargs)
 
-        return ax
+        
 
     def __add__(self, other):
         """Bandmath addition
