@@ -8,7 +8,7 @@ A container for an IGRINS spectrum of :math:`M=28` total total orders :math:`m`,
 IGRINSSpectrum
 ##############
 """
-
+import logging
 import warnings
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
 from astropy.time import Time
@@ -21,6 +21,7 @@ from astropy.nddata import StdDevUncertainty
 
 import copy
 
+log = logging.getLogger(__name__)
 
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
