@@ -461,19 +461,6 @@ class EchelleSpectrumList(SpectrumList):
 
         return self
 
-    def smooth_spectrum(self):
-        """Smooth the spectrum using Gaussian Process regression
-
-        Returns
-        -------
-        smoothed_spec : (EchelleSpectrum)
-            Smooth version of input Spectrum
-        """
-        for i in range(len(self)):
-            self[i] = self[i].smooth_spectrum()
-
-        return self
-
     def remove_nans(self):
         """Remove all the NaNs
         """
