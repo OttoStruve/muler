@@ -5,7 +5,7 @@ import glob
 from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 
-from muler.utilities import combined_spectra
+from muler.utilities import combine_spectra
 
 # There should be exactly 3 files in the example data directory
 local_files = glob.glob("**/01_A0V_standards/Goldilocks_*.spectra.fits", recursive=True)
@@ -22,7 +22,7 @@ def test_combine():
     assert n_files == 3
     assert this_spec_list is not None
 
-    coadded_spectrum = combined_spectra(this_spec_list)
+    coadded_spectrum = combine_spectra(this_spec_list)
 
     assert isinstance(coadded_spectrum, Spectrum1D)
     assert isinstance(coadded_spectrum, HPFSpectrum)
@@ -50,7 +50,7 @@ def test_combine():
 
     # Combining 4 spectra should double the SNR: sqrt(4) = 2
     fake_spectrum_list = [fake_spectrum] * 4
-    net_spectrum = combined_spectra(fake_spectrum_list)
+    net_spectrum = combine_spectra(fake_spectrum_list)
 
     net_snr = np.mean(net_spectrum.flux.value / net_spectrum.uncertainty.array)
     assert net_snr == (input_snr * 2)
@@ -62,7 +62,7 @@ def test_combine():
         fake_spectrum_list = [fake_spectrum] * n_spectra
 
         t0 = time.time()
-        net_spectrum = combined_spectra(fake_spectrum_list)
+        net_spectrum = combine_spectra(fake_spectrum_list)
         t1 = time.time()
         net_time = t1 - t0
         print(
