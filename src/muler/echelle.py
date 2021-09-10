@@ -557,8 +557,6 @@ class EchelleSpectrumList(SpectrumList):
             for i in range(1, len(self)):
                 self[i].plot(**kwargs)
 
-        
-
     def __add__(self, other):
         """Bandmath addition
         """
