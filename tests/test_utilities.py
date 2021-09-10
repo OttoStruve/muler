@@ -66,13 +66,14 @@ def test_combine():
         t1 = time.time()
         net_time = t1 - t0
         print(
-            f"\n\t Net time for combining {n_spectra}: {net_time:0.5f} seconds",
+            f"\n\t Net time for combining {n_spectra} spectra: {net_time:0.5f} seconds",
             end="\t",
         )
 
         # The new SNR should be twice as low as before:
-        assert np.mean(fake_spectrum.uncertainty.array) * np.sqrt(n_spectra) == np.mean(
-            net_spectrum.uncertainty.array
+        assert np.allclose(
+            np.mean(fake_spectrum.uncertainty.array) * np.sqrt(n_spectra),
+            np.mean(net_spectrum.uncertainty.array),
         ), "Coadding {} spectra should root-N down the uncertainty to {}".format(
             n_spectra, np.sqrt(n_spectra)
         )
