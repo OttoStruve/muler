@@ -1,12 +1,14 @@
 # `muler` (_μler_)
 
-### version 0.1
+### version 0.2.2
 
 <a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>
 <a href="https://pypi.org/project/muler/"><img src="https://img.shields.io/badge/pip_install-muler-yellow"></a>
 <a href="https://sites.google.com/site/igrinsatgemini/"><img src="https://img.shields.io/badge/Works_with-IGRINS-brightgreen"></a>
 <a href="https://hpf.psu.edu/"><img src="https://img.shields.io/badge/Works_with-HPF-brightgreen"></a>  
-<a href="https://www2.keck.hawaii.edu/inst/nirspec/"><img src="https://img.shields.io/badge/Works_with-Keck_NIRSPEC-brightgreen"></a>  
+<a href="https://www2.keck.hawaii.edu/inst/nirspec/"><img src="https://img.shields.io/badge/Works_with-Keck_NIRSPEC-brightgreen"></a>
+![example workflow](https://github.com/OttoStruve/muler/actions/workflows/muler-tests.yml/badge.svg)
+
 A Python package for analyzing pipeline-processed data from high resolution near-infrared echelle spectrographs.
 
 ### The echelle spectrum problem
@@ -19,14 +21,14 @@ Plotting a sky-subtracted, flattened spectrum:
 
 ```Python
 spectrum = HPFSpectrum(file=file, order=15)
-spectrum.remove_nans().sky_subtract().blaze_divide_spline().normalize().plot()
+spectrum.remove_nans().sky_subtract().deblaze().normalize().plot()
 ```
 
 Measuring an [equivalent width](https://en.wikipedia.org/wiki/Equivalent_width):
 
 ```Python
 spectrum = HPFSpectrum(file=file, order=15)
-clean_spectrum = spectrum.remove_nans().sky_subtract().blaze_divide_spline().normalize()
+clean_spectrum = spectrum.remove_nans().sky_subtract().deblaze().normalize()
 ew = clean_spectrum.measure_ew(center_wavelength=10830.0)
 ```
 
