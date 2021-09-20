@@ -243,7 +243,9 @@ class HPFSpectrum(EchelleSpectrum):
         Parameters
         ----------
         method : (Str)
-            Either "Vega" or "PHOENIX" (default: PHOENIX)
+            What template to use.  Currently only a state PHOENIX model is supported.  
+            Other A0V templates may be added in the future, such as Vega.  
+            (default: PHOENIX)
         """
         if method == "PHOENIX":
 
@@ -251,8 +253,7 @@ class HPFSpectrum(EchelleSpectrum):
                 spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * u.Angstrom,
                 flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
             )
-        elif method == "Gollum":
-
+        else:
             raise NotImplementedError
 
     def _deblaze_by_template(self):
