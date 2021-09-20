@@ -212,6 +212,17 @@ def test_sky_subtraction():
         new_spec = spec.sky_subtract(method="Danny")
 
 
+def test_HPF_spectrum_list():
+    """Does our sky subtraction work in all modes?"""
+    spectra = HPFSpectrumList.read(file)
+
+    new_spectra = spectra.sky_subtract(method="scalar")
+    assert isinstance(new_spectra, HPFSpectrumList)
+
+    new_spectra = new_spectra.deblaze()
+    assert isinstance(new_spectra, HPFSpectrumList)
+
+
 @pytest.mark.parametrize(
     "precache_hdus", [True, False],
 )
