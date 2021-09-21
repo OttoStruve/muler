@@ -55,7 +55,9 @@ class IGRINSSpectrum(EchelleSpectrum):
             of file type .wave.fits.
     """
 
-    def __init__(self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs):
+    def __init__(
+        self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs
+    ):
 
         self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
@@ -91,17 +93,27 @@ class IGRINSSpectrum(EchelleSpectrum):
                     wave_hdus = fits.open(wavefile)
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
-                log.warn("You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile.")
+                log.warn(
+                    "You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile."
+                )
             elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
             elif ("spec.fits" in file) and (wavefile is not None):
-                lamb = wave_hdus[0].data[order].astype(np.float64) * 1e-3 * u.micron #Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
+                lamb = (
+                    wave_hdus[0].data[order].astype(np.float64) * 1e-3 * u.micron
+                )  # Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
                 flux = hdus[0].data[order].astype(np.float64) * u.ct
             elif ("spec.fits" in file) and (wavefile is None):
-                raise Exception("wavefile must be specified when passing in spec.fits files, which do not come with an in-built wavelength solution.")
+                raise Exception(
+                    "wavefile must be specified when passing in spec.fits files, which do not come with an in-built wavelength solution."
+                )
             else:
-                raise Exception("File "+file+" is the wrong file type.  It must be either .spec_a0v.fits or .spec.fits.")
+                raise Exception(
+                    "File "
+                    + file
+                    + " is the wrong file type.  It must be either .spec_a0v.fits or .spec.fits."
+                )
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
                 "m": grating_order,
@@ -185,11 +197,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             wave_hdus = fits.open(wavefile, memmap=False)
             cached_hdus.append(wave_hdus)
 
-        #n_orders, n_pix = hdus["WAVELENGTH"].data.shape
+        # n_orders, n_pix = hdus["WAVELENGTH"].data.shape
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
         for i in range(n_orders):
-            spec = IGRINSSpectrum(file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus)
+            spec = IGRINSSpectrum(
+                file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus
+            )
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
