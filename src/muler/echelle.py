@@ -26,7 +26,7 @@ from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-import utilities
+from muler.utilities import resample_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -428,7 +428,7 @@ class EchelleSpectrum(Spectrum1D):
         Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
         Useful for converting models into echelle spectra with multiple orders.
         """
-        return utilities.resample_list(self, specList, **kwargs)
+        return resample_list(self, specList, **kwargs)
     def velocity_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
