@@ -26,6 +26,8 @@ dependencies:
   - black
   - isort
   - tox
+  - coverage
+  - coveralls
   - pip
   - pip:
       - sphinx-material

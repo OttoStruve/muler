@@ -76,6 +76,15 @@ def test_uncertainty():
     snr_med = np.nanmedian(snr_vec.value)
     assert snr_med == snr_old_med
 
+    new_spec = spec.remove_nans().deblaze()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med, atol=0.005)
+
 
 def test_equivalent_width():
     """Can we measure equivalent widths?"""
@@ -100,28 +109,6 @@ def test_smoothing():
     assert new_spec.shape[0] <= spec.shape[0]
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
-
-
-def test_uncertainty():
-    """Does uncertainty propagation work?"""
-
-    spec = IGRINSSpectrum(file=file)
-
-    assert spec.flux is not None
-
-    new_spec = spec.remove_nans().deblaze()
-
-    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
-    assert np.all(new_spec.uncertainty.array > 0)
-
-    snr_old_vec = spec.flux / spec.uncertainty.array
-    snr_old_med = np.nanmedian(snr_old_vec.value)
-
-    new_spec = spec.normalize()
-
-    snr_vec = new_spec.flux / new_spec.uncertainty.array
-    snr_med = np.nanmedian(snr_vec.value)
-    assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
 
 def test_RV():
