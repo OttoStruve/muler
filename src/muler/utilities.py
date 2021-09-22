@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from astropy.nddata.nduncertainty import StdDevUncertainty
 
 
