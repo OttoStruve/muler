@@ -62,28 +62,6 @@ with warnings.catch_warnings():
     from specutils import SpectrumList
 
 
-def resample_list(spec_to_resample, specList, **kwargs):
-    """
-    Resample a single EchelleSpectrum or Spectrum1D object into a EchelleSpectrumList object.
-    Useful for converting models into echelle spectra with multiple orders.
-    
-    Parameters
-    ----------
-    spec_to_resample: EchelleSpectrum or specutils Spectrum1D object
-        Object storing spectrum (typically of a model) to be resampled onto the same grid as specList.
-    specList: EchelleSpectrumList object
-        Object storing an echelle spectrum (spectrum with multiple orders) with the wavelength grid to 
-        which spec_to_resample will be resampled.
-    **kwargs: optional
-        Extra arguments to be passed to specutils.manipulation.resample which is run to resample
-        spec_to_resample to each order in specList
-    """
-    spec_out = copy.deepcopy(specList)
-    for i in range(len(specList)):
-        spec_out[i] = spec_to_resample.resample(specList[i], **kwargs)
-    return spec_out
-
-
 
 class EchelleSpectrum(Spectrum1D):
     r"""
@@ -450,7 +428,7 @@ class EchelleSpectrum(Spectrum1D):
         Useful for converting models into echelle spectra with multiple orders.
         """
         return resample_list(self, specList, **kwargs)
-    def velocity_shift(self, velocity)
+    def velocity_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
         """
@@ -607,7 +585,7 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
         return spec_out
-    def velocity_shift(self, velocity)
+    def velocity_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
         """
