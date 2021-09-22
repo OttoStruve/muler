@@ -189,9 +189,15 @@ class EchelleSpectrum(Spectrum1D):
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
         bcRV = +1.0 * self.estimate_barycorr()
-
+        return self.rv_shift(bcRV)
+    def rv_shift(self, velocity):
+        """
+        Shift velocity of spectrum in astropy units (or km/s if input velocity is just a float)
+        """      
+        if type(velocity) == float: #If supplied velocity is not using astropy units, default to km/s
+            velocity = velocity * (u.km/u.s)
         try:
-            self.radial_velocity = bcRV
+            self.radial_velocity = velocity
             return self._copy(
                 spectral_axis=self.wavelength.value * self.wavelength.unit
             )
@@ -203,7 +209,6 @@ class EchelleSpectrum(Spectrum1D):
                 )
             )
             raise
-
     def remove_nans(self):
         """Remove data points that have NaN fluxes
 
@@ -429,14 +434,6 @@ class EchelleSpectrum(Spectrum1D):
         Useful for converting models into echelle spectra with multiple orders.
         """
         return resample_list(self, specList, **kwargs)
-    def velocity_shift(self, velocity):
-        """
-        Shift velocity of spectrum in km s^-1
-        """
-        spec_out = copy.deepcopy(self)
-        spec_out.wavelength = self.wavelength + velocity*(u.km / u.s)
-        return spec_out
-
 
 
 class EchelleSpectrumList(SpectrumList):
@@ -586,12 +583,12 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
         return spec_out
-    def velocity_shift(self, velocity):
+    def rv_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
         """
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
-            spec_out[i] = self[i].velocity_shift(velocity)
+            spec_out[i] = self[i].rv_shift(velocity)
         return spec_out
 
