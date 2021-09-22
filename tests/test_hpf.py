@@ -10,10 +10,14 @@ import glob
 import astropy
 
 local_files = glob.glob("**/Goldilocks_*.spectra.fits", recursive=True)
+A0V_files = [file for file in local_files if "01_A0V_standards" in file]
 file = local_files[0]
 
 
-def test_basic():
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_basic(file):
     """Do the basic methods work?"""
 
     spec = HPFSpectrum(file=file, order=10)
@@ -41,11 +45,28 @@ def test_basic():
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
+    assert hasattr(new_spec, "provenance")
+    assert type(new_spec.provenance) == str
+    assert hasattr(new_spec, "pipeline")
+    assert new_spec.pipeline in ["Goldilocks", "HPF"]
+
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
 
 
-def test_equivalent_width():
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_bad_inputs(file):
+    """These tests should fail"""
+    with pytest.raises(NameError):
+        spec = HPFSpectrum(file="junk_file.txt")
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_equivalent_width(file):
     """Can we measure equivalent widths?"""
 
     spec = HPFSpectrum(file=file, order=4)
@@ -58,7 +79,10 @@ def test_equivalent_width():
     assert equivalent_width.unit is spec.wavelength.unit
 
 
-def test_smoothing():
+@pytest.mark.parametrize(
+    "file", A0V_files,
+)
+def test_smoothing(file):
     """Does smoothing and outlier removal work?"""
     spec = HPFSpectrum(file=file, order=10)
     new_spec = spec.remove_outliers(threshold=3)
@@ -69,7 +93,10 @@ def test_smoothing():
     assert new_spec.mask is not None
 
 
-def test_uncertainty():
+@pytest.mark.parametrize(
+    "file", A0V_files,
+)
+def test_uncertainty(file):
     """Does uncertainty propagation work?"""
 
     spec = HPFSpectrum(file=file, order=10)
@@ -93,8 +120,17 @@ def test_uncertainty():
     snr_med = np.nanmedian(snr_vec.value)
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
+    new_spec = spec.normalize().deblaze()
 
-def test_sky_and_lfc():
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med, atol=0.005)
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_sky_and_lfc(file):
     """Do we track sky and lfc?"""
 
     spec = HPFSpectrum(file=file, order=10)
@@ -139,7 +175,10 @@ def test_sky_and_lfc():
     assert spec.meta["provenance"] == "Target fiber"
 
 
-def test_RV():
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_RV(file):
     """Does RV shifting work"""
 
     spec = HPFSpectrum(file=file)
@@ -157,6 +196,62 @@ def test_RV():
     new_spec = spec.barycentric_correct()
     assert new_spec is not None
     assert isinstance(new_spec, Spectrum1D)
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_deblaze(file):
+    """Does the HPF-specific deblazing work?"""
+    spec = HPFSpectrum(file=file)
+
+    # There are two blaze templates uploaded, we prefer the Goldilocks one
+    blaze_template = spec.get_static_blaze_template()
+
+    assert isinstance(blaze_template, HPFSpectrum)
+
+    blaze_template = spec.get_static_blaze_template(method="2021_median")
+    assert isinstance(blaze_template, HPFSpectrum)
+
+    new_spec = spec.deblaze()
+    assert isinstance(new_spec, HPFSpectrum)
+
+    # There are two blaze templates uploaded, we prefer the Goldilocks one
+    A0V_template = spec.get_static_A0V_template()
+    assert isinstance(A0V_template, HPFSpectrum)
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_sky_subtraction(file):
+    """Does our sky subtraction work in all modes?"""
+    spec = HPFSpectrum(file=file)
+
+    # You can get back a wavelength dependent template for scaling the sky fiber
+    template = spec.get_static_sky_ratio_template()
+    assert isinstance(template, HPFSpectrum)
+
+    for method in ["naive", "scalar", "vector"]:
+        new_spec = spec.sky_subtract(method=method)
+        assert isinstance(new_spec, HPFSpectrum)
+
+    with pytest.raises(NotImplementedError):
+        new_spec = spec.sky_subtract(method="Danny")
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
+def test_HPF_spectrum_list(file):
+    """Does our sky subtraction work in all modes?"""
+    spectra = HPFSpectrumList.read(file)
+
+    new_spectra = spectra.sky_subtract(method="scalar")
+    assert isinstance(new_spectra, HPFSpectrumList)
+
+    new_spectra = new_spectra.deblaze()
+    assert isinstance(new_spectra, HPFSpectrumList)
 
 
 @pytest.mark.parametrize(
