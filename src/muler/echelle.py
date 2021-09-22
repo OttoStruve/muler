@@ -439,6 +439,13 @@ class EchelleSpectrum(Spectrum1D):
         Useful for converting models into echelle spectra with multiple orders.
         """
         return resample_list(self, specList, **kwargs)
+    def velocity_shift(self, velocity)
+        """
+        Shift velocity of spectrum in km s^-1
+        """
+        spec_out = copy.deepcopy(self)
+        spec_out.wavelength = self.wavelength + velocity*(u.km / u.s)
+        return spec_out
 
 
 
@@ -589,3 +596,12 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
         return spec_out
+    def velocity_shift(self, velocity)
+        """
+        Shift velocity of spectrum in km s^-1
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].velocity_shift(velocity)
+        return spec_out
+
