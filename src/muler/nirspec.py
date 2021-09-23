@@ -91,9 +91,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             if os.path.exists(fits_with_full_header):
                 hdu_hdr = fits.open(fits_with_full_header)
                 hdr = hdu_hdr[0].header
-                wcs = WCS(hdr)
             else:
-                wcs = None
                 hdr = None
 
             meta_dict = {
@@ -107,7 +105,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 spectral_axis=lamb,
                 flux=flux,
                 mask=mask,
-                wcs=wcs,
+                wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict,
                 **kwargs,
