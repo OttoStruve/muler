@@ -63,7 +63,6 @@ with warnings.catch_warnings():
     from specutils import SpectrumList
 
 
-
 class EchelleSpectrum(Spectrum1D):
     r"""
     An abstract base class to provide common methods that will be inherited by instrument-specific classes
@@ -72,6 +71,26 @@ class EchelleSpectrum(Spectrum1D):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
+
+    @property
+    def snr(self):
+        """The Signal-to-Noise Ratio :math:`\frac{S}{N}`, the flux divided by the uncertainty
+        
+        The spectrum should have an input uncertainty, otherwise returns NaNs
+        """
+
+        if self.uncertainty is not None:
+            if self.uncertainty.uncertainty_type == "std":
+                snr_estimate = self.flux / self.uncertainty.quantity
+            elif self.uncertainty.uncertainty_type == "ivar":
+                snr_estimate = self.flux * np.sqrt(self.uncertainty.quantity)
+            else:
+                message = "SNR only supports standard deviation and inverse variance uncertainty"
+                raise NotImplementedError(message)
+        else:
+            snr_estimate = np.repeat(np.NaN, len(self.flux)) * u.dimensionless_unscaled
+
+        return snr_estimate
 
     def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
@@ -190,12 +209,15 @@ class EchelleSpectrum(Spectrum1D):
         """
         bcRV = +1.0 * self.estimate_barycorr()
         return self.rv_shift(bcRV)
+
     def rv_shift(self, velocity):
         """
         Shift velocity of spectrum in astropy units (or km/s if input velocity is just a float)
-        """      
-        if type(velocity) == float: #If supplied velocity is not using astropy units, default to km/s
-            velocity = velocity * (u.km/u.s)
+        """
+        if (
+            type(velocity) == float
+        ):  # If supplied velocity is not using astropy units, default to km/s
+            velocity = velocity * (u.km / u.s)
         try:
             self.radial_velocity = velocity
             return self._copy(
@@ -209,6 +231,7 @@ class EchelleSpectrum(Spectrum1D):
                 )
             )
             raise
+
     def remove_nans(self):
         """Remove data points that have NaN fluxes
 
@@ -428,6 +451,7 @@ class EchelleSpectrum(Spectrum1D):
         f_new.create_dataset("sigmas", data=self.uncertainty.array)
         f_new.create_dataset("masks", data=mask_out)
         f_new.close()
+
     def resample_list(self, specList, **kwargs):
         """
         Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
@@ -498,7 +522,6 @@ class EchelleSpectrumList(SpectrumList):
             spec_out[i] = self[i].deblaze(method=method)
         return spec_out
 
-
     def flatten_by_black_body(self, Teff):
         """Flatten by black body"""
         spec_out = copy.deepcopy(self)
@@ -559,7 +582,6 @@ class EchelleSpectrumList(SpectrumList):
             spec_out[i] = self[i] + other[i]
         return spec_out
 
-
     def __sub__(self, other):
         """Bandmath subtraction
         """
@@ -583,6 +605,7 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
         return spec_out
+
     def rv_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1

@@ -117,14 +117,14 @@ def test_uncertainty(file):
     snr_old_vec = spec.flux / spec.uncertainty.array
     snr_old_med = np.nanmedian(snr_old_vec.value)
 
-    new_spec = spec.normalize()
+    new_spec = spec.normalize().remove_nans()
 
-    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_vec = new_spec.flux / new_spec.uncertainty.quantity
     snr_med = np.nanmedian(snr_vec.value)
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
     # Test SNR attribute
-    assert new_spec.snr == snr_vec
+    assert np.all(new_spec.snr == snr_vec)
 
     new_spec = spec.normalize().deblaze()
 
@@ -144,12 +144,13 @@ def test_snr():
     unc = StdDevUncertainty(unc_vector)
     spec = HPFSpectrum(flux=flux, spectral_axis=wave, uncertainty=unc)
 
-    snr_vec = spec.flux.value / spec.uncertainty.array
+    snr_vec = spec.flux / spec.uncertainty.quantity
 
     assert isinstance(spec, HPFSpectrum)
     assert np.all(snr_vec == snr_per_pixel)
-
-    assert spec.snr == snr_vec
+    assert np.all(spec.snr == snr_vec)
+    assert hasattr(spec.snr, "unit")
+    assert spec.snr.unit == u.dimensionless_unscaled
 
 
 @pytest.mark.parametrize(
