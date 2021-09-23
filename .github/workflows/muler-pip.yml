@@ -3,7 +3,7 @@ name: mulerpip
 on: 
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '29 15 * * *'
+    - cron:  '50 13 * * *'
 
 jobs:
   build:
