@@ -26,6 +26,7 @@ from scipy.interpolate import UnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
+from muler.utilities import resample_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -60,6 +61,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore")
     from specutils import Spectrum1D
     from specutils import SpectrumList
+
 
 
 class EchelleSpectrum(Spectrum1D):
@@ -187,9 +189,15 @@ class EchelleSpectrum(Spectrum1D):
         barycenter corrected Spectrum : (KeckNIRSPECSpectrum)
         """
         bcRV = +1.0 * self.estimate_barycorr()
-
+        return self.rv_shift(bcRV)
+    def rv_shift(self, velocity):
+        """
+        Shift velocity of spectrum in astropy units (or km/s if input velocity is just a float)
+        """      
+        if type(velocity) == float: #If supplied velocity is not using astropy units, default to km/s
+            velocity = velocity * (u.km/u.s)
         try:
-            self.radial_velocity = bcRV
+            self.radial_velocity = velocity
             return self._copy(
                 spectral_axis=self.wavelength.value * self.wavelength.unit
             )
@@ -201,7 +209,6 @@ class EchelleSpectrum(Spectrum1D):
                 )
             )
             raise
-
     def remove_nans(self):
         """Remove data points that have NaN fluxes
 
@@ -421,6 +428,12 @@ class EchelleSpectrum(Spectrum1D):
         f_new.create_dataset("sigmas", data=self.uncertainty.array)
         f_new.create_dataset("masks", data=mask_out)
         f_new.close()
+    def resample_list(self, specList, **kwargs):
+        """
+        Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
+        Useful for converting models into echelle spectra with multiple orders.
+        """
+        return resample_list(self, specList, **kwargs)
 
 
 class EchelleSpectrumList(SpectrumList):
@@ -538,8 +551,6 @@ class EchelleSpectrumList(SpectrumList):
             for i in range(1, len(self)):
                 self[i].plot(**kwargs)
 
-        
-
     def __add__(self, other):
         """Bandmath addition
         """
@@ -547,6 +558,7 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] + other[i]
         return spec_out
+
 
     def __sub__(self, other):
         """Bandmath subtraction
@@ -571,3 +583,12 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
         return spec_out
+    def rv_shift(self, velocity):
+        """
+        Shift velocity of spectrum in km s^-1
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].rv_shift(velocity)
+        return spec_out
+
