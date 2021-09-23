@@ -1,13 +1,16 @@
 # from astropy.nddata.ccddata import _uncertainty_unit_equivalent_to_parent
+from astropy.nddata.nduncertainty import StdDevUncertainty
+import astropy.units as u
 import pytest
 import time
 from muler.hpf import HPFSpectrum, HPFSpectrumList
-from specutils import Spectrum1D
+from specutils import Spectrum1D, spectra
 
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
 import astropy
+from specutils.spectra import spectral_axis
 
 local_files = glob.glob("**/Goldilocks_*.spectra.fits", recursive=True)
 A0V_files = [file for file in local_files if "01_A0V_standards" in file]
@@ -120,11 +123,33 @@ def test_uncertainty(file):
     snr_med = np.nanmedian(snr_vec.value)
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
+    # Test SNR attribute
+    assert new_spec.snr == snr_vec
+
     new_spec = spec.normalize().deblaze()
 
     snr_vec = new_spec.flux / new_spec.uncertainty.array
     snr_med = np.nanmedian(snr_vec.value)
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
+
+
+def test_snr():
+    """Test the Signal-to-noise ratio calculation"""
+    n_pix = 10
+    flux = np.ones(n_pix) * u.ct
+    wave = np.linspace(1.0, 1.5, n_pix) * u.micron
+    snr_per_pixel = 100.0
+    unc_per_pixel = 1 / snr_per_pixel
+    unc_vector = np.repeat(unc_per_pixel, n_pix) * u.ct
+    unc = StdDevUncertainty(unc_vector)
+    spec = HPFSpectrum(flux=flux, spectral_axis=wave, uncertainty=unc)
+
+    snr_vec = spec.flux.value / spec.uncertainty.array
+
+    assert isinstance(spec, HPFSpectrum)
+    assert np.all(snr_vec == snr_per_pixel)
+
+    assert spec.snr == snr_vec
 
 
 @pytest.mark.parametrize(
