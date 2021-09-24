@@ -1,5 +1,14 @@
 import setuptools
 
+import os.path
+
+readme = ""
+here = os.path.abspath(os.path.dirname(__file__))
+readme_path = os.path.join(here, "README.rst")
+if os.path.exists(readme_path):
+    with open(readme_path, "rb") as stream:
+        readme = stream.read().decode("utf8")
+
 
 setuptools.setup(
     name="muler",
@@ -7,7 +16,7 @@ setuptools.setup(
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
-    long_description="A Python package for working with echelle spectra from IGRINS and HPF",
+    long_description=readme,
     long_description_content_type="text/markdown",
     url="https://github.com/OttoStruve/muler",
     install_requires=[
@@ -19,7 +28,7 @@ setuptools.setup(
         "importlib_resources",
         "matplotlib",
     ],
-    extras_require=["celerite2", "h5py"],
+    extras_require={"extra": ["celerite2", "h5py", "black"]},
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     package_data={
