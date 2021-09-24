@@ -19,7 +19,6 @@ from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
-import h5py
 from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline
@@ -32,8 +31,7 @@ from muler.utilities import resample_list
 from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
 
-from celerite2 import terms
-import celerite2
+
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
@@ -281,6 +279,13 @@ class EchelleSpectrum(Spectrum1D):
         smoothed_spec : (EchelleSpectrum)
             Smooth version of input Spectrum
         """
+        try:
+            from celerite2 import terms
+            import celerite2
+        except ImportError:
+            raise ImportError(
+                "You need to install celerite2 to use the smoothing='celerite' method."
+            )
         if self.uncertainty is not None:
             unc = self.uncertainty.array
         else:
@@ -440,6 +445,11 @@ class EchelleSpectrum(Spectrum1D):
             The basename of the file to which the order number and extension
             are appended.  Typically source name that matches a database entry.
         """
+        try:
+            import h5py
+        except ImportError:
+            raise ImportError("You need to install h5py to export to the HDF5 format.")
+
         grating_order = self.meta["m"]
         out_path = path + "/" + file_basename + "_m{:03d}.hdf5".format(grating_order)
 

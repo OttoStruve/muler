@@ -16,11 +16,10 @@ setuptools.setup(
         "astropy>=4.1",
         "specutils>=1.2",
         "pandas",
-        "celerite2",
         "importlib_resources",
         "matplotlib",
-        "h5py",
     ],
+    extras_require=["celerite2", "h5py"],
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     package_data={
