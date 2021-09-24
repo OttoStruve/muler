@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="muler",
-    version="0.2.3",
+    version="0.2.4",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
@@ -17,6 +17,7 @@ setuptools.setup(
         "specutils>=1.2",
         "pandas",
         "celerite2",
+        "importlib_resources",
         "matplotlib",
         "h5py",
     ],
