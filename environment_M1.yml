@@ -7,16 +7,15 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - astropy>=4.0
+  - astropy>=4.1
   - astroquery
-  - specutils # Manually install the dev version from GitHub
+  - specutils>=1.2
   - tqdm
   - pandas
-  - bokeh>=1.0
+  - bokeh
   - jupyter
   - ipython
   - seaborn
-  - scikit-learn
   - h5py # needed for `to_hdf5` method
   - pytest
   - sphinx # for documentation and testing
@@ -28,8 +27,8 @@ dependencies:
   - tox
   - coverage
   - coveralls
+  - twine
   - pip
   - pip:
       - sphinx-material
-      - twine
       - celerite2
