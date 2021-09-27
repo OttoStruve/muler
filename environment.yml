@@ -16,7 +16,8 @@ dependencies:
   - jupyter
   - ipython
   - seaborn
-  - h5py # needed for `to_hdf5` method
+  - importlib_resources
+  - h5py 
   - pytest
   - sphinx # for documentation and testing
   - nbsphinx # for documentation and testing
