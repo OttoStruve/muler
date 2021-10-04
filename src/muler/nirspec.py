@@ -58,7 +58,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
         self.instrumental_resolution = 20_000.0
 
         if file is not None:
-            file_basename = file.split("/")[-1]
+            file_basename = os.path.basename(file)
             assert (
                 file_basename[0:3] == "NS."
             ), "Only NSDRP spectra are currently supported"
