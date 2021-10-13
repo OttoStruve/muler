@@ -73,7 +73,7 @@ class EchelleSpectrum(Spectrum1D):
     @property
     def snr(self):
         """The Signal-to-Noise Ratio :math:`\frac{S}{N}`, the flux divided by the uncertainty
-        
+
         The spectrum should have an input uncertainty, otherwise returns NaNs
         """
 
@@ -106,12 +106,12 @@ class EchelleSpectrum(Spectrum1D):
 
     def measure_ew(self, mu):
         """Measure the equivalent width of a given spectrum
-        
+
         Parameters
         ----------
         mu : scalar/float
             The center wavelength of given line
-        
+
         Returns
         -------
         equivalent width : (scalar)
@@ -352,9 +352,9 @@ class EchelleSpectrum(Spectrum1D):
             ax.set_ylabel("Flux")
             if hasattr(self, "spectrographname"):
                 ax.set_title(self.spectrographname + " Spectrum")
-            ax.step(self.wavelength, self.flux, **kwargs)
+            ax.step(self.wavelength, self.flux, **kwargs, where="mid")
         else:
-            ax.step(self.wavelength, self.flux, **kwargs)
+            ax.step(self.wavelength, self.flux, **kwargs, where="mid")
 
         return ax
 
@@ -480,8 +480,7 @@ class EchelleSpectrumList(SpectrumList):
         super().__init__(*args, **kwargs)
 
     def normalize(self, order_index=0):
-        """Normalize all orders to one of the other orders
-        """
+        """Normalize all orders to one of the other orders"""
         index = self.normalization_order_index
         median_flux = copy.deepcopy(np.nanmedian(self[index].flux))
         for i in range(len(self)):
@@ -490,8 +489,7 @@ class EchelleSpectrumList(SpectrumList):
         return self
 
     def remove_nans(self):
-        """Remove all the NaNs
-        """
+        """Remove all the NaNs"""
         # TODO: is this in-place overriding of self allowed?
         # May have unintended consequences?
         # Consider making a copy instead...
@@ -514,8 +512,7 @@ class EchelleSpectrumList(SpectrumList):
         return self
 
     def trim_edges(self, limits=None):
-        """Trim all the edges
-        """
+        """Trim all the edges"""
         for i in range(len(self)):
             self[i] = self[i].trim_edges(limits)
 
@@ -557,14 +554,12 @@ class EchelleSpectrumList(SpectrumList):
         return spec_out
 
     def to_HDF5(self, path, file_basename):
-        """Save all spectral orders to the HDF5 file format
-        """
+        """Save all spectral orders to the HDF5 file format"""
         for i in range(len(self)):
             self[i].to_HDF5(path, file_basename)
 
     def stitch(self):
-        """Stitch all the spectra together, assuming zero overlap in wavelength.  
-        """
+        """Stitch all the spectra together, assuming zero overlap in wavelength."""
         wls = np.hstack([self[i].wavelength for i in range(len(self))])
         fluxes = np.hstack([self[i].flux for i in range(len(self))])
         # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
@@ -573,8 +568,7 @@ class EchelleSpectrumList(SpectrumList):
         return self[0].__class__(spectral_axis=wls, flux=fluxes)
 
     def plot(self, **kwargs):
-        """Plot the entire spectrum list
-        """
+        """Plot the entire spectrum list"""
         if not "ax" in kwargs:
             ax = self[0].plot(figsize=(25, 4), **kwargs)
             for i in range(1, len(self)):
@@ -585,32 +579,28 @@ class EchelleSpectrumList(SpectrumList):
                 self[i].plot(**kwargs)
 
     def __add__(self, other):
-        """Bandmath addition
-        """
+        """Bandmath addition"""
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] + other[i]
         return spec_out
 
     def __sub__(self, other):
-        """Bandmath subtraction
-        """
+        """Bandmath subtraction"""
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] - other[i]
         return spec_out
 
     def __mul__(self, other):
-        """Bandmath multiplication
-        """
+        """Bandmath multiplication"""
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] * other[i]
         return spec_out
 
     def __truediv__(self, other):
-        """Bandmath division
-        """
+        """Bandmath division"""
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
@@ -624,4 +614,3 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
         return spec_out
-

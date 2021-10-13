@@ -227,8 +227,7 @@ class HPFSpectrum(EchelleSpectrum):
         )
 
     def get_static_sky_ratio_template(self):
-        """Get the static sky ratio template for HPF, as estimated from twilight flats
-        """
+        """Get the static sky ratio template for HPF, as estimated from twilight flats"""
 
         # Watch out! Some HPFSpectrum methods *will not work* on this calibration spectrum!
         return HPFSpectrum(
@@ -243,8 +242,8 @@ class HPFSpectrum(EchelleSpectrum):
         Parameters
         ----------
         method : (Str)
-            What template to use.  Currently only a state PHOENIX model is supported.  
-            Other A0V templates may be added in the future, such as Vega.  
+            What template to use.  Currently only a state PHOENIX model is supported.
+            Other A0V templates may be added in the future, such as Vega.
             (default: PHOENIX)
         """
         if method == "PHOENIX":
