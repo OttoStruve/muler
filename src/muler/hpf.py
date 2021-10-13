@@ -52,6 +52,10 @@ STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 static_A0V_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
 STATIC_A0V_DATAFRAME = pd.read_csv(static_A0V_file)
 
+# TelFit template
+static_telfit_file = files(templates).joinpath("telfit_HPFtemplate_temp286_hum050.csv")
+STATIC_TELFIT_DATAFRAME = pd.read_csv(static_telfit_file)
+
 
 class HPFSpectrum(EchelleSpectrum):
     r"""
@@ -256,6 +260,17 @@ class HPFSpectrum(EchelleSpectrum):
         else:
             raise NotImplementedError
 
+    def get_static_TelFit_template(self):
+        """Get the static TelFit template for HPF
+
+        A convenience function for getting a quicklook Telluric template
+        """
+
+        return HPFSpectrum(
+            spectral_axis=STATIC_TELFIT_DATAFRAME.wavelength_A.values * u.Angstrom,
+            flux=STATIC_TELFIT_DATAFRAME.transmission.values * u.dimensionless_unscaled,
+        )
+
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
         blaze_template = self.get_static_blaze_template(method="Goldilocks")
@@ -312,6 +327,37 @@ class HPFSpectrum(EchelleSpectrum):
         # These steps should propagate uncertainty?
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
+
+    def mask_tellurics(self, method="TelFit", threshold=0.999):
+        """Mask known telluric lines based on a static TelFit template or heuristics
+
+        Note: This method is for quicklook purpsoes, it misses many unknown tellurics
+
+        Parameters
+        ----------
+        method : (str)
+            The method for telluric masking: "TelFit" or "heuristics"
+            Default is TelFit.
+
+        Returns
+        -------
+        sky_subtractedSpec : (HPFSpectrum)
+            Sky subtracted Spectrum
+        """
+
+        if method == "TelFit":
+            log.warning(
+                "Experimental method, please provide your feedback on our GitHub issues page."
+            )
+            telfit_template = self.get_static_TelFit_template()
+            resampler = LinearInterpolatedResampler(extrapolation_treatment="nan_fill")
+            telluric_estimate = resampler(telfit_template, self.spectral_axis)
+            bad_mask = telluric_estimate.flux < threshold
+            self.mask = bad_mask
+            return self.remove_nans()
+        else:
+            log.error("Only the TelFit method is currently implemented")
+            raise NotImplementedError
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
