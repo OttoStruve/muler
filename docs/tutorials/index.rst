@@ -27,6 +27,8 @@ HPF Examples
 
    Precision Sky Subtraction with Blank Sky Observations <blank_sky_observations.ipynb>
 
+   Masking and continuum flattening <Masking_and_flattening.ipynb>
+
    
 
 Concepts
