@@ -40,7 +40,7 @@ for category in [
 # Convert FITS running index number to echelle order m
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
 
-# Science-to-sky throughput ratio template
+# Science-to-sky fiber throughput ratio template
 static_sky_ratio_file = files(templates).joinpath("HPF_sci_to_sky_ratio_beta.csv")
 STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 
@@ -48,8 +48,9 @@ STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
 STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 
-static_telluric_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
-STATIC_TELLURIC_DATAFRAME = pd.read_csv(static_telluric_file)
+# A0V template
+static_A0V_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
+STATIC_A0V_DATAFRAME = pd.read_csv(static_A0V_file)
 
 
 class HPFSpectrum(EchelleSpectrum):
@@ -249,8 +250,8 @@ class HPFSpectrum(EchelleSpectrum):
         if method == "PHOENIX":
 
             return HPFSpectrum(
-                spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * u.Angstrom,
-                flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
+                spectral_axis=STATIC_A0V_DATAFRAME.wave_ang.values * u.Angstrom,
+                flux=STATIC_A0V_DATAFRAME.flux.values * u.dimensionless_unscaled,
             )
         else:
             raise NotImplementedError
