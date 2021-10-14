@@ -24,6 +24,7 @@ from astropy.time import Time
 import copy
 from importlib_resources import files
 from specutils.manipulation import LinearInterpolatedResampler
+from scipy.ndimage import binary_dilation
 from . import templates
 import pandas as pd
 
@@ -328,7 +329,7 @@ class HPFSpectrum(EchelleSpectrum):
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
 
-    def mask_tellurics(self, method="TelFit", threshold=0.999):
+    def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=3):
         """Mask known telluric lines based on a static TelFit template or heuristics
 
         Note: This method is for quicklook purpsoes, it misses many unknown tellurics
@@ -338,6 +339,11 @@ class HPFSpectrum(EchelleSpectrum):
         method : (str)
             The method for telluric masking: "TelFit" or "heuristics"
             Default is TelFit.
+
+        dilation : (int)
+            The number of pixels adjacent to the threshold mask to include in a
+            dilated mask. This control parameter accounts for velocity offsets
+            between the template and observed telluric spectrum.
 
         Returns
         -------
@@ -352,8 +358,16 @@ class HPFSpectrum(EchelleSpectrum):
             telfit_template = self.get_static_TelFit_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="nan_fill")
             telluric_estimate = resampler(telfit_template, self.spectral_axis)
-            bad_mask = telluric_estimate.flux < threshold
-            self.mask = bad_mask
+
+            assert (threshold < 1.0) & (threshold > 0.0), "Threshold must be a fraction"
+            threshold_mask = telluric_estimate.flux < threshold
+
+            # Dilate the binary mask to account for velocity offsets and edge effects
+            dilated_mask = binary_dilation(threshold_mask, iterations=dilation)
+            assert (
+                ~dilated_mask
+            ).sum() > 2, "You should have at least 2 pixels left after masking"
+            self.mask = dilated_mask
             return self.remove_nans()
         else:
             log.error("Only the TelFit method is currently implemented")
