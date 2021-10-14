@@ -329,7 +329,7 @@ class HPFSpectrum(EchelleSpectrum):
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
 
-    def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=3):
+    def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
         """Mask known telluric lines based on a static TelFit template or heuristics
 
         Note: This method is for quicklook purpsoes, it misses many unknown tellurics
