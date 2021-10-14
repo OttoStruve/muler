@@ -352,9 +352,6 @@ class HPFSpectrum(EchelleSpectrum):
         """
 
         if method == "TelFit":
-            log.warning(
-                "Experimental method, please provide your feedback on our GitHub issues page."
-            )
             telfit_template = self.get_static_TelFit_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="nan_fill")
             telluric_estimate = resampler(telfit_template, self.spectral_axis)
