@@ -271,8 +271,14 @@ class EchelleSpectrum(Spectrum1D):
 
         return new_self
 
-    def smooth_spectrum(self):
+    def smooth_spectrum(self, return_model=False):
         """Smooth the spectrum using Gaussian Process regression
+
+        Parameters
+        -------
+        return_model : (bool)
+            Whether or not to return the gp model, which takes a wavelength axis
+            as input and outputs the smooth trend
 
         Returns
         -------
@@ -291,6 +297,7 @@ class EchelleSpectrum(Spectrum1D):
         else:
             unc = np.repeat(np.nanmedian(self.flux.value) / 100.0, len(self.flux))
 
+        # TODO: change rho to depend on the bandwidth
         kernel = terms.SHOTerm(sigma=0.03, rho=15.0, Q=0.5)
         gp = celerite2.GaussianProcess(kernel, mean=0.0)
         gp.compute(self.wavelength)
@@ -316,12 +323,18 @@ class EchelleSpectrum(Spectrum1D):
         meta_out = copy.deepcopy(self.meta)
         meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
-        return self._copy(
+        smoothed_spectrum = self._copy(
             spectral_axis=self.wavelength,
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
             meta=meta_out,
         )
+
+        if return_model:
+            gp_model = lambda wl: opt_gp.predict(self.flux.value, t=wl)
+            return (smoothed_spectrum, gp_model)
+        else:
+            return smoothed_spectrum
 
     def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), **kwargs):
         """Plot a quick look of the spectrum"

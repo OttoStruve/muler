@@ -24,6 +24,7 @@ from astropy.time import Time
 import copy
 from importlib_resources import files
 from specutils.manipulation import LinearInterpolatedResampler
+from scipy.ndimage import binary_dilation
 from . import templates
 import pandas as pd
 
@@ -40,7 +41,7 @@ for category in [
 # Convert FITS running index number to echelle order m
 grating_order_offsets = {"Goldilocks": 0, "HPF": 0}  # Not implemented yet
 
-# Science-to-sky throughput ratio template
+# Science-to-sky fiber throughput ratio template
 static_sky_ratio_file = files(templates).joinpath("HPF_sci_to_sky_ratio_beta.csv")
 STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 
@@ -48,8 +49,13 @@ STATIC_SKY_RATIO_DATAFRAME = pd.read_csv(static_sky_ratio_file)
 static_blaze_file = files(templates).joinpath("HPF_blaze_templates.csv")
 STATIC_BLAZE_DATAFRAME = pd.read_csv(static_blaze_file)
 
-static_telluric_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
-STATIC_TELLURIC_DATAFRAME = pd.read_csv(static_telluric_file)
+# A0V template
+static_A0V_file = files(templates).joinpath("PHOENIX_10kK_hpf_template.csv")
+STATIC_A0V_DATAFRAME = pd.read_csv(static_A0V_file)
+
+# TelFit template
+static_telfit_file = files(templates).joinpath("telfit_HPFtemplate_temp286_hum050.csv")
+STATIC_TELFIT_DATAFRAME = pd.read_csv(static_telfit_file)
 
 
 class HPFSpectrum(EchelleSpectrum):
@@ -249,11 +255,22 @@ class HPFSpectrum(EchelleSpectrum):
         if method == "PHOENIX":
 
             return HPFSpectrum(
-                spectral_axis=STATIC_TELLURIC_DATAFRAME.wave_ang.values * u.Angstrom,
-                flux=STATIC_TELLURIC_DATAFRAME.flux.values * u.dimensionless_unscaled,
+                spectral_axis=STATIC_A0V_DATAFRAME.wave_ang.values * u.Angstrom,
+                flux=STATIC_A0V_DATAFRAME.flux.values * u.dimensionless_unscaled,
             )
         else:
             raise NotImplementedError
+
+    def get_static_TelFit_template(self):
+        """Get the static TelFit template for HPF
+
+        A convenience function for getting a quicklook Telluric template
+        """
+
+        return HPFSpectrum(
+            spectral_axis=STATIC_TELFIT_DATAFRAME.wavelength_A.values * u.Angstrom,
+            flux=STATIC_TELFIT_DATAFRAME.transmission.values * u.dimensionless_unscaled,
+        )
 
     def _deblaze_by_template(self):
         """Deblazing with a template-based method"""
@@ -311,6 +328,47 @@ class HPFSpectrum(EchelleSpectrum):
         # These steps should propagate uncertainty?
         sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
         return self.subtract(sky_estimator, handle_meta="first_found")
+
+    def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
+        """Mask known telluric lines based on a static TelFit template or heuristics
+
+        Note: This method is for quicklook purpsoes, it misses many unknown tellurics
+
+        Parameters
+        ----------
+        method : (str)
+            The method for telluric masking: "TelFit" or "heuristics"
+            Default is TelFit.
+
+        dilation : (int)
+            The number of pixels adjacent to the threshold mask to include in a
+            dilated mask. This control parameter accounts for velocity offsets
+            between the template and observed telluric spectrum.
+
+        Returns
+        -------
+        sky_subtractedSpec : (HPFSpectrum)
+            Sky subtracted Spectrum
+        """
+
+        if method == "TelFit":
+            telfit_template = self.get_static_TelFit_template()
+            resampler = LinearInterpolatedResampler(extrapolation_treatment="nan_fill")
+            telluric_estimate = resampler(telfit_template, self.spectral_axis)
+
+            assert (threshold < 1.0) & (threshold > 0.0), "Threshold must be a fraction"
+            threshold_mask = telluric_estimate.flux < threshold
+
+            # Dilate the binary mask to account for velocity offsets and edge effects
+            dilated_mask = binary_dilation(threshold_mask, iterations=dilation)
+            assert (
+                ~dilated_mask
+            ).sum() > 2, "You should have at least 2 pixels left after masking"
+            self.mask = dilated_mask
+            return self.remove_nans()
+        else:
+            log.error("Only the TelFit method is currently implemented")
+            raise NotImplementedError
 
     def blaze_divide_flats(self, flat, order=19):
         """Remove blaze function from spectrum by dividing by flat spectrum
