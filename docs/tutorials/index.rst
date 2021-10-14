@@ -29,7 +29,7 @@ HPF Examples
 
    Masking and continuum flattening with specutils <Masking_and_flattening.ipynb>
 
-   Masking and continuum flattening with TelFit and Celeritè <Masking_and_flattening.ipynb>
+   Masking and continuum flattening with TelFit and Celeritè <Masking_and_flattening_plus.ipynb>
 
    
 
