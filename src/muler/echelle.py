@@ -22,7 +22,8 @@ from astropy.nddata import StdDevUncertainty
 from scipy.stats import median_abs_deviation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
