@@ -1,7 +1,7 @@
 
 
-Getting started
----------------
+Tutorials
+---------
 
 IGRINS Examples
 ###############
@@ -36,11 +36,24 @@ HPF Examples
 Concepts
 ########
 
+*Error Propagation*
+^^^^^^^^^^^^^^^^^^^
 .. toctree::
    :maxdepth: 1
 
    Combining uncertainties with specutils <Combining_uncertainties_with_specutils.ipynb>
 
+
+*Continuum Flattening*
+^^^^^^^^^^^^^^^^^^^^^^
+.. toctree::
+   :maxdepth: 1
+
+   Masking and continuum flattening with specutils <Masking_and_flattening.ipynb>
+
+   Masking and continuum flattening with TelFit and Celeritè <Masking_and_flattening_plus.ipynb>
+
+   Easy Flattening with built-in Savitzky-Golay filter <Flattening_with_savgol.ipynb>
 
 Deprecated
 ##########
