@@ -451,7 +451,8 @@ class EchelleSpectrum(Spectrum1D):
         mean_model = opt_gp.predict(self.flux.value, t=self.wavelength.value)
 
         meta_out = copy.deepcopy(self.meta)
-        meta_out["x_values"] = meta_out["x_values"][~self.mask]
+        if hasattr(meta_out, "x_values"):
+            meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
         smoothed_spectrum = self._copy(
             spectral_axis=self.wavelength,
@@ -708,7 +709,13 @@ class EchelleSpectrumList(SpectrumList):
         # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
         # unc_out = StdDevUncertainty(unc)
 
-        return self[0].__class__(spectral_axis=wls, flux=fluxes)
+        # Stack the x_values:
+        x_values = np.hstack([self[i].meta["x_values"] for i in range(len(self))])
+
+        meta_out = copy.deepcopy(self[0].meta)
+        meta_out["x_values"] = x_values
+
+        return self[0].__class__(spectral_axis=wls, flux=fluxes, meta=meta_out)
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list"""
