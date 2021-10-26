@@ -80,8 +80,13 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             unc = hdu0.data["noise (cnts)"].astype(np.float64) * u.ct
 
             uncertainty = StdDevUncertainty(unc)
-            mask = (
-                np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
+            mask = np.array(
+                (
+                    np.isnan(flux)
+                    | np.isnan(uncertainty.array)
+                    | (uncertainty.array <= 0)
+                ),
+                dtype=bool,
             )
 
             # Attempt to read-in the header:
@@ -104,7 +109,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             super().__init__(
                 spectral_axis=lamb,
                 flux=flux,
-                mask=mask,
+                mask=mask.astype(bool),
                 wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict,
@@ -117,7 +122,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             sky_spectrum = KeckNIRSPECSpectrum(
                 spectral_axis=lamb,
                 flux=flux,
-                mask=mask,
+                mask=mask.astype(bool),
                 wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict.copy(),

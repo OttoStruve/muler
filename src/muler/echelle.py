@@ -11,6 +11,7 @@ EchelleSpectrum
 
 import warnings
 import logging
+from celerite2.terms import handle_parameter_spec
 import numpy as np
 import astropy
 import pandas as pd
@@ -133,20 +134,21 @@ class EchelleSpectrum(Spectrum1D):
         normalized_spec : (KeckNIRSPECSpectrum)
             Normalized Spectrum
         """
-        median_flux = np.nanmedian(self.flux)
+        spec = copy.deepcopy(self)
+        median_flux = np.nanmedian(spec.flux)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
-        meta_out = copy.deepcopy(self.meta)
-        if hasattr(self, "ancillary_spectra"):
-            if self.ancillary_spectra is not None:
-                for ancillary_spectrum in self.ancillary_spectra:
+        meta_out = copy.deepcopy(spec.meta)
+        if hasattr(spec, "ancillary_spectra"):
+            if spec.ancillary_spectra is not None:
+                for ancillary_spectrum in spec.ancillary_spectra:
                     if ancillary_spectrum in meta_out.keys():
                         meta_out[ancillary_spectrum] = meta_out[
                             ancillary_spectrum
-                        ].divide(median_flux, handle_meta="first_found")
+                        ].divide(median_flux, handle_meta="ff")
 
-        self.meta = meta_out
-        return self.divide(median_flux, handle_meta="first_found")
+        # spec.meta = meta_out
+        return spec.divide(median_flux, handle_meta="first_found")._copy(meta=meta_out)
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
@@ -370,36 +372,57 @@ class EchelleSpectrum(Spectrum1D):
         finite_spec : (KeckNIRSPECSpectrum)
             Spectrum with NaNs removed
         """
+        spec = copy.deepcopy(self)
 
-        # Todo: probably want to check that all NaNs are in the mask
+        net_mask = (spec.mask == True) | (spec.flux.value != spec.flux.value)
+        if spec.uncertainty is not None:
+            masked_unc = StdDevUncertainty(spec.uncertainty.array[~net_mask])
+        else:
+            masked_unc = None
 
-        def remove_nans_per_spectrum(spectrum):
-            net_mask = spectrum.mask | (spectrum.flux.value != spectrum.flux.value)
-            if spectrum.uncertainty is not None:
-                masked_unc = StdDevUncertainty(spectrum.uncertainty.array[~net_mask])
-            else:
-                masked_unc = None
+        meta_out = copy.deepcopy(spec.meta)
+        meta_out["x_values"] = meta_out["x_values"][~net_mask]
 
-            meta_out = copy.deepcopy(spectrum.meta)
-            meta_out["x_values"] = meta_out["x_values"][~net_mask]
+        if hasattr(spec, "ancillary_spectra"):
+            if spec.ancillary_spectra is not None:
+                for ancillary_spectrum in spec.ancillary_spectra:
+                    if ancillary_spectrum in meta_out.keys():
+                        if meta_out[ancillary_spectrum].uncertainty is not None:
+                            unc = StdDevUncertainty(
+                                meta_out[ancillary_spectrum].uncertainty.array[
+                                    ~net_mask
+                                ]
+                            )
+                        else:
+                            unc = None
+                        if meta_out[ancillary_spectrum].meta is not None:
+                            meta_of_meta = copy.deepcopy(
+                                meta_out[ancillary_spectrum].meta
+                            )
+                            meta_of_meta["x_values"] = meta_of_meta["x_values"][
+                                ~net_mask
+                            ]
+                        else:
+                            meta_of_meta = None
+                        meta_out[ancillary_spectrum] = spec.__class__(
+                            spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                                ~net_mask
+                            ]
+                            * meta_out[ancillary_spectrum].wavelength.unit,
+                            flux=meta_out[ancillary_spectrum].flux[~net_mask],
+                            uncertainty=unc,
+                            mask=meta_out[ancillary_spectrum].mask[~net_mask],
+                            wcs=None,
+                            meta=meta_of_meta,
+                        )
 
-            return self._copy(
-                spectral_axis=spectrum.wavelength[~net_mask],
-                flux=spectrum.flux[~net_mask],
-                mask=spectrum.mask[~net_mask],
-                uncertainty=masked_unc,
-                meta=meta_out,
-            )
-
-        new_self = remove_nans_per_spectrum(self)
-        if "sky" in self.meta.keys():
-            new_sky = remove_nans_per_spectrum(self.sky)
-            new_self.meta["sky"] = new_sky
-        # if "lfc" in self.meta.keys():
-        #    new_lfc = remove_nans_per_spectrum(self.lfc)
-        #    new_self.meta["lfc"] = new_lfc
-
-        return new_self
+        return spec.__class__(
+            spectral_axis=spec.wavelength.value[~net_mask] * spec.wavelength.unit,
+            flux=spec.flux[~net_mask],
+            mask=np.zeros_like(spec.mask[~net_mask]),
+            uncertainty=masked_unc,
+            meta=meta_out,
+        )
 
     def smooth_spectrum(self, return_model=False):
         """Smooth the spectrum using Gaussian Process regression
@@ -455,7 +478,7 @@ class EchelleSpectrum(Spectrum1D):
             meta_out["x_values"] = meta_out["x_values"][~self.mask]
 
         smoothed_spectrum = self._copy(
-            spectral_axis=self.wavelength,
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
             meta=meta_out,
@@ -543,22 +566,57 @@ class EchelleSpectrum(Spectrum1D):
         trimmed_spec : (EchelleSpectrum)
             Trimmed version of input Spectrum
         """
+        spec = copy.deepcopy(self)
         if limits is None:
-            limits = self.noisy_edges
+            limits = spec.noisy_edges
         lo, hi = limits
-        meta_out = copy.deepcopy(self.meta)
+        meta_out = copy.deepcopy(spec.meta)
         x_values = meta_out["x_values"]
         mask = (x_values < lo) | (x_values > hi)
 
-        if self.uncertainty is not None:
-            masked_unc = StdDevUncertainty(self.uncertainty.array[~mask])
+        if spec.uncertainty is not None:
+            masked_unc = StdDevUncertainty(spec.uncertainty.array[~mask])
         else:
             masked_unc = None
 
         meta_out["x_values"] = x_values[~mask]
 
-        return self._copy(
-            spectral_axis=self.wavelength[~mask],
+        if hasattr(spec, "ancillary_spectra"):
+            if spec.ancillary_spectra is not None:
+                for ancillary_spectrum in spec.ancillary_spectra:
+                    if ancillary_spectrum in meta_out.keys():
+                        if meta_out[ancillary_spectrum].uncertainty is not None:
+                            unc = StdDevUncertainty(
+                                meta_out[ancillary_spectrum].uncertainty.array[~mask]
+                            )
+                        else:
+                            unc = None
+                        if meta_out[ancillary_spectrum].mask is not None:
+                            mask_out = meta_out[ancillary_spectrum].mask[~mask]
+                        else:
+                            mask_out = None
+                        if meta_out[ancillary_spectrum].meta is not None:
+                            meta_of_meta = copy.deepcopy(
+                                meta_out[ancillary_spectrum].meta
+                            )
+                            meta_of_meta["x_values"] = meta_of_meta["x_values"][~mask]
+                        else:
+                            meta_of_meta = None
+                        meta_out[ancillary_spectrum] = meta_out[
+                            ancillary_spectrum
+                        ]._copy(
+                            spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                                ~mask
+                            ]
+                            * meta_out[ancillary_spectrum].wavelength.unit,
+                            flux=meta_out[ancillary_spectrum].flux[~mask],
+                            uncertainty=unc,
+                            mask=mask_out,
+                            meta=meta_of_meta,
+                        )
+
+        return spec._copy(
+            spectral_axis=self.wavelength.value[~mask] * self.wavelength.unit,
             flux=self.flux[~mask],
             mask=self.mask[~mask],
             uncertainty=masked_unc,
@@ -704,18 +762,56 @@ class EchelleSpectrumList(SpectrumList):
 
     def stitch(self):
         """Stitch all the spectra together, assuming zero overlap in wavelength."""
-        wls = np.hstack([self[i].wavelength for i in range(len(self))])
-        fluxes = np.hstack([self[i].flux for i in range(len(self))])
+        spec = copy.deepcopy(self)
+        wls = (
+            np.hstack([spec[i].wavelength.value for i in range(len(spec))])
+            * spec[0].wavelength.unit
+        )
+        fluxes = (
+            np.hstack([spec[i].flux.value for i in range(len(spec))])
+            * spec[0].flux.unit
+        )
         # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
         # unc_out = StdDevUncertainty(unc)
 
         # Stack the x_values:
-        x_values = np.hstack([self[i].meta["x_values"] for i in range(len(self))])
+        x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
 
-        meta_out = copy.deepcopy(self[0].meta)
+        meta_out = copy.deepcopy(spec[0].meta)
         meta_out["x_values"] = x_values
+        if hasattr(spec[0], "ancillary_spectra"):
+            if spec[0].ancillary_spectra is not None:
+                for ancillary_spectrum in spec[0].ancillary_spectra:
+                    if ancillary_spectrum in meta_out.keys():
+                        if spec[0].meta[ancillary_spectrum].meta is not None:
+                            meta_of_meta = spec[0].meta[ancillary_spectrum].meta
+                            x_values = np.hstack(
+                                [
+                                    spec[i].meta[ancillary_spectrum].meta["x_values"]
+                                    for i in range(len(spec))
+                                ]
+                            )
+                            meta_of_meta["x_values"] = x_values
+                        else:
+                            meta_of_meta = None
+                        wls_anc = np.hstack(
+                            [
+                                spec[i].meta[ancillary_spectrum].wavelength
+                                for i in range(len(spec))
+                            ]
+                        )
+                        fluxes_anc = np.hstack(
+                            [
+                                spec[i].meta[ancillary_spectrum].flux
+                                for i in range(len(spec))
+                            ]
+                        )
 
-        return self[0].__class__(spectral_axis=wls, flux=fluxes, meta=meta_out)
+                        meta_out[ancillary_spectrum] = spec[0].__class__(
+                            spectral_axis=wls_anc, flux=fluxes_anc, meta=meta_of_meta
+                        )
+
+        return spec[0].__class__(spectral_axis=wls, flux=fluxes, meta=meta_out)
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list"""
