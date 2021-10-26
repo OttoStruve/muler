@@ -24,7 +24,7 @@ from scipy.stats import median_abs_deviation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.signal import savgol_filter
+from scipy.signal import savgol_filter, waveforms
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
@@ -134,7 +134,9 @@ class EchelleSpectrum(Spectrum1D):
         normalized_spec : (KeckNIRSPECSpectrum)
             Normalized Spectrum
         """
-        spec = copy.deepcopy(self)
+        spec = self._copy(
+            spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
+        )
         median_flux = np.nanmedian(spec.flux)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
@@ -351,7 +353,8 @@ class EchelleSpectrum(Spectrum1D):
         try:
             self.radial_velocity = velocity
             return self._copy(
-                spectral_axis=self.wavelength.value * self.wavelength.unit
+                spectral_axis=self.wavelength.value * self.wavelength.unit,
+                wcs=None,
             )
 
         except:
@@ -489,6 +492,7 @@ class EchelleSpectrum(Spectrum1D):
             flux=mean_model * self.flux.unit,
             mask=np.zeros_like(mean_model, dtype=np.bool),
             meta=meta_out,
+            wcs=None,
         )
 
         if return_model:
@@ -619,6 +623,7 @@ class EchelleSpectrum(Spectrum1D):
                             flux=meta_out[ancillary_spectrum].flux[~mask],
                             uncertainty=unc,
                             mask=mask_out,
+                            wcs=None,
                             meta=meta_of_meta,
                         )
 
@@ -627,6 +632,7 @@ class EchelleSpectrum(Spectrum1D):
             flux=self.flux[~mask],
             mask=self.mask[~mask],
             uncertainty=masked_unc,
+            wcs=None,
             meta=meta_out,
         )
 
@@ -778,8 +784,12 @@ class EchelleSpectrumList(SpectrumList):
             np.hstack([spec[i].flux.value for i in range(len(spec))])
             * spec[0].flux.unit
         )
-        # unc = np.hstack([self[i].uncertainty.array for i in range(len(self))])
-        # unc_out = StdDevUncertainty(unc)
+        if spec[0].uncertainty is not None:
+            # HACK We assume if one order has it, they all do, and that it's StdDev
+            unc = np.hstack([spec[i].uncertainty.array for i in range(len(self))])
+            unc_out = StdDevUncertainty(unc)
+        else:
+            unc_out = None
 
         # Stack the x_values:
         x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
@@ -818,7 +828,9 @@ class EchelleSpectrumList(SpectrumList):
                             spectral_axis=wls_anc, flux=fluxes_anc, meta=meta_of_meta
                         )
 
-        return spec[0].__class__(spectral_axis=wls, flux=fluxes, meta=meta_out)
+        return spec[0].__class__(
+            spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out
+        )
 
     def plot(self, **kwargs):
         """Plot the entire spectrum list"""
