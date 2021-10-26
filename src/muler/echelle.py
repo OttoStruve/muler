@@ -404,6 +404,13 @@ class EchelleSpectrum(Spectrum1D):
                             ]
                         else:
                             meta_of_meta = None
+
+                        if meta_out[ancillary_spectrum].mask is not None:
+                            ancillary_mask = meta_out[ancillary_spectrum].mask[
+                                ~net_mask
+                            ]
+                        else:
+                            ancillary_mask = np.zeros((~net_mask).sum(), dtype=bool)
                         meta_out[ancillary_spectrum] = spec.__class__(
                             spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
                                 ~net_mask
@@ -411,7 +418,7 @@ class EchelleSpectrum(Spectrum1D):
                             * meta_out[ancillary_spectrum].wavelength.unit,
                             flux=meta_out[ancillary_spectrum].flux[~net_mask],
                             uncertainty=unc,
-                            mask=meta_out[ancillary_spectrum].mask[~net_mask],
+                            mask=ancillary_mask,
                             wcs=None,
                             meta=meta_of_meta,
                         )
