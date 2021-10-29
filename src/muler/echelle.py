@@ -155,13 +155,10 @@ class EchelleSpectrum(Spectrum1D):
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
-        if hasattr(spec, "ancillary_spectra"):
-            if spec.ancillary_spectra is not None:
-                for ancillary_spectrum in spec.ancillary_spectra:
-                    if ancillary_spectrum in meta_out.keys():
-                        meta_out[ancillary_spectrum] = meta_out[
-                            ancillary_spectrum
-                        ].divide(median_flux, handle_meta="ff")
+        for ancillary_spectrum in self.available_ancillary_spectra:
+            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
+                median_flux, handle_meta="ff"
+            )
 
         # spec.meta = meta_out
         return spec.divide(median_flux, handle_meta="first_found")._copy(meta=meta_out)
@@ -727,40 +724,31 @@ class EchelleSpectrumList(SpectrumList):
 
         meta_out = copy.deepcopy(spec[0].meta)
         meta_out["x_values"] = x_values
-        if hasattr(spec[0], "ancillary_spectra"):
-            if spec[0].ancillary_spectra is not None:
-                for ancillary_spectrum in spec[0].ancillary_spectra:
-                    if ancillary_spectrum in meta_out.keys():
-                        if spec[0].meta[ancillary_spectrum].meta is not None:
-                            meta_of_meta = spec[0].meta[ancillary_spectrum].meta
-                            x_values = np.hstack(
-                                [
-                                    spec[i].meta[ancillary_spectrum].meta["x_values"]
-                                    for i in range(len(spec))
-                                ]
-                            )
-                            meta_of_meta["x_values"] = x_values
-                        else:
-                            meta_of_meta = None
-                        wls_anc = np.hstack(
-                            [
-                                spec[i].meta[ancillary_spectrum].wavelength
-                                for i in range(len(spec))
-                            ]
-                        )
-                        fluxes_anc = np.hstack(
-                            [
-                                spec[i].meta[ancillary_spectrum].flux
-                                for i in range(len(spec))
-                            ]
-                        )
+        for ancillary_spectrum in spec[0].available_ancillary_spectra:
+            if spec[0].meta[ancillary_spectrum].meta is not None:
+                meta_of_meta = spec[0].meta[ancillary_spectrum].meta
+                x_values = np.hstack(
+                    [
+                        spec[i].meta[ancillary_spectrum].meta["x_values"]
+                        for i in range(len(spec))
+                    ]
+                )
+                meta_of_meta["x_values"] = x_values
+            else:
+                meta_of_meta = None
+            wls_anc = np.hstack(
+                [spec[i].meta[ancillary_spectrum].wavelength for i in range(len(spec))]
+            )
+            fluxes_anc = np.hstack(
+                [spec[i].meta[ancillary_spectrum].flux for i in range(len(spec))]
+            )
 
-                        meta_out[ancillary_spectrum] = spec[0].__class__(
-                            spectral_axis=wls_anc, flux=fluxes_anc, meta=meta_of_meta
-                        )
+            meta_out[ancillary_spectrum] = spec[0].__class__(
+                spectral_axis=wls_anc, flux=fluxes_anc, meta=meta_of_meta
+            )
 
         return spec[0].__class__(
-            spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out
+            spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out, wcs=None
         )
 
     def plot(self, **kwargs):

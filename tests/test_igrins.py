@@ -22,6 +22,10 @@ def test_basic():
     assert isinstance(spec, Spectrum1D)
     assert isinstance(spec.flux, np.ndarray)
     assert len(spec.flux) == len(spec.wavelength)
+
+    # Check that numpy operations persist the units
+    assert np.nanmedian(spec.flux).unit == spec.flux.unit
+
     assert spec.mask.sum() > 0
 
     new_spec = spec.normalize()
