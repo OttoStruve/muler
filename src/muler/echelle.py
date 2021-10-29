@@ -389,66 +389,12 @@ class EchelleSpectrum(Spectrum1D):
         finite_spec : (KeckNIRSPECSpectrum)
             Spectrum with NaNs removed
         """
-        spec = copy.deepcopy(self)
+        keep_indices = (self.mask == False) & (self.flux == self.flux)
+        return self.apply_boolean_mask(keep_indices)
 
-        net_mask = (spec.mask == True) | (spec.flux.value != spec.flux.value)
-        if spec.uncertainty is not None:
-            masked_unc = StdDevUncertainty(spec.uncertainty.array[~net_mask])
-        else:
-            masked_unc = None
-
-        meta_out = copy.deepcopy(spec.meta)
-        meta_out["x_values"] = meta_out["x_values"][~net_mask]
-
-        if hasattr(spec, "ancillary_spectra"):
-            if spec.ancillary_spectra is not None:
-                for ancillary_spectrum in spec.ancillary_spectra:
-                    if ancillary_spectrum in meta_out.keys():
-                        if meta_out[ancillary_spectrum].uncertainty is not None:
-                            unc = StdDevUncertainty(
-                                meta_out[ancillary_spectrum].uncertainty.array[
-                                    ~net_mask
-                                ]
-                            )
-                        else:
-                            unc = None
-                        if meta_out[ancillary_spectrum].meta is not None:
-                            meta_of_meta = copy.deepcopy(
-                                meta_out[ancillary_spectrum].meta
-                            )
-                            meta_of_meta["x_values"] = meta_of_meta["x_values"][
-                                ~net_mask
-                            ]
-                        else:
-                            meta_of_meta = None
-
-                        if meta_out[ancillary_spectrum].mask is not None:
-                            ancillary_mask = meta_out[ancillary_spectrum].mask[
-                                ~net_mask
-                            ]
-                        else:
-                            ancillary_mask = np.zeros((~net_mask).sum(), dtype=bool)
-                        meta_out[ancillary_spectrum] = spec.__class__(
-                            spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                                ~net_mask
-                            ]
-                            * meta_out[ancillary_spectrum].wavelength.unit,
-                            flux=meta_out[ancillary_spectrum].flux[~net_mask],
-                            uncertainty=unc,
-                            mask=ancillary_mask,
-                            wcs=None,
-                            meta=meta_of_meta,
-                        )
-
-        return spec.__class__(
-            spectral_axis=spec.wavelength.value[~net_mask] * spec.wavelength.unit,
-            flux=spec.flux[~net_mask],
-            mask=np.zeros_like(spec.mask[~net_mask]),
-            uncertainty=masked_unc,
-            meta=meta_out,
-        )
-
-    def smooth_spectrum(self, return_model=False):
+    def smooth_spectrum(
+        self, return_model=False, optimize_kernel=False, bandwidth=150.0
+    ):
         """Smooth the spectrum using Gaussian Process regression
 
         Parameters
@@ -456,6 +402,10 @@ class EchelleSpectrum(Spectrum1D):
         return_model : (bool)
             Whether or not to return the gp model, which takes a wavelength axis
             as input and outputs the smooth trend
+        optimize_kernel : (bool)
+            Whether to optimize the GP hyperparameters: correlation scale and amplitude
+        bandwidth : (float)
+            The smoothing bandwidth in Angstroms.  Defaults to 150 Angstrom lengthscale.
 
         Returns
         -------
@@ -475,37 +425,37 @@ class EchelleSpectrum(Spectrum1D):
             unc = np.repeat(np.nanmedian(self.flux.value) / 100.0, len(self.flux))
 
         # TODO: change rho to depend on the bandwidth
-        kernel = terms.SHOTerm(sigma=0.03, rho=15.0, Q=0.5)
+        kernel = terms.SHOTerm(sigma=0.01, rho=bandwidth, Q=0.25)
         gp = celerite2.GaussianProcess(kernel, mean=0.0)
-        gp.compute(self.wavelength)
+        gp.compute(self.wavelength, yerr=unc)
 
-        # Construct the GP model with celerite
-        def set_params(params, gp):
-            gp.mean = params[0]
-            theta = np.exp(params[1:])
-            gp.kernel = terms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
-            gp.compute(self.wavelength.value, yerr=unc + theta[2], quiet=True)
-            return gp
+        if optimize_kernel:
+            # Construct the GP model with celerite
+            def set_params(params, gp):
+                gp.mean = params[0]
+                theta = np.exp(params[1:])
+                gp.kernel = terms.SHOTerm(sigma=theta[0], rho=theta[1], Q=0.5)
+                gp.compute(self.wavelength.value, yerr=unc + theta[2], quiet=True)
+                return gp
 
-        def neg_log_like(params, gp):
-            gp = set_params(params, gp)
-            return -gp.log_likelihood(self.flux.value)
+            def neg_log_like(params, gp):
+                gp = set_params(params, gp)
+                return -gp.log_likelihood(self.flux.value)
 
-        initial_params = [np.log(1), np.log(0.001), np.log(5.0), np.log(0.01)]
-        soln = minimize(neg_log_like, initial_params, method="L-BFGS-B", args=(gp,))
-        opt_gp = set_params(soln.x, gp)
+            initial_params = [np.log(1), np.log(0.001), np.log(5.0), np.log(0.01)]
+            soln = minimize(neg_log_like, initial_params, method="L-BFGS-B", args=(gp,))
+            opt_gp = set_params(soln.x, gp)
+        else:
+            opt_gp = gp
 
         mean_model = opt_gp.predict(self.flux.value, t=self.wavelength.value)
 
-        meta_out = copy.deepcopy(self.meta)
-        if hasattr(meta_out, "x_values"):
-            meta_out["x_values"] = meta_out["x_values"][~self.mask]
-
-        smoothed_spectrum = self._copy(
+        smoothed_spectrum = self.__class__(
             spectral_axis=self.wavelength.value * self.wavelength.unit,
             flux=mean_model * self.flux.unit,
+            uncertainty=None,
             mask=np.zeros_like(mean_model, dtype=np.bool),
-            meta=meta_out,
+            meta=copy.deepcopy(self.meta),
             wcs=None,
         )
 
@@ -565,14 +515,10 @@ class EchelleSpectrum(Spectrum1D):
             Cleaned version of input Spectrum
         """
         residual = self.flux - self.smooth_spectrum().flux
-        mad = median_abs_deviation(residual.value)
-        mask = np.abs(residual.value) > threshold * mad
+        mad = median_abs_deviation(residual.value, nan_policy="omit")
+        keep_indices = (np.abs(residual.value) < (threshold * mad)) == True
 
-        spectrum_out = copy.deepcopy(self)
-        spectrum_out._mask = mask
-        spectrum_out.flux[mask] = np.NaN
-
-        return spectrum_out.remove_nans()
+        return self.apply_boolean_mask(keep_indices)
 
     def trim_edges(self, limits=None):
         """Trim the order edges, which falloff in SNR
@@ -591,15 +537,16 @@ class EchelleSpectrum(Spectrum1D):
         trimmed_spec : (EchelleSpectrum)
             Trimmed version of input Spectrum
         """
-        spec = copy.deepcopy(self)
         if limits is None:
-            limits = spec.noisy_edges
+            limits = self.noisy_edges
         lo, hi = limits
-        meta_out = copy.deepcopy(spec.meta)
-        x_values = meta_out["x_values"]
-        mask = (x_values < lo) | (x_values > hi)
+        if hasattr(self.meta, "x_values"):
+            x_values = self.meta["x_values"]
+        else:
+            x_values = np.arange(len(self.wavelength))
+        keep_indices = (x_values > lo) & (x_values < hi)
 
-        return spec.apply_boolean_mask(mask)
+        return self.apply_boolean_mask(keep_indices)
 
     def estimate_uncertainty(self):
         """Estimate the uncertainty based on residual after smoothing
