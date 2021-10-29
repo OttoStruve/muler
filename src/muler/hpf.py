@@ -309,7 +309,7 @@ class HPFSpectrum(EchelleSpectrum):
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
-
+        spec = copy.deepcopy(self)
         if method == "naive":
             log.warning(
                 "Naive sky subtraction method is known to oversubtract the sky, see GitHub Issues."
@@ -318,16 +318,16 @@ class HPFSpectrum(EchelleSpectrum):
         elif method == "scalar":
             beta = 0.93 * u.dimensionless_unscaled
         elif method == "vector":
-            beta_native_spectrum = self.get_static_sky_ratio_template()
+            beta_native_spectrum = spec.get_static_sky_ratio_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="zero_fill")
-            beta = resampler(beta_native_spectrum, self.spectral_axis)
+            beta = resampler(beta_native_spectrum, spec.spectral_axis)
         else:
             log.error("Method must be one of 'naive', 'scalar' or 'vector'. ")
             raise NotImplementedError
 
         # These steps should propagate uncertainty?
-        sky_estimator = self.sky.multiply(beta, handle_meta="first_found")
-        return self.subtract(sky_estimator, handle_meta="first_found")
+        sky_estimator = spec.sky.multiply(beta, handle_meta="first_found")
+        return spec.subtract(sky_estimator, handle_meta="first_found")
 
     def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
         """Mask known telluric lines based on a static TelFit template or heuristics
@@ -350,22 +350,24 @@ class HPFSpectrum(EchelleSpectrum):
         sky_subtractedSpec : (HPFSpectrum)
             Sky subtracted Spectrum
         """
+        spec = copy.deepcopy(self)
 
         if method == "TelFit":
-            telfit_template = self.get_static_TelFit_template()
+            telfit_template = spec.get_static_TelFit_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="nan_fill")
-            telluric_estimate = resampler(telfit_template, self.spectral_axis)
+            telluric_estimate = resampler(telfit_template, spec.spectral_axis)
 
             assert (threshold < 1.0) & (threshold > 0.0), "Threshold must be a fraction"
-            threshold_mask = telluric_estimate.flux < threshold
+            threshold_mask = telluric_estimate.flux.value < threshold
 
             # Dilate the binary mask to account for velocity offsets and edge effects
             dilated_mask = binary_dilation(threshold_mask, iterations=dilation)
             assert (
                 ~dilated_mask
             ).sum() > 2, "You should have at least 2 pixels left after masking"
-            self.mask = dilated_mask
-            return self.remove_nans()
+            spec = spec._copy(mask=dilated_mask)
+            spec_out = spec.remove_nans()
+            return spec_out
         else:
             log.error("Only the TelFit method is currently implemented")
             raise NotImplementedError

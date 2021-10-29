@@ -22,20 +22,23 @@ def test_basic():
     assert isinstance(spec, Spectrum1D)
     assert isinstance(spec.flux, np.ndarray)
     assert len(spec.flux) == len(spec.wavelength)
+
+    # Check that numpy operations persist the units
+    assert np.nanmedian(spec.flux).unit == spec.flux.unit
+
     assert spec.mask.sum() > 0
 
-    new_spec = spec.remove_nans()
+    new_spec = spec.normalize()
+    assert new_spec.shape[0] == spec.shape[0]
+    assert np.nanmedian(new_spec.flux) == 1
+
+    new_spec = spec.remove_nans().normalize()
 
     assert new_spec.shape[0] < spec.shape[0]
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
-    new_spec = spec.normalize()
-
-    assert new_spec.shape[0] == spec.shape[0]
-    assert np.nanmedian(new_spec.flux) == 1
-
-    new_spec = spec.remove_outliers(threshold=3)
+    new_spec = new_spec.remove_outliers(threshold=6)
 
     assert len(new_spec.flux) > 0
     assert new_spec.shape[0] <= spec.shape[0]
@@ -103,7 +106,7 @@ def test_equivalent_width():
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
     spec = IGRINSSpectrum(file=file)
-    new_spec = spec.remove_outliers(threshold=3)
+    new_spec = spec.remove_nans().remove_outliers(threshold=3)
 
     assert len(new_spec.flux) > 0
     assert new_spec.shape[0] <= spec.shape[0]
@@ -143,7 +146,8 @@ def test_deblaze():
 
 
 @pytest.mark.parametrize(
-    "precache_hdus", [True, False],
+    "precache_hdus",
+    [True, False],
 )
 def test_spectrumlist_performance(precache_hdus):
     """Does the Spectrum List work?"""
