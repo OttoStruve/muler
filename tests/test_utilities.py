@@ -1,3 +1,4 @@
+import pytest
 import time
 from muler.hpf import HPFSpectrum
 from specutils import Spectrum1D
@@ -5,10 +6,36 @@ import glob
 from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 
-from muler.utilities import combine_spectra
+from muler.utilities import combine_spectra, apply_boolean_mask
 
 # There should be exactly 3 files in the example data directory
 local_files = glob.glob("**/01_A0V_standards/Goldilocks_*.spectra.fits", recursive=True)
+
+
+def test_apply_mask():
+    """Does applying a boolean mask work?"""
+    spec = HPFSpectrum(file=local_files[0], order=10)
+
+    assert spec is not None
+
+    # A mask with all ones should keep the same shape
+    mask = np.ones_like(spec.flux.value, dtype=bool)
+    spec_out = apply_boolean_mask(spec, mask)
+    assert len(spec_out.flux) == len(spec.flux)
+
+    # A mask with all zeros should raise an error
+    mask = np.zeros_like(spec.flux.value, dtype=bool)
+    with pytest.raises(AssertionError):
+        spec_out = apply_boolean_mask(spec, mask)
+
+    # A regular mask should work
+    mask[0:5] = True
+    spec_out = apply_boolean_mask(spec, mask)
+    assert len(spec_out.flux) < len(spec.flux)
+    assert len(spec_out.flux) == 5
+
+    assert hasattr(spec_out, "meta")
+    assert hasattr(spec_out, "mask")
 
 
 def test_combine():
