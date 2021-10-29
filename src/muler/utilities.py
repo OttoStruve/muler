@@ -11,8 +11,8 @@ def combine_spectra(spec_list):
     return spec_final
 
 
-def apply_boolean_mask(spec, mask):
-    """Applies a boolean mask to an input spectrum
+def apply_numpy_mask(spec, mask):
+    """Applies a boolean mask to an input spectrum, numpy-style (True=Keep, False=Discard)
 
 
     Parameters

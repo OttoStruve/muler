@@ -11,7 +11,6 @@ EchelleSpectrum
 
 import warnings
 import logging
-from celerite2.terms import handle_parameter_spec
 import numpy as np
 import astropy
 import pandas as pd
@@ -24,11 +23,11 @@ from scipy.stats import median_abs_deviation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.signal import savgol_filter, waveforms
+from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import resample_list
+from muler.utilities import apply_numpy_mask, resample_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -71,6 +70,7 @@ class EchelleSpectrum(Spectrum1D):
 
     def __init__(self, *args, **kwargs):
 
+        self.ancillary_spectra = None
         super().__init__(*args, **kwargs)
 
     @property
@@ -92,6 +92,20 @@ class EchelleSpectrum(Spectrum1D):
             snr_estimate = np.repeat(np.NaN, len(self.flux)) * u.dimensionless_unscaled
 
         return snr_estimate
+
+    @property
+    def available_ancillary_spectra(self):
+        """The list of available ancillary spectra"""
+
+        output = []
+        if hasattr(self, "ancillary_spectra"):
+            if self.ancillary_spectra is not None:
+                output = [
+                    ancillary_spectrum
+                    for ancillary_spectrum in self.ancillary_spectra
+                    if ancillary_spectrum in self.meta.keys()
+                ]
+        return output
 
     def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
@@ -585,56 +599,7 @@ class EchelleSpectrum(Spectrum1D):
         x_values = meta_out["x_values"]
         mask = (x_values < lo) | (x_values > hi)
 
-        if spec.uncertainty is not None:
-            masked_unc = StdDevUncertainty(spec.uncertainty.array[~mask])
-        else:
-            masked_unc = None
-
-        meta_out["x_values"] = x_values[~mask]
-
-        if hasattr(spec, "ancillary_spectra"):
-            if spec.ancillary_spectra is not None:
-                for ancillary_spectrum in spec.ancillary_spectra:
-                    if ancillary_spectrum in meta_out.keys():
-                        if meta_out[ancillary_spectrum].uncertainty is not None:
-                            unc = StdDevUncertainty(
-                                meta_out[ancillary_spectrum].uncertainty.array[~mask]
-                            )
-                        else:
-                            unc = None
-                        if meta_out[ancillary_spectrum].mask is not None:
-                            mask_out = meta_out[ancillary_spectrum].mask[~mask]
-                        else:
-                            mask_out = None
-                        if meta_out[ancillary_spectrum].meta is not None:
-                            meta_of_meta = copy.deepcopy(
-                                meta_out[ancillary_spectrum].meta
-                            )
-                            meta_of_meta["x_values"] = meta_of_meta["x_values"][~mask]
-                        else:
-                            meta_of_meta = None
-                        meta_out[ancillary_spectrum] = meta_out[
-                            ancillary_spectrum
-                        ]._copy(
-                            spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                                ~mask
-                            ]
-                            * meta_out[ancillary_spectrum].wavelength.unit,
-                            flux=meta_out[ancillary_spectrum].flux[~mask],
-                            uncertainty=unc,
-                            mask=mask_out,
-                            wcs=None,
-                            meta=meta_of_meta,
-                        )
-
-        return spec._copy(
-            spectral_axis=self.wavelength.value[~mask] * self.wavelength.unit,
-            flux=self.flux[~mask],
-            mask=self.mask[~mask],
-            uncertainty=masked_unc,
-            wcs=None,
-            meta=meta_out,
-        )
+        return spec.apply_boolean_mask(mask)
 
     def estimate_uncertainty(self):
         """Estimate the uncertainty based on residual after smoothing
@@ -683,6 +648,25 @@ class EchelleSpectrum(Spectrum1D):
         Useful for converting models into echelle spectra with multiple orders.
         """
         return resample_list(self, specList, **kwargs)
+
+    def apply_boolean_mask(self, mask):
+        """Apply a boolean mask to the spectrum and any available ancillary spectra
+
+        Parameters
+        ----------
+        mask: boolean mask, typically a numpy array
+            The boolean mask with numpy-style masking: True means "keep" that index and
+            False means discard that index
+        """
+
+        spec = apply_numpy_mask(self, mask)
+
+        for ancillary_spectrum in self.available_ancillary_spectra:
+            spec.meta[ancillary_spectrum] = apply_numpy_mask(
+                spec.meta[ancillary_spectrum], mask
+            )
+
+        return spec
 
 
 class EchelleSpectrumList(SpectrumList):
