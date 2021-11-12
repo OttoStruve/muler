@@ -5,10 +5,22 @@ from astropy.nddata.nduncertainty import StdDevUncertainty
 
 
 def combine_spectra(spec_list):
+    """Combines spectra assuming they are aligned pixel-by-pixel"""
     spec_final = spec_list[0]
     for i in range(1, len(spec_list)):
         spec_final = spec_final.add(spec_list[i], propagate_uncertainties=True)
     return spec_final
+
+
+def combine_spectra_misaligned(spec_list):
+    """Combines spectra that might not be aligned pixel-by-pixel
+
+    Misaligned spectra can arise when Radial Velocity shifts have been applied.
+    """
+    # spec_final = spec_list[0]
+    # for i in range(1, len(spec_list)):
+    #    spec_final = spec_final.add(spec_list[i], propagate_uncertainties=True)
+    # return spec_final
 
 
 def apply_numpy_mask(spec, mask):
