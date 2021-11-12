@@ -31,6 +31,8 @@ HPF Examples
 
    Masking and continuum flattening with TelFit and Celeritè <Masking_and_flattening_plus.ipynb>
 
+   Combining misaligned spectra <Combine_spectra_misaligned.ipynb>
+
    
 
 Concepts
