@@ -151,17 +151,19 @@ class EchelleSpectrum(Spectrum1D):
         spec = self._copy(
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
-        median_flux = np.nanmedian(spec.flux)
+        median_flux = np.nanmedian(spec.flux.value)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
             meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                median_flux, handle_meta="ff"
+                median_flux * spec.flux.unit, handle_meta="ff"
             )
 
         # spec.meta = meta_out
-        return spec.divide(median_flux, handle_meta="first_found")._copy(meta=meta_out)
+        return spec.divide(
+            median_flux * spec.flux.unit, handle_meta="first_found"
+        )._copy(meta=meta_out)
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
