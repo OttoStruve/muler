@@ -7,17 +7,19 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - astropy>=4.1
+  - astropy<5.0
   - astroquery
   - specutils>=1.2
   - tqdm
+  - gwcs<0.17
+  - ndcube<2.0
   - pandas
   - bokeh
   - jupyter
   - ipython
   - seaborn
   - importlib_resources
-  - h5py 
+  - h5py
   - pytest
   - sphinx # for documentation and testing
   - nbsphinx # for documentation and testing
