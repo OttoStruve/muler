@@ -24,6 +24,7 @@ The data that muler consumes comes from data reduction pipelines.  We do not inh
 community packages
 ------------------
 
+There are dozens, maybe hundreds of actively maintained open source Python packages for astronomical spectroscopy.  Here we provide an incomplete curated list of some packages in this broader ecosystem.  muler has inherited ideas and code from some of these, and muler can serve as a pre-processing step to others, so this list can be thought of as a loosely connected family of tools.  We hope to see those interconnections bloom as existing projects grow and new ones sprout.
 
 Data-model comparison
 =====================
@@ -59,6 +60,7 @@ Radial velocity
 * `radvel <https://radvel.readthedocs.io/en/latest/>`_ - Radial Velocity fitting
 * `exoplanet <https://docs.exoplanet.codes/en/latest/>`_ - Exoplanet RV radial velocity orbit fitting and more
 * `doppler <https://doppler.readthedocs.io/en/latest/>`_ - Derive RV from an input spectrum 
+* `igrins_rv <https://github.com/shihyuntang/igrins_rv>`_ - Radial velocity analysis specific to IGRINS
 * `eniric <https://github.com/jason-neal/eniric>`_ - Extended Near InfraRed spectra Information Content analysis
 
 Doppler Imaging
