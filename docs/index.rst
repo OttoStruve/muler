@@ -32,6 +32,7 @@
 
    Installation <install>
    Quickstart <quickstart.ipynb>
+   Python Spectroscopy Ecosystem <broader_ecosystem.rst>
 
 
 .. toctree::
