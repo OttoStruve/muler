@@ -6,7 +6,6 @@ sphinx-material
 scipy
 pandas
 nbsphinx
-ndcube<2.0
 gwcs<0.17
 celerite2
 matplotlib
