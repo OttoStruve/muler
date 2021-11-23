@@ -31,7 +31,7 @@ Data-model comparison
 
 * `starfish <https://starfish.readthedocs.io>`_ - Compare data and pre-computed synthetic models with robust likelihood-based inference and PCA-based spectral emulation
 * `blasé <https://blase.readthedocs.io>`_ - Clone precomputed synthetic models with PyTorch and Autodiff
-* `specmatch-emp <https://github.com/samuelyeewl/specmatch-emp>` - Empirical spectral template matching for visible echelle spectra
+* `specmatch-emp <https://github.com/samuelyeewl/specmatch-emp>`_ - Empirical spectral template matching for visible echelle spectra
 * `The Payne <https://github.com/pacargile/ThePayne>`_ - Artificial Neural-Net compression and fitting of synthetic spectral grids 
 
 
@@ -39,7 +39,7 @@ Data-driven methods
 ===================
 * `wobble <https://wobble.readthedocs.io/>`_ - Automatically isolate bulk RV, stellar, and telluric lines from multiepoch spectra with large barycentric variation
 * `psoap <https://psoap.readthedocs.io/>`_ - Isolate underlying stellar templates from composite spectra undergoing orbital motion
-* `The Cannon <https://github.com/annayqho/TheCannon>` - Data driven spectral labels from many examples
+* `The Cannon <https://github.com/annayqho/TheCannon>`_ - Data driven spectral labels from many examples
 
 
 Retrievals and multipurpose
