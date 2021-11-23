@@ -30,7 +30,7 @@ setuptools.setup(
         "matplotlib",
     ],
     extras_require={"extra": ["celerite2", "h5py", "black"]},
-    packages=setuptools.find_packages(where="src"),
+    packages=setuptools.find_packages(where="src", exclude=["data/*, paper/*"]),
     package_dir={"": "src"},
     package_data={
         # If any package contains *.txt files, include them:
