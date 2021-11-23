@@ -7,7 +7,7 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - astropy>=4.1
+  - astropy<5.0
   - astroquery
   - specutils>=1.2
   - tqdm
