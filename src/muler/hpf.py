@@ -96,6 +96,8 @@ class HPFSpectrum(EchelleSpectrum):
             lamb = hdus[7].data[order].astype(np.float64) * u.AA
             flux = hdus[1].data[order].astype(np.float64) * u.ct
             unc = hdus[4].data[order].astype(np.float64) * u.ct
+            if pipeline == "HPF":
+                unc = np.sqrt(unc.value) * u.ct
 
             meta_dict = {
                 "x_values": np.arange(0, 2048, 1, dtype=np.int),
