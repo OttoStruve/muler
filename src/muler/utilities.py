@@ -14,7 +14,7 @@ def combine_spectra(spec_list):
 
 
 def combine_spectra_misaligned(
-    spec_list, pixel_midpoints=None, propagate_uncertainty=True
+    spec_list, pixel_midpoints=None, propagate_uncertainty=False
 ):
     """Combines spectra that might not be aligned pixel-by-pixel
 
@@ -66,7 +66,7 @@ def combine_spectra_misaligned(
     # Determine pixel midpoints if not provided
     if pixel_midpoints is None:
         # Determine from data
-        input_wavelength = fiducial_spec.wavelength.values
+        input_wavelength = fiducial_spec.wavelength.value
         typical_binsize = np.nanmedian(np.diff(input_wavelength))
         pixel_midpoints = np.arange(x.min(), x.max(), typical_binsize)
 
@@ -79,6 +79,7 @@ def combine_spectra_misaligned(
 
     ## Compute the weighted mean in each bin:
     weights = 1.0 * unc ** 2
+    weights = weights / np.sum(weights)
 
     binned_sum_of_flux_times_weights = binned_statistic(
         x=x, values=y * weights, statistic=np.sum, bins=pixel_edges
@@ -94,21 +95,20 @@ def combine_spectra_misaligned(
 
     ## Uncertainty estimate One:
     # Propagate the uncertainty in each bin
-    binned_weighted_variance = binned_statistic(
-        x=x, values=(unc * weights) ** 2, statistic=np.sum, bins=pixel_edges
+    binned_variance = binned_statistic(
+        x=x, values=unc ** 2, statistic=np.sum, bins=pixel_edges
     )
-    propagated_uncertainty = (
-        np.sqrt(binned_weighted_variance.statistic) / binned_sum_of_weights.statistic
-    )
+    binned_count = binned_statistic(
+        x=x, values=y, statistic="count", bins=pixel_edges
+    )  # gives combined spectrum
+    propagated_uncertainty = np.sqrt(binned_variance.statistic) / binned_count.statistic
 
     ## Uncertainty estimate Two:
     # Compute sample standard deviation of flux values in each bin
     binned_stddev = binned_statistic(
         x=x, values=y, statistic=np.std, bins=pixel_edges
     )  # gives combined spectrum
-    binned_count = binned_statistic(
-        x=x, values=y, statistic="count", bins=pixel_edges
-    )  # gives combined spectrum
+
     sampled_uncertainty = binned_stddev.statistic / np.sqrt(binned_count.statistic)
 
     unc_out = sampled_uncertainty
