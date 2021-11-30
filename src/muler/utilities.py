@@ -2,6 +2,7 @@ import numpy as np
 import copy
 from specutils.spectra import Spectrum1D
 from astropy.nddata.nduncertainty import StdDevUncertainty
+from scipy.stats import binned_statistic
 
 
 def combine_spectra(spec_list):
@@ -12,15 +13,119 @@ def combine_spectra(spec_list):
     return spec_final
 
 
-def combine_spectra_misaligned(spec_list):
+def combine_spectra_misaligned(
+    spec_list, pixel_midpoints=None, propagate_uncertainty=True
+):
     """Combines spectra that might not be aligned pixel-by-pixel
 
-    Misaligned spectra can arise when Radial Velocity shifts have been applied.
+    Misaligned spectra can arise when significant Radial Velocity shifts have been applied 
+    before combination.  This method is not suitable for precision radial velocities.
+
+    Parameters
+    ----------
+    spec_list: list of Spectrum1D-like objects
+        A list of spectra, with each spectrum possessing at least some overlap with the others
+    propagate_uncertainty: boolean or String
+        How to propagate uncertainty: if True and uncertainties are provided, it will propagate them.
+        If False, it will determine uncertainties from sample standard deviation of the mean.
+        If "max", and uncertainties are provided, it will take whichever is higher. 
+    pixel_midpoints: numpy.float or astropy.Quantity
+        A vector of wavelength coordinates that represent the desired pixel midpoints 
+        of the output spectrum.  If None, the coordinates are determined from the input,
+        using coarse bin spacings from the first input spectrum
+
+
+    Returns
+    -------
+    combined_spec: Spectrum1D-like object
+        Returns a spectrum of the same subclass as the input spectrum, with the flux values taking
+        the weighted mean of the bins defined by pixel_midpoints.  The metadata is copied
+        from the first spectrum in the list: we make no attempt to combine metadata
+        from the multiple input spectra.  If input spectra have uncertainties, they are propagated
+        using a formula for weighting the input uncertainties.  If input spectra do not have uncertainties,
+        they are estimated from the sample standard deviation of the mean estimator.
+
     """
-    # spec_final = spec_list[0]
-    # for i in range(1, len(spec_list)):
-    #    spec_final = spec_final.add(spec_list[i], propagate_uncertainties=True)
-    # return spec_final
+    fiducial_spec = spec_list[0]
+    wavelength_unit = fiducial_spec.wavelength.unit  # Angstrom
+    flux_unit = fiducial_spec.flux.unit  # dimensionless
+
+    x = np.hstack([spectrum.wavelength.value for spectrum in spec_list])
+    y = np.hstack([spectrum.flux.value for spectrum in spec_list])
+    if fiducial_spec.uncertainty is None:
+        has_uncertainty = False
+        unc = np.ones_like(y)  # dummy values
+    else:
+        has_uncertainty = True
+        unc = np.hstack([spectrum.uncertainty.array for spectrum in spec_list])
+
+    # Remove NaNs
+    finite_mask = np.isfinite(x) & np.isfinite(y) & np.isfinite(unc)
+    x, y, unc = x[finite_mask], y[finite_mask], unc[finite_mask]
+
+    # Determine pixel midpoints if not provided
+    if pixel_midpoints is None:
+        # Determine from data
+        input_wavelength = fiducial_spec.wavelength.values
+        typical_binsize = np.nanmedian(np.diff(input_wavelength))
+        pixel_midpoints = np.arange(x.min(), x.max(), typical_binsize)
+
+    # Determine pixel *edges* from pixel midpoints:
+    bin_sizes = np.diff(pixel_midpoints)
+    bin_sizes = np.diff(pixel_midpoints, prepend=pixel_midpoints[0] - bin_sizes[0])
+    left_edges = pixel_midpoints - bin_sizes / 2
+    right_edges = pixel_midpoints + bin_sizes / 2
+    pixel_edges = np.hstack((left_edges, right_edges[-1]))
+
+    ## Compute the weighted mean in each bin:
+    weights = 1.0 * unc ** 2
+
+    binned_sum_of_flux_times_weights = binned_statistic(
+        x=x, values=y * weights, statistic=np.sum, bins=pixel_edges
+    )
+
+    binned_sum_of_weights = binned_statistic(
+        x=x, values=weights, statistic=np.sum, bins=pixel_edges
+    )
+
+    weighted_mean_flux = (
+        binned_sum_of_flux_times_weights.statistic / binned_sum_of_weights.statistic
+    )
+
+    ## Uncertainty estimate One:
+    # Propagate the uncertainty in each bin
+    binned_weighted_variance = binned_statistic(
+        x=x, values=(unc * weights) ** 2, statistic=np.sum, bins=pixel_edges
+    )
+    propagated_uncertainty = (
+        np.sqrt(binned_weighted_variance.statistic) / binned_sum_of_weights.statistic
+    )
+
+    ## Uncertainty estimate Two:
+    # Compute sample standard deviation of flux values in each bin
+    binned_stddev = binned_statistic(
+        x=x, values=y, statistic=np.std, bins=pixel_edges
+    )  # gives combined spectrum
+    binned_count = binned_statistic(
+        x=x, values=y, statistic="count", bins=pixel_edges
+    )  # gives combined spectrum
+    sampled_uncertainty = binned_stddev.statistic / np.sqrt(binned_count.statistic)
+
+    unc_out = sampled_uncertainty
+    if has_uncertainty and (propagate_uncertainty == "max"):
+        unc_out = np.maximum(propagated_uncertainty, sampled_uncertainty)
+    elif has_uncertainty and (propagate_uncertainty == True):
+        unc_out = propagated_uncertainty
+
+    mask_out = np.isnan(unc_out)
+
+    return fiducial_spec._copy(
+        spectral_axis=pixel_midpoints * wavelength_unit,
+        flux=weighted_mean_flux * flux_unit,
+        uncertainty=StdDevUncertainty(unc_out),
+        mask=mask_out,
+        wcs=None,
+    )
 
 
 def apply_numpy_mask(spec, mask):
