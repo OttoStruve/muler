@@ -125,6 +125,8 @@ class HPFSpectrum(EchelleSpectrum):
             lamb = hdus[8].data[order].astype(np.float64) * u.AA
             flux = hdus[2].data[order].astype(np.float64) * u.ct
             unc = hdus[5].data[order].astype(np.float64) * u.ct
+            if pipeline == "HPF":
+                unc = np.sqrt(unc.value) * u.ct
             uncertainty = StdDevUncertainty(unc)
             mask = (
                 np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
@@ -143,6 +145,8 @@ class HPFSpectrum(EchelleSpectrum):
             lamb = hdus[9].data[order].astype(np.float64) * u.AA
             flux = hdus[3].data[order].astype(np.float64) * u.ct
             unc = hdus[6].data[order].astype(np.float64) * u.ct
+            if pipeline == "HPF":
+                unc = np.sqrt(unc.value) * u.ct
             uncertainty = StdDevUncertainty(unc)
             mask = (
                 np.isnan(flux) | np.isnan(uncertainty.array) | (uncertainty.array <= 0)
