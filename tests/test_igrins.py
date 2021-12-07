@@ -51,6 +51,20 @@ def test_basic():
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
+    # Do routine operations commute?
+    new_spec1 = spec.trim_edges().remove_nans()
+    new_spec2 = spec.remove_nans().trim_edges()
+
+    for attribute in ["flux", "wavelength", "mask"]:
+        lhs = new_spec1.__getattribute__(attribute)
+        rhs = new_spec2.__getattribute__(attribute)
+        assert len(lhs) == len(rhs)
+        assert len(new_spec1.uncertainty.array) == len(lhs)
+        assert len(new_spec2.uncertainty.array) == len(rhs)
+        assert len(new_spec1.flux) == len(rhs)
+
+    assert np.all(new_spec1.meta["x_values"] == new_spec2.meta["x_values"])
+
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
 
@@ -146,8 +160,7 @@ def test_deblaze():
 
 
 @pytest.mark.parametrize(
-    "precache_hdus",
-    [True, False],
+    "precache_hdus", [True, False],
 )
 def test_spectrumlist_performance(precache_hdus):
     """Does the Spectrum List work?"""
