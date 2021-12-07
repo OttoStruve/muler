@@ -366,8 +366,7 @@ class EchelleSpectrum(Spectrum1D):
         try:
             self.radial_velocity = velocity
             return self._copy(
-                spectral_axis=self.wavelength.value * self.wavelength.unit,
-                wcs=None,
+                spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None,
             )
 
         except:
@@ -539,10 +538,15 @@ class EchelleSpectrum(Spectrum1D):
         if limits is None:
             limits = self.noisy_edges
         lo, hi = limits
-        if hasattr(self.meta, "x_values"):
-            x_values = self.meta["x_values"]
-        else:
-            x_values = np.arange(len(self.wavelength))
+        if self.meta is not None:
+            if "x_values" in self.meta.keys():
+                x_values = self.meta["x_values"]
+            else:
+                log.warn(
+                    "The spectrum metadata is missing its native pixel location labels. "
+                    "Proceeding by assuming contiguous pixel labels, which may not be what you want."
+                )
+                x_values = np.arange(len(self.wavelength))
         keep_indices = (x_values > lo) & (x_values < hi)
 
         return self.apply_boolean_mask(keep_indices)

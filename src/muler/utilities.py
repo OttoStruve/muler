@@ -151,7 +151,7 @@ def apply_numpy_mask(spec, mask):
         )
 
     if spec.uncertainty is not None:
-        masked_unc = StdDevUncertainty(spec.uncertainty.array[mask])
+        masked_unc = spec.uncertainty[mask]
     else:
         masked_unc = None
 
@@ -162,7 +162,7 @@ def apply_numpy_mask(spec, mask):
 
     if spec.meta is not None:
         meta_out = copy.deepcopy(spec.meta)
-        if hasattr(spec.meta, "x_values"):
+        if "x_values" in spec.meta.keys():
             meta_out["x_values"] = meta_out["x_values"][mask]
     else:
         meta_out = None
