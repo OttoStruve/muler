@@ -121,23 +121,27 @@ class EchelleSpectrum(Spectrum1D):
         barycorr = sc.radial_velocity_correction(obstime=obstime, location=loc)
         return barycorr
 
-    def measure_ew(self, mu):
+    def measure_ew(self, lower=None, upper=None):
         """Measure the equivalent width of a given spectrum
 
         Parameters
         ----------
-        mu : scalar/float
-            The center wavelength of given line
-
+        lower : AstroPy Quantity or float
+            The short wavelength limit at which to define the EW lower bound.
+            If the value is a float, it assume Angstrom units.
+        upper : AstroPy Quantity or float
+            The long wavelength limit at which to define the EW upper bound.
+            If the value is a float, it assume Angstrom units.
         Returns
         -------
         equivalent width : (scalar)
         """
-        log.warning("Experimental method")
+        if type(lower) is not u.Quantity:
+            # Assume it's Angstroms
+            lower = lower * u.Angstrom
+            upper = upper * u.Angstrom
 
-        left_bound = 0.999 * mu * u.Angstrom
-        right_bound = 1.001 * mu * u.Angstrom
-        ew = equivalent_width(self, regions=SpectralRegion(left_bound, right_bound))
+        ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
         return ew
 
     def normalize(self):
@@ -366,7 +370,8 @@ class EchelleSpectrum(Spectrum1D):
         try:
             self.radial_velocity = velocity
             return self._copy(
-                spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None,
+                spectral_axis=self.wavelength.value * self.wavelength.unit,
+                wcs=None,
             )
 
         except:
