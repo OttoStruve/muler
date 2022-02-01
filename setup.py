@@ -22,11 +22,10 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "scipy",
-        "astropy>=4.1,<5.0",
-        "specutils>=1.2",
+        # "astropy>=4.1,<5.0",
+        "specutils",
         "pandas",
         "importlib_resources",
-        "gwcs<0.17",
         "matplotlib",
     ],
     extras_require={"extra": ["celerite2", "h5py", "black"]},
