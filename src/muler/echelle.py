@@ -169,6 +169,8 @@ class EchelleSpectrum(Spectrum1D):
             median_flux * spec.flux.unit, handle_meta="first_found"
         )._copy(meta=meta_out)
 
+        
+
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
         Note: This method applies mostly to high-bandwidth stellar spectra.
@@ -368,9 +370,10 @@ class EchelleSpectrum(Spectrum1D):
         ):  # If supplied velocity is not using astropy units, default to km/s
             velocity = velocity * (u.km / u.s)
         try:
-            self.radial_velocity = velocity
-            return self._copy(
-                spectral_axis=self.wavelength.value * self.wavelength.unit,
+            new_spec = copy.deepcopy(self)
+            new_spec.radial_velocity = velocity
+            return new_spec._copy(
+                spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
                 wcs=None,
             )
 
