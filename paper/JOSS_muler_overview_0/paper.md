@@ -44,7 +44,7 @@ Here we ...
 
 # Supported spectrographs
 
-We currently support custom operations for three spectrographs: the Immersion Grating Infrared Spectrograph, IGRINS [@park14, @2018SPIE10702E..0QM]; the Habitable Zone Planet Finder Spectrograph, HPF [@2012SPIE.8446E..1SM] ; and the Keck Near-Infrared Spectrograph, NIRSPEC [@1998SPIE.3354..566M, @2000SPIE.4008.1048M].  
+We currently support custom operations for three spectrographs: the Immersion Grating Infrared Spectrograph, IGRINS [@park14,@mace2018]; the Habitable Zone Planet Finder Spectrograph, HPF [@2012SPIE.8446E..1SM] ; and the Keck Near-Infrared Spectrograph, NIRSPEC [@1998SPIE.3354..566M,@2000SPIE.4008.1048M].  
 
 In princple, `muler` could be extended with devoted classes for other échelle spectrographs, so long as the pipeline outputs deliver standardized files with common metadata, such as date, time, celestial coordinates, etc.
 
