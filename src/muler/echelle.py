@@ -138,9 +138,9 @@ class EchelleSpectrum(Spectrum1D):
         """
 
         if lower is None:
-            lower = self.wavelength.min()
+            lower = self.wavelength.min().value
         if upper is None:
-            upper = self.wavelength.max()            
+            upper = self.wavelength.max().value            
         
         if (type(lower) is not u.Quantity):
             # Assume it's Angstroms
