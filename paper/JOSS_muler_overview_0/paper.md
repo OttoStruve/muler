@@ -36,14 +36,17 @@ Modern échelle spectrographs produce information-rich 2-dimensional (2D) raw ec
 
 # Statement of need
 
-The `specutils` framework is:
+The `specutils` framework is:  
+
 > a Python package for representing, loading, manipulating, and analyzing astronomical spectroscopic data. The generic data containers and accompanying modules provide a toolbox that the astronomical community can use to build more domain-specific packages.
 
 Here we ...
 
 # Supported spectrographs
 
-We currently support the IGRINS spectrograph [@park14] and...
+We currently support custom operations for three spectrographs: the Immersion Grating Infrared Spectrograph, IGRINS [@park14, @2018SPIE10702E..0QM]; the Habitable Zone Planet Finder Spectrograph, HPF [@2012SPIE.8446E..1SM] ; and the Keck Near-Infrared Spectrograph, NIRSPEC [@1998SPIE.3354..566M, @2000SPIE.4008.1048M].  
+
+In princple, `muler` could be extended with devoted classes for other échelle spectrographs, so long as the pipeline outputs deliver standardized files with common metadata, such as date, time, celestial coordinates, etc.
 
 
 # Acknowledgements
