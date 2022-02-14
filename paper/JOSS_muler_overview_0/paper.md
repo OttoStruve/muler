@@ -40,11 +40,15 @@ The `specutils` framework is:
 
 > a Python package for representing, loading, manipulating, and analyzing astronomical spectroscopic data. The generic data containers and accompanying modules provide a toolbox that the astronomical community can use to build more domain-specific packages.
 
-Here we ...
+Here we explain muler.
+
+Here are some other python packages for echelle spectroscopy: `wobble` [@Bedell2019], and `starfish` [@czekala15].  You can view muler as taking care of the necessary pre-processing steps to get from the pipeline products to the inputs of those packages.
+
+We depend on `astropy` [@astropy13,@astropy18], `numpy` [@harris2020array], and others.
 
 # Supported spectrographs
 
-We currently support custom operations for three spectrographs: the Immersion Grating Infrared Spectrograph, IGRINS [@park14,@mace2018]; the Habitable Zone Planet Finder Spectrograph, HPF [@2012SPIE.8446E..1SM] ; and the Keck Near-Infrared Spectrograph, NIRSPEC [@1998SPIE.3354..566M,@2000SPIE.4008.1048M].  
+We currently support custom operations for three spectrographs: the Immersion Grating Infrared Spectrograph, IGRINS [@park14,@mace2018]; the Habitable Zone Planet Finder Spectrograph, HPF [@hpf2012] ; and the Keck Near-Infrared Spectrograph, NIRSPEC [@mclean1998,@mclean2000].  
 
 In princple, `muler` could be extended with devoted classes for other échelle spectrographs, so long as the pipeline outputs deliver standardized files with common metadata, such as date, time, celestial coordinates, etc.
 
