@@ -136,9 +136,16 @@ class EchelleSpectrum(Spectrum1D):
         -------
         equivalent width : (scalar)
         """
-        if type(lower) is not u.Quantity:
+
+        if lower is None:
+            lower = self.wavelength.min()
+        if upper is None:
+            upper = self.wavelength.max()            
+        
+        if (type(lower) is not u.Quantity):
             # Assume it's Angstroms
             lower = lower * u.Angstrom
+        if (type(upper) is not u.Quantity):
             upper = upper * u.Angstrom
 
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
