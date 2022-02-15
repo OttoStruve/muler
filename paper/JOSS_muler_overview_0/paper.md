@@ -41,6 +41,8 @@ In its most elemental form, an astronomical spectrum consists of a list of wavel
 The Python spectroscopy ecosystem has dozens or hundreds of packages.  Here we compare `muler` to a few recent examples to show how it fits into that ecosystem.
 The `wobble` [@Bedell2019] framework performs advanced modeling on groups of dozens of échelle spectra of the same celestial object, assuming they have already been normalized, continuum-flattened, sky subtracted, etc.  So `muler` can serve as the layer that takes in the pipeline output and processes each spectrum identically to input into `wobble`.  Similarly, the  `starfish` framework [@czekala15] expects spectra to reside in an HDF5 format with telluric lines either corrected or masked.  `muler` can satisfy these requirements.  You can therefore view muler as taking care of these necessary pre-processing steps to get from the pipeline products to the inputs of virtually any other Python spectroscopy analysis package.  
 
+Some packages such as `igrins_rv` [@IGRINSrv2021] conduct pre-processing steps as a matter of course in their analyses.  These packages could hypothetically be refactored to make `muler` a dependency, with the boilerplate steps taken over by `muler`.  This refactoring step would simplify the code, possibly making it more maintainable in the long term.  In other cases, popular methods in `muler` may move upstream into `specutils`.
+
 `muler` depends on `astropy` [@astropy13; @astropy18], `numpy` [@harris2020array], `specutils`, `scipy` [@scipy2020], and others.
 
 # Supported spectrographs
