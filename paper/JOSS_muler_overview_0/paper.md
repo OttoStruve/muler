@@ -9,18 +9,29 @@ tags:
 authors:
   - name: Michael A. Gully-Santiago
     orcid: 0000-0002-4020-3457
-    affiliation: "1" # (Multiple affiliations must be quoted)
-  - name: Author Without ORCID^[co-first author] # note this makes a footnote saying 'co-first author'
+    affiliation: 1
+  - name: Jessica L. Luna # note this makes a footnote saying 'co-first author'
+    orcid: 0000-0003-2152-9248
+    affiliation: 1
+  - name: Caroline V. Morley
+    orcid: 0000-0002-4404-0456
+    affiliation: 1
+  - name: Kyle Kaplan
+    orcid: 0000-0001-6909-3856
     affiliation: 2
-  - name: Author with no affiliation^[corresponding author]
-    affiliation: 3
+  - name: Aishwarya Ganesh
+    orcid: 0000-0002-1846-196X
+    affiliation: 1
+  - name: Joel Burke
+    affiliation: 1
+  - name: Daniel M. Krolikowski
+    orcid: 0000-0001-9626-0613
+    affiliation: 1
 affiliations:
- - name: The University of Texas at Austin Department of Astronomy
+ - name: The University of Texas at Austin Department of Astronomy, Austin, TX, USA
    index: 1
- - name: Institution Name
+ - name: SOFIA Science Center, Universities Space Research Association, NASA Ames Research Center, Moffett Field, CA, USA
    index: 2
- - name: Independent Researcher
-   index: 3
 date: 14 February 2022
 bibliography: paper.bib
 
