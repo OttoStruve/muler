@@ -1,5 +1,5 @@
 ---
-title: 'Astronomical echelle spectroscopy data analysis with `muler`'
+title: 'Astronomical échelle spectroscopy data analysis with `muler`'
 tags:
   - Python
   - astronomy
@@ -36,14 +36,25 @@ Modern astronomical échelle spectrographs produce information-rich 2D echellogr
 
 # Statement of need
 
-In its most elemental form, an astronomical spectrum consists of a list of wavelength coordinates and their flux values.  Additional metadata for uncertainties, date, time, sky pointing coordinates, and instrumental configuration are common.  The Astropy-affiliated `specutils` package serves as a uniting container for virtually any astronomical spectrum, by providing a way to represent, load, manipulate, and analyze these data and metadata.  It is therefore possible for each new practitioner to load a pipeline-produced output spectrum with, say, `specutils` and write standard post-processing operations from scratch.  This bespoke approach requires expert knowledge, is time consuming, and may be error prone.  Ideally we would have an easy-to-use post-processing tool that takes in the raw 1D pipeline output spectrum and produces a refined spectrum ready for scientific analysis.  The `muler` framework fills this role.  Furthermore, each spectrograph and pipeline has its own peculiarities, and so `muler` provides---when needed---a domain-specific layer for individual spectrographs.  The `muler` framework therefore enables user code to be compact and easily transferable among projects.
+In its most elemental form, an astronomical spectrum consists of a list of wavelength coordinates and their flux values.  Additional metadata for uncertainties, date, time, sky pointing coordinates, and instrumental configuration are common.  The Astropy-affiliated `specutils` package serves as a unifying container for virtually any astronomical spectrum, by providing a way to represent, load, manipulate, and analyze these data and metadata.  It is therefore possible for each new practitioner to load a pipeline-produced output spectrum with, say, `specutils` and write standard post-processing operations from scratch.  This bespoke approach requires expert knowledge, is time consuming, and may be error prone.  Ideally we would have an easy-to-use post-processing tool that takes in the raw 1D pipeline output spectrum and produces a refined spectrum ready for scientific analysis.  The `muler` framework fills this role.  
+
+Furthermore, each spectrograph and pipeline has its own peculiarities, and so `muler` provides---when needed---a domain-specific layer for individual spectrographs.  The `muler` framework therefore enables user code to be compact and easily transferable among projects.
 
 The Python spectroscopy ecosystem has dozens or hundreds of packages.  Here we compare `muler` to a few recent examples to show how it fits into that ecosystem.
-The `wobble` [@Bedell2019] framework performs advanced modeling on groups of dozens of échelle spectra of the same celestial object, assuming they have already been normalized, continuum-flattened, sky subtracted, etc.  So `muler` can serve as the layer that takes in the pipeline output and processes each spectrum identically to input into `wobble`.  Similarly, the  `starfish` framework [@czekala15] expects spectra to reside in an HDF5 format with telluric lines either corrected or masked.  `muler` can satisfy these requirements.  You can therefore view muler as taking care of these necessary pre-processing steps to get from the pipeline products to the inputs of virtually any other Python spectroscopy analysis package.  
+The `wobble` [@Bedell2019] framework performs advanced modeling on groups of dozens of échelle spectra of the same celestial object, assuming they have already been normalized, continuum-flattened, sky subtracted, etc.  So in this case `muler` serves as the layer that takes in the pipeline output, processes each spectrum identically, and then feeds these refined spectra into `wobble`.  Similarly, the  `starfish` framework [@czekala15] expects spectra to reside in an HDF5 format with telluric lines either corrected or masked.  `muler` can satisfy these requirements.  You can therefore view muler as taking care of these necessary pre-processing steps to get from the pipeline products to the inputs of virtually any other Python spectroscopy analysis package.  
 
 Some packages such as `igrins_rv` [@IGRINSrv2021] conduct pre-processing steps as a matter of course in their analyses.  These packages could hypothetically be refactored to make `muler` a dependency, with the boilerplate steps taken over by `muler`.  This refactoring step would simplify the code, possibly making it more maintainable in the long term.  In other cases, popular methods in `muler` may move upstream into `specutils`.
 
 `muler` depends on `astropy` [@astropy13; @astropy18], `numpy` [@harris2020array], `specutils`, `scipy` [@scipy2020], and others.
+
+# Architecture and design considerations
+
+The `design` of `muler` shares three key inspirations from `lightkurve` [@lightkurve2018], which provides a well-liked open-source fluent interface to Kepler/K2/TESS data.  First, pipeline products have reliable and predictable formats that make them a *de facto* standard.  You can then make an API that relies on that standard for accessing attributes and metadata, and build methods that combine the data, metadata, and optionally user inputs to conduct essentially all routine operations.  
+
+The second key idea is that the output of an operation is usually self-similar: a `lightkurve` operation usually takes in a lightcurve and outputs a lightcurve.  Here a `muler` operation takes in a `Spectrum1D`-like object and returns a `Spectrum1D`-like.  This key idea makes method chaining both possible and desirable.
+
+Finally, `lightkurve` objects inherit key behaviors from the astropy `TimeSeries` module, reducing the duplication of code relevant to time series data.  Here in `muler` we gain similar extensibility through an object-oriented design with `specutils`, abstracting away many routine spectroscopy tasks, and keeping the `muler` code lean.
+
 
 # Supported spectrographs
 
