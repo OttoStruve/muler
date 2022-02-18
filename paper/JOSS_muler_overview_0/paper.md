@@ -76,6 +76,6 @@ In princple, `muler` could be extended with devoted classes for other échelle s
 
 # Acknowledgements
 
-This research has made use of NASA's Astrophysics Data System Bibliographic Services.  
+This research has made use of NASA's Astrophysics Data System Bibliographic Services.  This material is based upon work supported by the National Aeronautics and Space Administration under Grant Numbers 80NSSC21K0650 for the NNH20ZDA001N-ADAP:D.2; and 80NSSC20K0257 for the XRP issued through the Science Mission Directorate.
 
 # References
