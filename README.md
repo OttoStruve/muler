@@ -3,7 +3,10 @@
 ### version 0.2.5
 
 <a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>
-<a href="https://pypi.org/project/muler/"><img src="https://img.shields.io/badge/pip_install-muler-yellow"></a>
+<a href="https://pypi.org/project/muler/"><img src="https://img.shields.io/badge/pip_install-muler-9b59b6"></a>
+<a href="https://anaconda.org/conda-forge/muler"><img src="https://img.shields.io/badge/conda%20install%20--c%20conda--forge-muler-9b59b6"></a>
+
+
 <a href="https://sites.google.com/site/igrinsatgemini/"><img src="https://img.shields.io/badge/Works_with-IGRINS-brightgreen"></a>
 <a href="https://hpf.psu.edu/"><img src="https://img.shields.io/badge/Works_with-HPF-brightgreen"></a>  
 <a href="https://www2.keck.hawaii.edu/inst/nirspec/"><img src="https://img.shields.io/badge/Works_with-Keck_NIRSPEC-brightgreen"></a>
@@ -29,15 +32,19 @@ Measuring an [equivalent width](https://en.wikipedia.org/wiki/Equivalent_width):
 ```Python
 spectrum = HPFSpectrum(file=file, order=15)
 clean_spectrum = spectrum.remove_nans().sky_subtract().deblaze().normalize()
-ew = clean_spectrum.measure_ew(center_wavelength=10830.0)
+ew = clean_spectrum.measure_ew()
 ```
 
 ### Installation: `pip` and development version
 
-We currently offer seamless installation with pip! You can install `muler` in one line with:
+We currently offer seamless installation with `pip` and `conda`! You can install `muler` in one line with:
 
 ```bash
 pip install muler
+```
+or 
+```bash
+conda install -c conda-forge muler
 ```
 
 `muler` constantly changes and benefits from new community contributions like yours. We therefore recommend the slightly more tedious installation from the raw source code described on our [Installation webpage](https://muler.readthedocs.io/en/latest/install.html). Installing from source code empowers you to modify the code for your purposes.
@@ -50,4 +57,4 @@ That help can take many forms, even more creative outlets than most would guess.
 
 ### Spectrographs we currently support
 
-We currently support the [IGRINS](https://www.as.utexas.edu/astronomy/research/people/jaffe/igrins.html), [HPF](https://hpf.psu.edu/), and [NIRSPEC](https://www2.keck.hawaii.edu/inst/nirspec/) spectrographs. These three near-IR echelle spectrographs are attached to some of the greatest telescopes in the world: [Gemini](https://www.gemini.edu/), [HET](https://mcdonaldobservatory.org/research/telescopes/HET), and [Keck](https://www.keckobservatory.org/) respectively. HPF differs from IGRINS and NIRSPEC in its _precision radial velocity_ (PRV) design. It uses fibers instead of slits. We do not purport to address the extreme precision demands of the PRV community, but we anticipate our package is still useful to a wide range of HPF science use cases. We are open to supporting new spectrographs in the future, but at the present time we are focused on building, testing, and maintaining the core features for these three spectrographs before we add new ones. One way to get a new instrument supported is to make a new GitHub [Issue](https://github.com/OttoStruve/muler/issues) to describe the instrument an rationale for adding it to `muler` so other community members can join the conversation.
+We currently support the [IGRINS](https://www.as.utexas.edu/astronomy/research/people/jaffe/igrins.html), [HPF](https://hpf.psu.edu/), and [NIRSPEC](https://www2.keck.hawaii.edu/inst/nirspec/) spectrographs. These three near-IR echelle spectrographs are attached to some of the greatest telescopes in the world: [Gemini](https://www.gemini.edu/), [HET](https://mcdonaldobservatory.org/research/telescopes/HET), and [Keck](https://www.keckobservatory.org/) respectively. HPF differs from IGRINS and NIRSPEC in its _precision radial velocity_ (PRV) design. It uses fibers instead of slits. We do not purport to address the extreme precision demands of the PRV community, but we anticipate our package is still useful to a wide range of HPF science use cases. We are open to supporting new spectrographs in the future, but at the present time we are focused on building, testing, and maintaining the core features for these three spectrographs before we add new ones. One way to get a new instrument supported is to make a new GitHub [Issue](https://github.com/OttoStruve/muler/issues) to describe the instrument and rationale for adding it to `muler`, so other community members can join the conversation.
