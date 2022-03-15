@@ -1,4 +1,4 @@
-.. _installation:
+.. _broadereco:
 
 *****************************
 Python Spectroscopy Ecosystem
