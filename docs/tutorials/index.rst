@@ -14,6 +14,9 @@ IGRINS Examples
    Manipulate all spectral orders at once <All_spectral_orders.ipynb>
 
    Download IGRINS data from Google Drive <Download_IGRINS_data_from_GoogleDrive.ipynb>
+   
+   Workarounds for manipulating multiple IGRINS orders and other advanced patterns <IGRINS_SpecList_demo.ipynb>
+   
 
 HPF Examples
 ############
