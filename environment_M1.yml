@@ -7,13 +7,13 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - astropy<5.0
+  - astropy
   - astroquery
   - specutils>=1.2
   - tqdm
   - pandas
   - bokeh
-  - gwcs<0.17
+  - gwcs>=0.17.1
   - jupyter
   - ipython
   - seaborn
