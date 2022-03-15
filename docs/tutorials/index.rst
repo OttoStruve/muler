@@ -15,7 +15,7 @@ IGRINS Examples
 
    Download IGRINS data from Google Drive <Download_IGRINS_data_from_GoogleDrive.ipynb>
    
-   Workarounds for manipulating multiple IGRINS orders and other advanced patterns <IGRINS_SpecList_demo.ipynb>
+   Workarounds for manipulating multiple IGRINS orders (intermediate usage) <IGRINS_SpecList_demo.ipynb>
    
 
 HPF Examples
