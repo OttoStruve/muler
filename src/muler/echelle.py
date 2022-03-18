@@ -836,3 +836,15 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
         return spec_out
+
+    def flatten(self, **kwargs):
+        """Removes the low frequency trend using scipy's Savitzky-Golay filter.
+        This method wraps `scipy.signal.savgol_filter`.  Abridged from the
+        `lightkurve` method with the same name for flux time series.
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].flatten(**kwargs)
+        return spec_out
+
+
