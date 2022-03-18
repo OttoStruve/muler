@@ -848,8 +848,3 @@ class EchelleSpectrumList(SpectrumList):
         return spec_out
 
 
-    def __append__(self, other):
-        """Allow multiple EchelleSpectrumList list objects to be combined using .append()"""
-        for i in range(len(other)):
-            self.append(other[i])
-
