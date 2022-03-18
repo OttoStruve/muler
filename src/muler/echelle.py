@@ -151,8 +151,15 @@ class EchelleSpectrum(Spectrum1D):
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
         return ew
 
-    def normalize(self):
+    def normalize(self, median_flux=None):
         """Normalize spectrum by its median value
+
+        Parameters
+        ----------
+        median_flux : (float)
+            By default median_flux is calculated, but its value can be passed as an argument from the user.
+            Normally this is used when running normalize for a EchelleSpectrumList object which calculates
+            median_flux for only a single order and then applies the result to all orders.
 
         Returns
         -------
@@ -162,7 +169,8 @@ class EchelleSpectrum(Spectrum1D):
         spec = self._copy(
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
-        median_flux = np.nanmedian(spec.flux.value)
+        if median_flux is None: #If a median_flux is specified (e.g. from an EchelleSpectrumList object calling the individual orders), use provided value; if not, calculate it
+            median_flux = np.nanmedian(spec.flux.value)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
@@ -643,12 +651,21 @@ class EchelleSpectrumList(SpectrumList):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
-    def normalize(self, order_index=0):
-        """Normalize all orders to one of the other orders"""
-        index = self.normalization_order_index
-        median_flux = copy.deepcopy(np.nanmedian(self[index].flux))
+    def normalize(self, order_index=None):
+        """Normalize all orders to one of the other orders
+
+        Parameters
+        ----------
+        order_index : int
+            User specified order to normalize entire spectrum to.  If not specified,
+            normalization_order_index of the EchelleSpectrumList will be used instead.
+
+        """
+        if order_index is None:
+            order_index = self.normalization_order_index
+        median_flux = np.nanmedian(self[order_index].flux)
         for i in range(len(self)):
-            self[i] = self[i].divide(median_flux, handle_meta="first_found")
+            self[i] = self[i].normalize(median_flux=median_flux)
 
         return self
 
