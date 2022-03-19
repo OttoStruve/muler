@@ -27,7 +27,7 @@ from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import apply_numpy_mask, resample_list
+from muler.utilities import apply_numpy_mask
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -614,13 +614,6 @@ class EchelleSpectrum(Spectrum1D):
         f_new.create_dataset("sigmas", data=self.uncertainty.array)
         f_new.create_dataset("masks", data=mask_out)
         f_new.close()
-
-    def resample_list(self, specList, **kwargs):
-        """
-        Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
-        Useful for converting models into echelle spectra with multiple orders.
-        """
-        return resample_list(self, specList, **kwargs)
 
     def apply_boolean_mask(self, mask):
         """Apply a boolean mask to the spectrum and any available ancillary spectra
