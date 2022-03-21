@@ -199,7 +199,7 @@ def resample_list(spec_to_resample, specList, **kwargs):
     return spec_out
 
 
-def combine_lists(spec_list1, spec_list2):
+def concatenate_orders(spec_list1, spec_list2):
     """
     Combine two EchelleSpectrumList objects into one.
     For example, combine IGRINS H and K bands.
