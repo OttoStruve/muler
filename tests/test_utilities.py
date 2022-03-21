@@ -9,7 +9,7 @@ from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 
 
-from muler.utilities import combine_spectra, apply_numpy_mask, combine_lists
+from muler.utilities import combine_spectra, apply_numpy_mask, concatenate_orders
 
 # There should be exactly 3 files in the example data directory
 local_files = glob.glob("**/01_A0V_standards/Goldilocks_*.spectra.fits", recursive=True)
@@ -21,7 +21,7 @@ igrins_K_file = glob.glob(
 )[0]
 
 
-def test_combine_lists():
+def test_concatenate_orderss():
     """Does the combine utility work with a list of spectra?"""
     n_files = len(local_files)
     spec_list1 = IGRINSSpectrumList.read(file=igrins_H_file)
@@ -41,7 +41,7 @@ def test_combine_lists():
     with pytest.raises(astropy.units.core.UnitConversionError):
         full_H_and_K_list = spec_list1 + spec_list2
 
-    full_H_and_K_list = combine_lists(spec_list1, spec_list2)
+    full_H_and_K_list = concatenate_orders(spec_list1, spec_list2)
 
     assert isinstance(full_H_and_K_list, SpectrumList)
     assert isinstance(full_H_and_K_list, IGRINSSpectrumList)
