@@ -1,15 +1,51 @@
 import pytest
+import astropy
 import time
 from muler.hpf import HPFSpectrum
-from specutils import Spectrum1D
+from muler.igrins import IGRINSSpectrumList
+from specutils import Spectrum1D, SpectrumList
 import glob
 from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 
-from muler.utilities import combine_spectra, apply_numpy_mask
+
+from muler.utilities import combine_spectra, apply_numpy_mask, combine_lists
 
 # There should be exactly 3 files in the example data directory
 local_files = glob.glob("**/01_A0V_standards/Goldilocks_*.spectra.fits", recursive=True)
+igrins_H_file = glob.glob(
+    "**/IGRINS/01_IGRINS_test_data/SDCH*.spec_a0v.fits", recursive=True
+)[0]
+igrins_K_file = glob.glob(
+    "**/IGRINS/01_IGRINS_test_data/SDCK*.spec_a0v.fits", recursive=True
+)[0]
+
+
+def test_combine_lists():
+    """Does the combine utility work with a list of spectra?"""
+    n_files = len(local_files)
+    spec_list1 = IGRINSSpectrumList.read(file=igrins_H_file)
+    spec_list2 = IGRINSSpectrumList.read(file=igrins_K_file)
+
+    ## Currently the source code as written will break with this kwarg
+    median_flux = np.nanmedian(spec_list1[23].flux.value)
+    with pytest.raises(TypeError):
+        output = spec_list1.normalize(median_flux=median_flux)
+
+    ## spec_list normalization will work with no kwarg though:
+    output = spec_list1.normalize()
+
+    assert output is not None
+    assert type(output) == type(spec_list1)
+
+    with pytest.raises(astropy.units.core.UnitConversionError):
+        full_H_and_K_list = spec_list1 + spec_list2
+
+    full_H_and_K_list = combine_lists(spec_list1, spec_list2)
+
+    assert isinstance(full_H_and_K_list, SpectrumList)
+    assert isinstance(full_H_and_K_list, IGRINSSpectrumList)
+    assert len(full_H_and_K_list) == (len(spec_list1) + len(spec_list2))
 
 
 def test_apply_mask():
