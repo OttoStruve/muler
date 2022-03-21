@@ -140,12 +140,12 @@ class EchelleSpectrum(Spectrum1D):
         if lower is None:
             lower = self.wavelength.min().value
         if upper is None:
-            upper = self.wavelength.max().value            
-        
-        if (type(lower) is not u.Quantity):
+            upper = self.wavelength.max().value
+
+        if type(lower) is not u.Quantity:
             # Assume it's Angstroms
             lower = lower * u.Angstrom
-        if (type(upper) is not u.Quantity):
+        if type(upper) is not u.Quantity:
             upper = upper * u.Angstrom
 
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
@@ -157,9 +157,11 @@ class EchelleSpectrum(Spectrum1D):
         Parameters
         ----------
         median_flux : (float)
-            By default median_flux is calculated, but its value can be passed as an argument from the user.
-            Normally this is used when running normalize for a EchelleSpectrumList object which calculates
-            median_flux for only a single order and then applies the result to all orders.
+            The flux value to normalize by.  Usually this is the median flux, 
+            making the resulting flux vector have a median value of 1 (default).
+            The user may optionally pass in this argument to normalize by a 
+            different value.  This kwarg may be useful when normalizing multiple
+            echelle orders in a high-bandwidth echelle spectrum.
 
         Returns
         -------
@@ -169,7 +171,9 @@ class EchelleSpectrum(Spectrum1D):
         spec = self._copy(
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
-        if median_flux is None: #If a median_flux is specified (e.g. from an EchelleSpectrumList object calling the individual orders), use provided value; if not, calculate it
+
+        # We default to normalizing by the median flux value
+        if median_flux is None:
             median_flux = np.nanmedian(spec.flux.value)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
@@ -183,8 +187,6 @@ class EchelleSpectrum(Spectrum1D):
         return spec.divide(
             median_flux * spec.flux.unit, handle_meta="first_found"
         )._copy(meta=meta_out)
-
-        
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
@@ -839,5 +841,4 @@ class EchelleSpectrumList(SpectrumList):
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
         return spec_out
-
 
