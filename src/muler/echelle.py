@@ -151,12 +151,12 @@ class EchelleSpectrum(Spectrum1D):
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
         return ew
 
-    def normalize(self, median_flux=None):
+    def normalize(self, normalize_by=None):
         """Normalize spectrum by its median value
 
         Parameters
         ----------
-        median_flux : (float)
+        normalize_by : (float)
             The flux value to normalize by.  Usually this is the median flux, 
             making the resulting flux vector have a median value of 1 (default).
             The user may optionally pass in this argument to normalize by a 
@@ -173,19 +173,19 @@ class EchelleSpectrum(Spectrum1D):
         )
 
         # We default to normalizing by the median flux value
-        if median_flux is None:
-            median_flux = np.nanmedian(spec.flux.value)
+        if normalize_by is None:
+            normalize_by = np.nanmedian(spec.flux.value)
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
             meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                median_flux * spec.flux.unit, handle_meta="ff"
+                normalize_by * spec.flux.unit, handle_meta="ff"
             )
 
         # spec.meta = meta_out
         return spec.divide(
-            median_flux * spec.flux.unit, handle_meta="first_found"
+            normalize_by * spec.flux.unit, handle_meta="first_found"
         )._copy(meta=meta_out)
 
     def flatten_by_black_body(self, Teff):
@@ -658,9 +658,9 @@ class EchelleSpectrumList(SpectrumList):
         """
         if order_index is None:
             order_index = self.normalization_order_index
-        median_flux = np.nanmedian(self[order_index].flux)
+        normalize_by = np.nanmedian(self[order_index].flux)
         for i in range(len(self)):
-            self[i] = self[i].normalize(median_flux=median_flux)
+            self[i] = self[i].normalize(normalize_by=normalize_by)
 
         return self
 
