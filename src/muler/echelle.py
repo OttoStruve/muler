@@ -511,7 +511,7 @@ class EchelleSpectrum(Spectrum1D):
             The axis to display and/or modify
         """
         if yhi == None:
-            yhi= np.nanpercentile(99.9, self.flux)*1.2
+            yhi= np.nanpercentile(self.flux, 99.9)*1.2
 
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
@@ -792,7 +792,7 @@ class EchelleSpectrumList(SpectrumList):
         if yhi == None: #Automatically loop through each order to find yhi
             yhi=0
             for i in range(1, len(self)):
-                yhi_for_order = np.nanpercentile(99.9, self[i].flux)
+                yhi_for_order = np.nanpercentile(self[i].flux, 99.9)
                 if yhi_for_order > yhi:
                     yhi = yhi_for_order
             yhi = yhi * 1.2
