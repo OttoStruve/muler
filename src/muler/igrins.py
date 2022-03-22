@@ -120,7 +120,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
             if sn_hdus is not None:
-                sn = sn_hdus[0].data[10]
+                sn = sn_hdus[0].data[order]
                 unc = np.abs(flux / sn)
                 uncertainty = StdDevUncertainty(unc)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
