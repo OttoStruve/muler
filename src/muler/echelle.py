@@ -488,7 +488,7 @@ class EchelleSpectrum(Spectrum1D):
         else:
             return smoothed_spectrum
 
-    def plot(self, ax=None, ylo=0.0, yhi=numpy.nanpercentile(99.9, self.flux)*1.2, figsize=(10, 4), **kwargs):
+    def plot(self, ax=None, ylo=0.0, yhi=None, figsize=(10, 4), **kwargs):
         """Plot a quick look of the spectrum"
 
         Parameters
@@ -510,6 +510,9 @@ class EchelleSpectrum(Spectrum1D):
         ax : (`~matplotlib.axes.Axes`)
             The axis to display and/or modify
         """
+        if yhi == None:
+            yhi= np.nanpercentile(99.9, self.flux)*1.2
+
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.set_ylim(ylo, yhi)
@@ -786,7 +789,7 @@ class EchelleSpectrumList(SpectrumList):
 
     def plot(self, ylo=0., yhi=None, **kwargs):
         """Plot the entire spectrum list"""
-        if yhi=None: #Automatically loop through each order to find yhi
+        if yhi == None: #Automatically loop through each order to find yhi
             yhi=0
             for i in range(1, len(self)):
                 yhi_for_order = np.nanpercentile(99.9, self[i].flux)
