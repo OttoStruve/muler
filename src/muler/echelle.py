@@ -488,7 +488,7 @@ class EchelleSpectrum(Spectrum1D):
         else:
             return smoothed_spectrum
 
-    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), **kwargs):
+    def plot(self, ax=None, ylo=0.0, yhi=numpy.nanpercentile(99.9, self.flux)*1.2, figsize=(10, 4), **kwargs):
         """Plot a quick look of the spectrum"
 
         Parameters
@@ -784,10 +784,17 @@ class EchelleSpectrumList(SpectrumList):
             spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out, wcs=None
         )
 
-    def plot(self, **kwargs):
+    def plot(self, ylo=0., yhi=None, **kwargs):
         """Plot the entire spectrum list"""
+        if yhi=None: #Automatically loop through each order to find yhi
+            yhi=0
+            for i in range(1, len(self)):
+                yhi_for_order = np.nanpercentile(99.9, self[i].flux)
+                if yhi_for_order > yhi:
+                    yhi = yhi_for_order
+            yhi = yhi * 1.2
         if not "ax" in kwargs:
-            ax = self[0].plot(figsize=(25, 4), **kwargs)
+            ax = self[0].plot(figsize=(25, 4), ylo=ylo, yhi=yhi, **kwargs)
             for i in range(1, len(self)):
                 self[i].plot(ax=ax, **kwargs)
             return ax
@@ -800,6 +807,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] + other[i]
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
     def __sub__(self, other):
@@ -807,6 +816,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] - other[i]
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
     def __mul__(self, other):
@@ -814,6 +825,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] * other[i]
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
     def __truediv__(self, other):
@@ -821,6 +834,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
     def rv_shift(self, velocity):
@@ -830,6 +845,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
     def flatten(self, **kwargs):
@@ -840,5 +857,7 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
+            if 'x_values' not in spec_out[i].meta:
+                spec_out[i].meta['x_values'] = self[i].meta['x_values']
         return spec_out
 
