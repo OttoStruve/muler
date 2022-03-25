@@ -140,8 +140,8 @@ class EchelleSpectrum(Spectrum1D):
         if lower is None:
             lower = self.wavelength.min().value
         if upper is None:
-            upper = self.wavelength.max().value            
-        
+            upper = self.wavelength.max().value
+
         if (type(lower) is not u.Quantity):
             # Assume it's Angstroms
             lower = lower * u.Angstrom
@@ -176,7 +176,29 @@ class EchelleSpectrum(Spectrum1D):
             median_flux * spec.flux.unit, handle_meta="first_found"
         )._copy(meta=meta_out)
 
-        
+    def sort(self):
+        """Sort the spectrum by acending wavelength
+
+        Returns
+        -------
+        sorted_spec : (EchelleSpectrum)
+            Sorted Spectrum
+        """
+        spec = self._copy(
+            spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
+        )
+
+        # Each ancillary spectrum (e.g. sky) should also be normalized
+        meta_out = copy.deepcopy(spec.meta)
+        for ancillary_spectrum in self.available_ancillary_spectra:
+            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]
+
+        # spec.meta = meta_out
+        return spec.divide(
+            spec.flux.unit, handle_meta="first_found"
+        )._copy(meta=meta_out)
+
+
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
