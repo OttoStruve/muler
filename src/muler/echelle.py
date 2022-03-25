@@ -188,15 +188,26 @@ class EchelleSpectrum(Spectrum1D):
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
 
+        # Sort the wavelength indices
+        sorted_indexes = np.argsort(spec.wavelength.value)
+        new_spec = spec._copy(
+            spectral_axis = spec.wavelength.value[sorted_indexes] * spec.wavelength.unit, wcs = None,
+            flux = spec.flux[sorted_indexes],
+            uncertainty = StdDevUncertainty(spec.uncertainty.array[sorted_indexes])
+        )
+
+
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
-            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]
+            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                spectral_axis = meta_out[ancillary_spectrum].wavelength.value[sorted_indexes] * meta_out[ancillary_spectrum].wavelength.unit, wcs = None,
+                flux = meta_out[ancillary_spectrum].flux[sorted_indexes],
+                uncertainty = StdDevUncertainty(meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes])
+            )
 
         # spec.meta = meta_out
-        return spec.divide(
-            spec.flux.unit, handle_meta="first_found"
-        )._copy(meta=meta_out)
+        return new_spec._copy(meta=meta_out)
 
 
 
