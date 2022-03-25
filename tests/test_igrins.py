@@ -128,6 +128,19 @@ def test_smoothing():
     assert new_spec.mask is not None
 
 
+def test_sorting():
+    """Does Sorting method work?"""
+    spec_list = IGRINSSpectrumList.read(file=file)
+    full_spec = spec_list.remove_nans().stitch()
+
+    new_spec = full_spec.sort()
+
+    assert new_spec is not None
+    assert len(new_spec.flux) == len(full_spec.flux)
+
+    assert np.all(np.diff(new_spec.wavelength.value) > 0)
+
+
 def test_RV():
     """Does RV shifting work"""
 
