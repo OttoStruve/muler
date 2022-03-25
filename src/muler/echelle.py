@@ -142,10 +142,10 @@ class EchelleSpectrum(Spectrum1D):
         if upper is None:
             upper = self.wavelength.max().value
 
-        if (type(lower) is not u.Quantity):
+        if type(lower) is not u.Quantity:
             # Assume it's Angstroms
             lower = lower * u.Angstrom
-        if (type(upper) is not u.Quantity):
+        if type(upper) is not u.Quantity:
             upper = upper * u.Angstrom
 
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
@@ -191,25 +191,31 @@ class EchelleSpectrum(Spectrum1D):
         # Sort the wavelength indices
         sorted_indexes = np.argsort(spec.wavelength.value)
         new_spec = spec._copy(
-            spectral_axis = spec.wavelength.value[sorted_indexes] * spec.wavelength.unit, wcs = None,
-            flux = spec.flux[sorted_indexes],
-            uncertainty = StdDevUncertainty(spec.uncertainty.array[sorted_indexes])
+            spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+            flux=spec.flux[sorted_indexes],
+            uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
+            wcs=None,
         )
-
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
             meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
-                spectral_axis = meta_out[ancillary_spectrum].wavelength.value[sorted_indexes] * meta_out[ancillary_spectrum].wavelength.unit, wcs = None,
-                flux = meta_out[ancillary_spectrum].flux[sorted_indexes],
-                uncertainty = StdDevUncertainty(meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes])
+                spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                    sorted_indexes
+                ]
+                * meta_out[ancillary_spectrum].wavelength.unit,
+                flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                uncertainty=StdDevUncertainty(
+                    meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
+                ),
+                wcs=None,
             )
+
+        meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
         # spec.meta = meta_out
         return new_spec._copy(meta=meta_out)
-
-
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
