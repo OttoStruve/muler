@@ -48,7 +48,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         order (int): which spectral order to read
         cached_hdus (list) :
             List of two or three fits HDUs, one for the spec.fits/spec_a0v.fits, one for the
-            sn.fits file, and one optional one for the .wave.fits file
+            variance.fits file, and one optional one for the .wave.fits file
             to reduce file I/O for multiorder access.
             If provided, must give both (or three) HDUs.  Optional, default is None.
         wavefile (str):  A path to a reduced IGRINS spectrum storing the wavelength solution
@@ -75,20 +75,20 @@ class IGRINSSpectrum(EchelleSpectrum):
             grating_order = grating_order_offsets[band] + order
 
             if ".spec_a0v.fits" in file:
-                sn_file = file[:-13] + "sn.fits"
+                variance_file = file[:-13] + "variance.fits"
             elif ".spec.fits" in file:
-                sn_file = file[:-9] + "sn.fits"
+                variance_file = file[:-9] + "variance.fits"
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
-                sn_hdus = cached_hdus[1]
+                variance_hdus = cached_hdus[1]
                 if wavefile is not None:
                     wave_hdus = cached_hdus[2]
             else:
                 hdus = fits.open(str(file))
                 try:
-                    sn_hdus = fits.open(sn_file)
+                    variance_hdus = fits.open(variance_file)
                 except:
-                    sn_hdus = None
+                    variance_hdus = None
                 if wavefile is not None:
                     wave_hdus = fits.open(wavefile)
             hdr = hdus[0].header
@@ -119,10 +119,9 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-            if sn_hdus is not None:
-                sn = sn_hdus[0].data[10]
-                unc = np.abs(flux / sn)
-                uncertainty = StdDevUncertainty(unc)
+            if variance_hdus is not None:
+                variance = variance_hdus[0].data[order].astype(np.float64)
+                uncertainty = StdDevUncertainty(variance**0.5)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
                 uncertainty = None
@@ -188,11 +187,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
         hdus = fits.open(file, memmap=False)
         if ".spec_a0v.fits" in file:
-            sn_file = file[:-13] + "sn.fits"
+            variance_file = file[:-13] + "variance.fits"
         elif ".spec.fits" in file:
-            sn_file = file[:-9] + "sn.fits"
-        sn_hdus = fits.open(sn_file, memmap=False)
-        cached_hdus = [hdus, sn_hdus]
+            variance_file = file[:-9] + "variance.fits"
+        variance_hdus = fits.open(variance_file, memmap=False)
+        cached_hdus = [hdus, variance_hdus]
         if wavefile is not None:
             wave_hdus = fits.open(wavefile, memmap=False)
             cached_hdus.append(wave_hdus)
