@@ -140,12 +140,12 @@ class EchelleSpectrum(Spectrum1D):
         if lower is None:
             lower = self.wavelength.min().value
         if upper is None:
-            upper = self.wavelength.max().value            
-        
-        if (type(lower) is not u.Quantity):
+            upper = self.wavelength.max().value
+
+        if type(lower) is not u.Quantity:
             # Assume it's Angstroms
             lower = lower * u.Angstrom
-        if (type(upper) is not u.Quantity):
+        if type(upper) is not u.Quantity:
             upper = upper * u.Angstrom
 
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
@@ -175,8 +175,6 @@ class EchelleSpectrum(Spectrum1D):
         return spec.divide(
             median_flux * spec.flux.unit, handle_meta="first_found"
         )._copy(meta=meta_out)
-
-        
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
@@ -382,6 +380,7 @@ class EchelleSpectrum(Spectrum1D):
             return new_spec._copy(
                 spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
                 wcs=None,
+                radial_velocity=None,
             )
 
         except:
