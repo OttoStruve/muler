@@ -151,17 +151,19 @@ class EchelleSpectrum(Spectrum1D):
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
         return ew
 
-    def normalize(self, normalize_by=None):
-        """Normalize spectrum by its median value
+    def normalize(self, normalize_by="median"):
+        """Normalize the spectrum by a scalar value, usually its median
 
         Parameters
         ----------
-        normalize_by : (float)
-            The flux value to normalize by.  Usually this is the median flux, 
-            making the resulting flux vector have a median value of 1 (default).
-            The user may optionally pass in this argument to normalize by a 
-            different value.  This kwarg may be useful when normalizing multiple
-            echelle orders in a high-bandwidth echelle spectrum.
+        normalize_by : (string or float)
+            The flux value or method name to normalize by.  Usually this is the 
+            median flux "median", making the resulting flux vector have a median 
+            value of 1 (default).  The user may optionally pass in the strings
+            "mean" for normalization by the mean flux, or "peak" for normalization
+            by the 90th percentile of the spectrum.  These non-standard options
+            may be useful when normalizing multiple echelle orders in a 
+            high-bandwidth echelle spectrum.
 
         Returns
         -------
@@ -173,8 +175,14 @@ class EchelleSpectrum(Spectrum1D):
         )
 
         # We default to normalizing by the median flux value
-        if normalize_by is None:
+        if normalize_by == "median":
             normalize_by = np.nanmedian(spec.flux.value)
+        elif normalize_by == "mean":
+            normalize_by = np.nanmean(spec.flux.value)
+        elif normalize_by == "peak":
+            normalize_by = np.percentile(spec.flux.value, 90.0)
+        else:  # must be a number
+            assert normalize_by == float(normalize_by), "Must be a scalar number"
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
@@ -510,8 +518,8 @@ class EchelleSpectrum(Spectrum1D):
         ax : (`~matplotlib.axes.Axes`)
             The axis to display and/or modify
         """
-        if yhi == None:
-            yhi= np.nanpercentile(self.flux.value, 99.99)*1.2
+        if yhi is None:
+            yhi = np.nanpercentile(self.flux.value, 90.0) * 1.5
 
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
@@ -787,15 +795,10 @@ class EchelleSpectrumList(SpectrumList):
             spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out, wcs=None
         )
 
-    def plot(self, ylo=0., yhi=None, **kwargs):
+    def plot(self, ylo=0.0, yhi=None, **kwargs):
         """Plot the entire spectrum list"""
-        if yhi == None: #Automatically loop through each order to find yhi
-            yhi=0
-            for i in range(1, len(self)):
-                yhi_for_order = np.nanpercentile(self[i].flux.value, 99.99)
-                if yhi_for_order > yhi:
-                    yhi = yhi_for_order
-            yhi = yhi * 1.2
+        if yhi is None:  # Automatically loop through each order to find yhi
+            yhi = np.nanpercentile(self.stitch().flux.value, 90.0) * 1.8
         if not "ax" in kwargs:
             ax = self[0].plot(figsize=(25, 4), ylo=ylo, yhi=yhi, **kwargs)
             for i in range(1, len(self)):
@@ -810,8 +813,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] + other[i]
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
@@ -819,8 +822,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] - other[i]
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
@@ -828,8 +831,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] * other[i]
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
@@ -837,8 +840,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
@@ -848,8 +851,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def flatten(self, **kwargs):
@@ -860,7 +863,7 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
-            if 'x_values' not in spec_out[i].meta:
-                spec_out[i].meta['x_values'] = self[i].meta['x_values']
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
