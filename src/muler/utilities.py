@@ -197,3 +197,20 @@ def resample_list(spec_to_resample, specList, **kwargs):
     for i in range(len(specList)):
         spec_out[i] = spec_to_resample.resample(specList[i], **kwargs)
     return spec_out
+
+
+def concatenate_orders(spec_list1, spec_list2):
+    """
+    Combine two EchelleSpectrumList objects into one.
+    For example, combine IGRINS H and K bands.
+
+    Parameters
+    ----------
+    spec_list1: EchelleSpectrumList object
+        Echelle spectrum with multiple orders
+    spec_list2: EchelleSpectrumList object
+        Echelle spectrum with multiple orders to append onto the first list.
+    """
+    combined_list = copy.deepcopy(spec_list1)
+    combined_list.extend(spec_list2)
+    return combined_list

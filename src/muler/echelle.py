@@ -27,7 +27,7 @@ from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import apply_numpy_mask, resample_list
+from muler.utilities import apply_numpy_mask
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -151,30 +151,56 @@ class EchelleSpectrum(Spectrum1D):
         ew = equivalent_width(self, regions=SpectralRegion(lower, upper))
         return ew
 
-    def normalize(self):
-        """Normalize spectrum by its median value
+    def normalize(self, normalize_by="median"):
+        """Normalize the spectrum by a scalar value, usually its median
+
+        Parameters
+        ----------
+        normalize_by : (string or float or Quantity)
+            The flux value or method name to normalize by.  Usually this is the 
+            median flux "median", making the resulting flux vector have a median 
+            value of 1 (default).  The user may optionally pass in the strings
+            "mean" for normalization by the mean flux, or "peak" for normalization
+            by the 90th percentile of the spectrum.  If a Quanitity is passed in,
+            it must have equivalent flux units as the spectrum.
 
         Returns
         -------
-        normalized_spec : (KeckNIRSPECSpectrum)
+        normalized_spec : (EchelleSpectrum)
             Normalized Spectrum
         """
         spec = self._copy(
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
-        median_flux = np.nanmedian(spec.flux.value)
+
+        flux_unit = spec.flux.unit
+
+        # We default to normalizing by the median flux value
+        if normalize_by == "median":
+            normalize_by = np.nanmedian(spec.flux.value)
+        elif normalize_by == "mean":
+            normalize_by = np.nanmean(spec.flux.value)
+        elif normalize_by == "peak":
+            normalize_by = np.nanpercentile(spec.flux.value, 90.0)
+        elif isinstance(normalize_by, u.Quantity):
+            flux_unit = normalize_by.unit
+            normalize_by = normalize_by.value
+            assert flux_unit.to(spec.flux.unit) is not None, "Flux units must match"
+        else:  # must be a number
+            assert normalize_by == float(
+                normalize_by
+            ), "Must be floating point eligible"
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
             meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                median_flux * spec.flux.unit, handle_meta="ff"
+                normalize_by * flux_unit, handle_meta="ff"
             )
 
-        # spec.meta = meta_out
-        return spec.divide(
-            median_flux * spec.flux.unit, handle_meta="first_found"
-        )._copy(meta=meta_out)
+        return spec.divide(normalize_by * flux_unit, handle_meta="first_found")._copy(
+            meta=meta_out
+        )
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
@@ -477,7 +503,7 @@ class EchelleSpectrum(Spectrum1D):
         else:
             return smoothed_spectrum
 
-    def plot(self, ax=None, ylo=0.6, yhi=1.2, figsize=(10, 4), **kwargs):
+    def plot(self, ax=None, ylo=0.0, yhi=None, figsize=(10, 4), **kwargs):
         """Plot a quick look of the spectrum"
 
         Parameters
@@ -499,6 +525,9 @@ class EchelleSpectrum(Spectrum1D):
         ax : (`~matplotlib.axes.Axes`)
             The axis to display and/or modify
         """
+        if yhi is None:
+            yhi = np.nanpercentile(self.flux.value, 90.0) * 1.5
+
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.set_ylim(ylo, yhi)
@@ -606,13 +635,6 @@ class EchelleSpectrum(Spectrum1D):
         f_new.create_dataset("masks", data=mask_out)
         f_new.close()
 
-    def resample_list(self, specList, **kwargs):
-        """
-        Resample a single EchelleSpectrum object into a EchelleSpectrumList object.
-        Useful for converting models into echelle spectra with multiple orders.
-        """
-        return resample_list(self, specList, **kwargs)
-
     def apply_boolean_mask(self, mask):
         """Apply a boolean mask to the spectrum and any available ancillary spectra
 
@@ -642,24 +664,35 @@ class EchelleSpectrumList(SpectrumList):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
-    def normalize(self, order_index=0):
-        """Normalize all orders to one of the other orders"""
-        index = self.normalization_order_index
-        median_flux = copy.deepcopy(np.nanmedian(self[index].flux))
-        for i in range(len(self)):
-            self[i] = self[i].divide(median_flux, handle_meta="first_found")
+    def normalize(self, order_index=None):
+        """Normalize all orders to one of the other orders
 
-        return self
+        Parameters
+        ----------
+        order_index : int
+            User specified order to normalize entire spectrum to.  If not specified,
+            normalization_order_index of the EchelleSpectrumList will be used instead.
+
+        """
+        spec_out = copy.deepcopy(self)
+        if order_index is None:
+            order_index = spec_out.normalization_order_index
+        normalize_by = np.nanmedian(spec_out[order_index].flux.value)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].normalize(normalize_by=normalize_by)
+
+        return spec_out
 
     def remove_nans(self):
         """Remove all the NaNs"""
         # TODO: is this in-place overriding of self allowed?
         # May have unintended consequences?
         # Consider making a copy instead...
-        for i in range(len(self)):
-            self[i] = self[i].remove_nans()
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].remove_nans()
 
-        return self
+        return spec_out
 
     def remove_outliers(self, threshold=5):
         """Remove all the outliers
@@ -771,10 +804,12 @@ class EchelleSpectrumList(SpectrumList):
             spectral_axis=wls, flux=fluxes, uncertainty=unc_out, meta=meta_out, wcs=None
         )
 
-    def plot(self, **kwargs):
+    def plot(self, ylo=0.0, yhi=None, **kwargs):
         """Plot the entire spectrum list"""
+        if yhi is None:  # Automatically loop through each order to find yhi
+            yhi = np.nanpercentile(self.stitch().flux.value, 90.0) * 1.8
         if not "ax" in kwargs:
-            ax = self[0].plot(figsize=(25, 4), **kwargs)
+            ax = self[0].plot(figsize=(25, 4), ylo=ylo, yhi=yhi, **kwargs)
             for i in range(1, len(self)):
                 self[i].plot(ax=ax, **kwargs)
             return ax
@@ -785,8 +820,10 @@ class EchelleSpectrumList(SpectrumList):
     def __add__(self, other):
         """Bandmath addition"""
         spec_out = copy.deepcopy(self)
-        for i in range(len(self)):
-            spec_out[i] = self[i] + other[i]
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i] + other[i]
+            # if "x_values" not in spec_out[i].meta:
+            #    spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
@@ -794,6 +831,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] - other[i]
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
@@ -801,6 +840,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] * other[i]
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
@@ -808,6 +849,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i] / other[i]
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
@@ -817,4 +860,19 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
+
+    def flatten(self, **kwargs):
+        """Removes the low frequency trend using scipy's Savitzky-Golay filter.
+        This method wraps `scipy.signal.savgol_filter`.  Abridged from the
+        `lightkurve` method with the same name for flux time series.
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].flatten(**kwargs)
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        return spec_out
+
