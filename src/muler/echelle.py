@@ -667,23 +667,25 @@ class EchelleSpectrumList(SpectrumList):
             normalization_order_index of the EchelleSpectrumList will be used instead.
 
         """
+        spec_out = copy.deepcopy(self)
         if order_index is None:
-            order_index = self.normalization_order_index
-        normalize_by = np.nanmedian(self[order_index].flux)
-        for i in range(len(self)):
-            self[i] = self[i].normalize(normalize_by=normalize_by)
+            order_index = spec_out.normalization_order_index
+        normalize_by = np.nanmedian(spec_out[order_index].flux.value)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].normalize(normalize_by=normalize_by)
 
-        return self
+        return spec_out
 
     def remove_nans(self):
         """Remove all the NaNs"""
         # TODO: is this in-place overriding of self allowed?
         # May have unintended consequences?
         # Consider making a copy instead...
-        for i in range(len(self)):
-            self[i] = self[i].remove_nans()
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].remove_nans()
 
-        return self
+        return spec_out
 
     def remove_outliers(self, threshold=5):
         """Remove all the outliers
@@ -811,10 +813,10 @@ class EchelleSpectrumList(SpectrumList):
     def __add__(self, other):
         """Bandmath addition"""
         spec_out = copy.deepcopy(self)
-        for i in range(len(self)):
-            spec_out[i] = self[i] + other[i]
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i] + other[i]
+            # if "x_values" not in spec_out[i].meta:
+            #    spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
