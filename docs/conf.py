@@ -50,6 +50,9 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/.ipynb_checkpoints"]
 nbsphinx_timeout = 60
 
+# Execute notebooks? Possible values: 'always', 'never', 'auto' (default)
+nbsphinx_execute = "always"
+
 autosummary_generate = True
 html_show_sourcelink = True
 
