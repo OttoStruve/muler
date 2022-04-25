@@ -705,6 +705,7 @@ class EchelleSpectrumList(SpectrumList):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
+
     def normalize(self, order_index=None):
         """Normalize all orders to one of the other orders
 
@@ -726,9 +727,6 @@ class EchelleSpectrumList(SpectrumList):
 
     def remove_nans(self):
         """Remove all the NaNs"""
-        # TODO: is this in-place overriding of self allowed?
-        # May have unintended consequences?
-        # Consider making a copy instead...
         spec_out = copy.deepcopy(self)
         for i in range(len(spec_out)):
             spec_out[i] = spec_out[i].remove_nans()
@@ -743,17 +741,19 @@ class EchelleSpectrumList(SpectrumList):
         threshold : float
             The sigma-clipping threshold (in units of sigma)
         """
-        for i in range(len(self)):
-            self[i] = self[i].remove_outliers(threshold=threshold)
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].remove_outliers(threshold=threshold)
 
-        return self
+        return spec_out
 
     def trim_edges(self, limits=None):
         """Trim all the edges"""
-        for i in range(len(self)):
-            self[i] = self[i].trim_edges(limits)
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].trim_edges(limits)
 
-        return self
+        return spec_out
 
     def deblaze(self, method="spline"):
         """Remove blaze function from all orders by interpolating a spline function
@@ -762,15 +762,15 @@ class EchelleSpectrumList(SpectrumList):
                 otherwise  effects can be appear from zero-padded edges.
         """
         spec_out = copy.deepcopy(self)
-        for i in range(len(self)):
-            spec_out[i] = self[i].deblaze(method=method)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].deblaze(method=method)
         return spec_out
 
     def flatten_by_black_body(self, Teff):
         """Flatten by black body"""
         spec_out = copy.deepcopy(self)
-        index = self.normalization_order_index
-        median_wl = copy.deepcopy(np.nanmedian(self[index].wavelength))
+        index = spec_out.normalization_order_index
+        median_wl = copy.deepcopy(np.nanmedian(spec_out[index].wavelength))
 
         blackbody_func = BlackBody(temperature=Teff * u.K)
         blackbody_ref = blackbody_func(median_wl)
