@@ -8,6 +8,8 @@ from specutils import Spectrum1D
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
+import astropy.units as u
+
 
 local_files = glob.glob("**/SDCH*.spec_a0v.fits", recursive=True)
 file = local_files[0]
@@ -67,6 +69,53 @@ def test_basic():
 
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
+
+
+def test_normalize():
+    """Do the basic methods work?"""
+
+    spec = IGRINSSpectrum(file=file, order=10)
+
+    new = spec.normalize(normalize_by="median")
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    new = spec.normalize(normalize_by="mean")
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    new = spec.normalize(normalize_by=42.0)
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    # This test should work: we now support (correct) units!
+    new = spec.normalize(normalize_by=42.0 * u.ct)
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    # This test should not work: the normalizing units must comport
+    with pytest.raises(u.UnitConversionError):
+        new = spec.normalize(normalize_by=42.0 * u.m)
+
+    # Test normalization on a list of spectra
+    spec_list = IGRINSSpectrumList.read(file)
+
+    # We don't (yet) support normalize_by in lists
+    with pytest.raises(TypeError):
+        new = spec_list.normalize(normalize_by="median")
+
+    new = spec_list.normalize(order_index=5)
+
+    assert isinstance(new, IGRINSSpectrumList)
+    assert len(new) == len(spec_list)
+    assert new[0].flux.unit == u.dimensionless_unscaled
 
 
 def test_uncertainty():
