@@ -156,18 +156,17 @@ class EchelleSpectrum(Spectrum1D):
 
         Parameters
         ----------
-        normalize_by : (string or float)
+        normalize_by : (string or float or Quantity)
             The flux value or method name to normalize by.  Usually this is the 
             median flux "median", making the resulting flux vector have a median 
             value of 1 (default).  The user may optionally pass in the strings
             "mean" for normalization by the mean flux, or "peak" for normalization
-            by the 90th percentile of the spectrum.  These non-standard options
-            may be useful when normalizing multiple echelle orders in a 
-            high-bandwidth echelle spectrum.
+            by the 90th percentile of the spectrum.  If a Quanitity is passed in,
+            it must have equivalent flux units as the spectrum.
 
         Returns
         -------
-        normalized_spec : (KeckNIRSPECSpectrum)
+        normalized_spec : (EchelleSpectrum)
             Normalized Spectrum
         """
         spec = self._copy(
