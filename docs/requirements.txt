@@ -1,6 +1,6 @@
 sphinx>=3.2.1
 numpy
-astropy<5.0
+astropy
 specutils
 sphinx-material
 scipy
@@ -10,4 +10,6 @@ gwcs<0.17
 celerite2
 matplotlib
 requests
+ipykernel
+importlib_resources
 h5py
