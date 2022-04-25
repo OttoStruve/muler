@@ -174,27 +174,35 @@ class EchelleSpectrum(Spectrum1D):
             spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
         )
 
+        flux_unit = spec.flux.unit
+
         # We default to normalizing by the median flux value
         if normalize_by == "median":
             normalize_by = np.nanmedian(spec.flux.value)
         elif normalize_by == "mean":
             normalize_by = np.nanmean(spec.flux.value)
         elif normalize_by == "peak":
-            normalize_by = np.percentile(spec.flux.value, 90.0)
+            normalize_by = np.nanpercentile(spec.flux.value, 90.0)
+        elif isinstance(normalize_by, u.Quantity):
+            flux_unit = normalize_by.unit
+            normalize_by = normalize_by.value
+            assert flux_unit.to(spec.flux.unit) is not None, "Flux units must match"
         else:  # must be a number
-            assert normalize_by == float(normalize_by), "Must be a scalar number"
+            assert normalize_by == float(
+                normalize_by
+            ), "Must be floating point eligible"
 
         # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
         for ancillary_spectrum in self.available_ancillary_spectra:
             meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum].divide(
-                normalize_by * spec.flux.unit, handle_meta="ff"
+                normalize_by * flux_unit, handle_meta="ff"
             )
 
         # spec.meta = meta_out
-        return spec.divide(
-            normalize_by * spec.flux.unit, handle_meta="first_found"
-        )._copy(meta=meta_out)
+        return spec.divide(normalize_by * flux_unit, handle_meta="first_found")._copy(
+            meta=meta_out
+        )
 
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
