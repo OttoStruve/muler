@@ -123,6 +123,11 @@ class IGRINSSpectrum(EchelleSpectrum):
                 variance = variance_hdus[0].data[order].astype(np.float64)
                 uncertainty = StdDevUncertainty(variance**0.5)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            elif sn_hdus is not None:
+                sn = sn_hdus[0].data[order]
+                unc = np.abs(flux / sn)
+                uncertainty = StdDevUncertainty(unc)
+                mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
                 uncertainty = None
                 mask = np.isnan(flux)
@@ -200,7 +205,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
-        for i in range(n_orders):
+        for i in range(n_orders-1, -1, -1):
             spec = IGRINSSpectrum(
                 file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus
             )
