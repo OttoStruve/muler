@@ -70,7 +70,7 @@ class EchelleSpectrum(Spectrum1D):
 
     def __init__(self, *args, **kwargs):
 
-        self.ancillary_spectra = None
+        # self.ancillary_spectra = None
         super().__init__(*args, **kwargs)
 
     @property
@@ -92,6 +92,11 @@ class EchelleSpectrum(Spectrum1D):
             snr_estimate = np.repeat(np.NaN, len(self.flux)) * u.dimensionless_unscaled
 
         return snr_estimate
+
+    @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return []
 
     @property
     def available_ancillary_spectra(self):
@@ -704,7 +709,6 @@ class EchelleSpectrumList(SpectrumList):
     def __init__(self, *args, **kwargs):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
-
 
     def normalize(self, order_index=None):
         """Normalize all orders to one of the other orders

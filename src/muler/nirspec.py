@@ -53,7 +53,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
     def __init__(self, *args, file=None, order=63, **kwargs):
 
         self.site_name = "Keck Observatory"
-        self.ancillary_spectra = ["sky"]
+        # self.ancillary_spectra = ["sky"]
         self.noisy_edges = (10, 1000)
         self.instrumental_resolution = 20_000.0
 
@@ -142,6 +142,11 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
     def sky(self):
         """Sky fiber spectrum stored as its own KeckNIRSPECSpectrum object"""
         return self.meta["sky"]
+
+    @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return ["sky"]
 
     @property
     def flat(self):
