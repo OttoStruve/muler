@@ -705,7 +705,6 @@ class EchelleSpectrumList(SpectrumList):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
-
     def normalize(self, order_index=None):
         """Normalize all orders to one of the other orders
 
