@@ -12,7 +12,7 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.3.0",
+    version="0.3.1",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
@@ -22,7 +22,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "scipy",
-        # "astropy>=4.1,<5.0",
+        "astropy>=4.1",
         "specutils",
         "pandas",
         "importlib_resources",
