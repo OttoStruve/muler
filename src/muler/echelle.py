@@ -202,6 +202,47 @@ class EchelleSpectrum(Spectrum1D):
             meta=meta_out
         )
 
+    def sort(self):
+        """Sort the spectrum by acending wavelength
+
+        Returns
+        -------
+        sorted_spec : (EchelleSpectrum)
+            Sorted Spectrum
+        """
+        spec = self._copy(
+            spectral_axis=self.wavelength.value * self.wavelength.unit, wcs=None
+        )
+
+        # Sort the wavelength indices
+        sorted_indexes = np.argsort(spec.wavelength.value)
+        new_spec = spec._copy(
+            spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+            flux=spec.flux[sorted_indexes],
+            uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
+            wcs=None,
+        )
+
+        # Each ancillary spectrum (e.g. sky) should also be normalized
+        meta_out = copy.deepcopy(spec.meta)
+        for ancillary_spectrum in self.available_ancillary_spectra:
+            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                    sorted_indexes
+                ]
+                * meta_out[ancillary_spectrum].wavelength.unit,
+                flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                uncertainty=StdDevUncertainty(
+                    meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
+                ),
+                wcs=None,
+            )
+
+        meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
+
+        # spec.meta = meta_out
+        return new_spec._copy(meta=meta_out)
+
     def flatten_by_black_body(self, Teff):
         """Flatten the spectrum by a scaled black body, usually after deblazing
         Note: This method applies mostly to high-bandwidth stellar spectra.

@@ -250,6 +250,23 @@ def test_deblaze(file):
 @pytest.mark.parametrize(
     "file", local_files,
 )
+def test_sorting(file):
+    """Does Sorting method work?"""
+    spec_list = HPFSpectrumList.read(file=file)
+    full_spec = spec_list.remove_nans().stitch()
+
+    new_spec = full_spec.sort()
+
+    assert new_spec is not None
+    assert len(new_spec.flux) == len(full_spec.flux)
+    assert np.all(np.diff(new_spec.wavelength.value) > 0)
+
+    assert np.all(np.diff(new_spec.sky.wavelength.value) > 0)
+
+
+@pytest.mark.parametrize(
+    "file", local_files,
+)
 def test_sky_subtraction(file):
     """Does our sky subtraction work in all modes?"""
     spec = HPFSpectrum(file=file)
