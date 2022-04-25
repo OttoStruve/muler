@@ -198,7 +198,6 @@ class EchelleSpectrum(Spectrum1D):
                 normalize_by * flux_unit, handle_meta="ff"
             )
 
-        # spec.meta = meta_out
         return spec.divide(normalize_by * flux_unit, handle_meta="first_found")._copy(
             meta=meta_out
         )
@@ -407,6 +406,7 @@ class EchelleSpectrum(Spectrum1D):
             return new_spec._copy(
                 spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
                 wcs=None,
+                radial_velocity=None,
             )
 
         except:
