@@ -44,7 +44,6 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.ifconfig",
     "numpydoc",
-    "sphinxcontrib.rawfiles",
 ]
 
 autosummary_generate = True
