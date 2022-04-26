@@ -43,7 +43,12 @@ extensions = [
     "nbsphinx",
     "sphinx.ext.githubpages",
     "sphinx.ext.ifconfig",
+    "numpydoc",
+    "sphinxcontrib.rawfiles",
 ]
+
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -59,6 +64,9 @@ nbsphinx_execute = "always"
 
 autosummary_generate = True
 html_show_sourcelink = True
+
+# The name of the Pygments (syntax highlighting) style to use.
+pygments_style = "sphinx"
 
 
 # -- Options for HTML output -------------------------------------------------

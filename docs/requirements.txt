@@ -15,4 +15,5 @@ importlib_resources
 h5py
 celerite2
 gollum
+tqdm
 muler
