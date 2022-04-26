@@ -70,7 +70,7 @@ class EchelleSpectrum(Spectrum1D):
 
     def __init__(self, *args, **kwargs):
 
-        self.ancillary_spectra = None
+        # self.ancillary_spectra = None
         super().__init__(*args, **kwargs)
 
     @property
@@ -92,6 +92,11 @@ class EchelleSpectrum(Spectrum1D):
             snr_estimate = np.repeat(np.NaN, len(self.flux)) * u.dimensionless_unscaled
 
         return snr_estimate
+
+    @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return []
 
     @property
     def available_ancillary_spectra(self):
@@ -705,7 +710,6 @@ class EchelleSpectrumList(SpectrumList):
         self.normalization_order_index = 0
         super().__init__(*args, **kwargs)
 
-
     def normalize(self, order_index=None):
         """Normalize all orders to one of the other orders
 
@@ -836,9 +840,23 @@ class EchelleSpectrumList(SpectrumList):
             fluxes_anc = np.hstack(
                 [spec[i].meta[ancillary_spectrum].flux for i in range(len(spec))]
             )
+            if spec[0].meta[ancillary_spectrum].uncertainty is not None:
+                # HACK We assume if one order has it, they all do, and that it's StdDev
+                unc_anc = np.hstack(
+                    [
+                        spec[i].meta[ancillary_spectrum].uncertainty.array
+                        for i in range(len(self))
+                    ]
+                )
+                unc_anc = StdDevUncertainty(unc_anc)
+            else:
+                unc_anc = None
 
             meta_out[ancillary_spectrum] = spec[0].__class__(
-                spectral_axis=wls_anc, flux=fluxes_anc, meta=meta_of_meta
+                spectral_axis=wls_anc,
+                flux=fluxes_anc,
+                uncertainty=unc_anc,
+                meta=meta_of_meta,
             )
 
         return spec[0].__class__(

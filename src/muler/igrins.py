@@ -59,7 +59,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs
     ):
 
-        self.ancillary_spectra = None
+        # self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
 
@@ -148,6 +148,11 @@ class IGRINSSpectrum(EchelleSpectrum):
         return self.meta["header"]["TELESCOP"]
 
     @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return []
+
+    @property
     def RA(self):
         """The right ascension from header files"""
         return self.meta["header"]["OBJRA"] * u.deg
@@ -201,7 +206,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
-        for i in range(n_orders-1, -1, -1):
+        for i in range(n_orders - 1, -1, -1):
             spec = IGRINSSpectrum(
                 file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus
             )

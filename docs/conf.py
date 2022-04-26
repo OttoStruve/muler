@@ -22,7 +22,7 @@ copyright = "2021, gully"
 author = "gully"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
+release = "0.3.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -74,6 +74,7 @@ html_static_path = ["_static"]
 html_title = "Home"
 
 nbsphinx_codecell_lexer = "python3"
+
 
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
