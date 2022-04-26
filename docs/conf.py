@@ -78,7 +78,7 @@ html_static_path = ["_static"]
 html_title = "Home"
 
 nbsphinx_codecell_lexer = "python3"
-
+nbsphinx_allow_errors = True
 
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
