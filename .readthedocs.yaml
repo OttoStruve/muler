@@ -8,7 +8,20 @@ build:
     pre_create_environment:
       - echo "Command run at 'pre_create_environment' step"
       - pwd
-      - which git
       - ls
+      - cd ..
       - git clone https://github.com/OttoStruve/muler_example_data.git
-      - ls
+      - cd muler
+
+# Build documentation in the docs/ directory with Sphinx
+sphinx:
+   configuration: docs/conf.py
+
+# If using Sphinx, optionally build your docs in additional formats such as PDF
+# formats:
+#    - pdf
+
+# Optionally declare the Python requirements required to build your docs
+python:
+   install:
+   - requirements: docs/requirements.txt
