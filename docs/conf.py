@@ -43,6 +43,7 @@ extensions = [
     "nbsphinx",
     "sphinx.ext.githubpages",
     "sphinx.ext.ifconfig",
+    "sphinx_gallery.load_style",
     "numpydoc",
 ]
 
@@ -65,7 +66,11 @@ autosummary_generate = True
 html_show_sourcelink = True
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+pygments_style = "vs"
+
+nbsphinx_thumbnails = {
+    "tutorials/refined_sky_subtraction": "_static/hpf_logo_short.png",
+}
 
 
 # -- Options for HTML output -------------------------------------------------

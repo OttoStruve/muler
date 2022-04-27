@@ -3,6 +3,15 @@
 Tutorials
 ---------
 
+.. nbgallery::
+    :caption: This is a thumbnail gallery:
+    :name: fungallery
+
+    exploratory.ipynb
+    refined_sky_subtraction.ipynb
+
+
+
 IGRINS Examples
 ###############
 

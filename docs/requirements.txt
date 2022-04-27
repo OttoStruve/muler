@@ -15,7 +15,8 @@ importlib_resources
 h5py
 celerite2
 gollum
-tqdm
+#tqdm
 muler
 numpydoc
-bokeh
+#bokeh
+sphinx-gallery
