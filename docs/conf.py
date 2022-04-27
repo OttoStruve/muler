@@ -81,6 +81,7 @@ nbsphinx_thumbnails = {
     "tutorials/Masking_and_flattening_plus": "_static/hpf_logo_short.png",
     "tutorials/Flattening_with_savgol": "_static/hpf_logo_short.png",
     "tutorials/Combining_uncertainties_with_specutils": "_static/error_propagation.png",
+    "tutorials/Download_IGRINS_data_from_Box": "_static/IGRINS_logo.png",
 }
 
 

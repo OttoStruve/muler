@@ -43,4 +43,5 @@ Advanced
     blank_sky_observations.ipynb
     IGRINS_SpecList_demo.ipynb
     Download_IGRINS_data_from_GoogleDrive.ipynb
+    Download_IGRINS_data_from_Box.ipynb
 
