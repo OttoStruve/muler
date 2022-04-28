@@ -69,19 +69,19 @@ html_show_sourcelink = True
 pygments_style = "vs"
 
 nbsphinx_thumbnails = {
-    "tutorials/refined_sky_subtraction": "_static/hpf_logo_short.png",
+    "tutorials/refined_sky_subtraction": "_static/sky_subtraction.png",
     "tutorials/Deblazing_HPF_spectra": "_static/hpf_logo_short.png",
-    "tutorials/telluric_correction_with_gollum": "_static/hpf_logo_short.png",
-    "tutorials/blank_sky_observations": "_static/hpf_logo_short.png",
-    "tutorials/Combine_spectra_misaligned": "_static/hpf_logo_short.png",
+    "tutorials/telluric_correction_with_gollum": "_static/gollum_logo.png",
+    "tutorials/blank_sky_observations": "_static/blank_sky_logo.png",
+    "tutorials/Combine_spectra_misaligned": "_static/multi_spec_logo.png",
     "tutorials/All_spectral_orders": "_static/IGRINS_logo.png",
-    "tutorials/Download_IGRINS_data_from_GoogleDrive": "_static/IGRINS_logo.png",
+    "tutorials/Download_IGRINS_data_from_GoogleDrive": "_static/logo_drive_2020q4_color_2x_web_64dp.png",
     "tutorials/IGRINS_SpecList_demo": "_static/IGRINS_logo.png",
     "tutorials/Masking_and_flattening": "_static/hpf_logo_short.png",
-    "tutorials/Masking_and_flattening_plus": "_static/hpf_logo_short.png",
-    "tutorials/Flattening_with_savgol": "_static/hpf_logo_short.png",
+    "tutorials/Masking_and_flattening_plus": "_static/celerite_logo.png",
+    "tutorials/Flattening_with_savgol": "_static/savgol_logo.png",
     "tutorials/Combining_uncertainties_with_specutils": "_static/error_propagation.png",
-    "tutorials/Download_IGRINS_data_from_Box": "_static/IGRINS_logo.png",
+    "tutorials/Download_IGRINS_data_from_Box": "_static/320pxBoxlogo.png",
 }
 
 
