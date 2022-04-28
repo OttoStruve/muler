@@ -10,7 +10,7 @@ authors:
   - name: Michael A. Gully-Santiago
     orcid: 0000-0002-4020-3457
     affiliation: 1
-  - name: Jessica L. Luna # note this makes a footnote saying 'co-first author'
+  - name: Jessica L. Luna
     orcid: 0000-0003-2152-9248
     affiliation: 1
   - name: Caroline V. Morley
@@ -21,6 +21,9 @@ authors:
     affiliation: 2
   - name: Aishwarya Ganesh
     orcid: 0000-0002-1846-196X
+    affiliation: 1
+  - name: Erica A. Sawczynec
+    orcid: 0000-0002-8378-1062
     affiliation: 1
   - name: Joel Burke
     affiliation: 1
