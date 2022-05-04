@@ -4,7 +4,7 @@ import os.path
 
 readme = ""
 here = os.path.abspath(os.path.dirname(__file__))
-readme_path = os.path.join(here, "README.rst")
+readme_path = os.path.join(here, "README.md")
 if os.path.exists(readme_path):
     with open(readme_path, "rb") as stream:
         readme = stream.read().decode("utf8")
@@ -40,5 +40,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )
