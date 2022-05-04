@@ -14,6 +14,7 @@ ipykernel
 importlib_resources
 h5py
 celerite2
+tqdm
 gollum==0.2.0
 muler
 numpydoc
