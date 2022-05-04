@@ -14,9 +14,7 @@ ipykernel
 importlib_resources
 h5py
 celerite2
-gollum
-#tqdm
+gollum==0.2.0
 muler
 numpydoc
-#bokeh
 sphinx-gallery
