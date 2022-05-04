@@ -15,6 +15,7 @@ importlib_resources
 h5py
 celerite2
 tqdm
+bokeh # needed for gollum to install on RTD
 gollum==0.2.0
 muler
 numpydoc
