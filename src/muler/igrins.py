@@ -20,6 +20,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
 
 import copy
+import os
 
 log = logging.getLogger(__name__)
 
