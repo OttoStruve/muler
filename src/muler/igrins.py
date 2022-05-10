@@ -90,7 +90,12 @@ class IGRINSSpectrum(EchelleSpectrum):
                 except:
                     variance_hdus = None
                 if wavefile is not None:
-                    wave_hdus = fits.open(wavefile)
+                    if os.path.exists(wavefile): #Check if user provided path to wavefile exists
+                        wave_hdus = fits.open(wavefile)
+                    else: #If not, check file name inside directory from file
+                        base_path = os.path.dirname(file)
+                        full_path = base_path + '/' + os.path.basename(wavefile)
+                        wave_hdus = fits.open(full_path)
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
                 log.warn(
