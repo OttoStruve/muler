@@ -12,7 +12,9 @@ import astropy.units as u
 
 
 local_files = glob.glob("**/SDCH*.spec_a0v.fits", recursive=True)
+local_files_2 = glob.glob("**/SDCH*.spec.fits", recursive=True)
 file = local_files[0]
+file_2 = local_files_2[0]
 
 
 def test_basic():
@@ -118,10 +120,44 @@ def test_normalize():
     assert new[0].flux.unit == u.dimensionless_unscaled
 
 
-def test_uncertainty():
+def test_uncertainty_spec_a0v():
     """Does uncertainty propagation work?"""
 
     spec = IGRINSSpectrum(file=file, order=10)
+
+    assert spec.uncertainty is not None
+    assert hasattr(spec.uncertainty, "array")
+    assert len(spec.flux) == len(spec.uncertainty.array)
+    assert spec.flux.unit == spec.uncertainty.unit
+
+    new_spec = spec.remove_nans()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_old_vec = spec.flux / spec.uncertainty.array
+    snr_old_med = np.nanmedian(snr_old_vec.value)
+
+    new_spec = spec.normalize()
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med)
+
+    new_spec = spec.remove_nans().deblaze()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    #assert np.isclose(snr_med, snr_old_med, atol=0.005)
+
+
+def test_uncertainty_spec_fits():
+    """Does uncertainty propagation work?"""
+
+    spec = IGRINSSpectrum(file=file_2, order=10)
 
     assert spec.uncertainty is not None
     assert hasattr(spec.uncertainty, "array")
