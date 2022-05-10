@@ -74,9 +74,9 @@ class IGRINSSpectrum(EchelleSpectrum):
             else:
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
-
             if ".spec_a0v.fits" in file:
-                variance_file = file[:-13] + "variance.fits"
+                #variance_file = file[:-13] + "variance.fits"
+                s2n_file = file[:-13] + '.sn.fits'
             elif ".spec.fits" in file:
                 variance_file = file[:-9] + "variance.fits"
             if cached_hdus is not None:
@@ -135,6 +135,8 @@ class IGRINSSpectrum(EchelleSpectrum):
             #    unc = np.abs(flux / sn)
             #    uncertainty = StdDevUncertainty(unc)
             #    mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            elif variance_hdus is None and ".spec_a0v.fits" in file:
+                s2n = fits.getdata
             else:
                 uncertainty = None
                 mask = np.isnan(flux)
