@@ -157,7 +157,7 @@ def test_uncertainty_spec_a0v():
 def test_uncertainty_spec_fits():
     """Does uncertainty propagation work?"""
 
-    spec = IGRINSSpectrum(file=file_2, order=10)
+    spec = IGRINSSpectrum(file=file_2, wavefile="SDCH_20201202_0063.wave.fits", order=10)
 
     assert spec.uncertainty is not None
     assert hasattr(spec.uncertainty, "array")
