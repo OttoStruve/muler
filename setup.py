@@ -12,7 +12,7 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.3.2",
+    version="0.3.3",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
