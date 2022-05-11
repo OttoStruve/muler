@@ -3,13 +3,15 @@
 ### version 0.3.4
 
 <a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>
+[![DOI](https://zenodo.org/badge/322031013.svg)](https://zenodo.org/badge/latestdoi/322031013)  
 <a href="https://pypi.org/project/muler/"><img src="https://img.shields.io/badge/pip_install-muler-9b59b6"></a>
 <a href="https://anaconda.org/conda-forge/muler"><img src="https://img.shields.io/badge/conda%20install%20--c%20conda--forge-muler-9b59b6"></a>
 
 
 <a href="https://sites.google.com/site/igrinsatgemini/"><img src="https://img.shields.io/badge/Works_with-IGRINS-brightgreen"></a>
-<a href="https://hpf.psu.edu/"><img src="https://img.shields.io/badge/Works_with-HPF-brightgreen"></a>  
+<a href="https://hpf.psu.edu/"><img src="https://img.shields.io/badge/Works_with-HPF-brightgreen"></a>
 <a href="https://www2.keck.hawaii.edu/inst/nirspec/"><img src="https://img.shields.io/badge/Works_with-Keck_NIRSPEC-brightgreen"></a>
+
 ![example workflow](https://github.com/OttoStruve/muler/actions/workflows/muler-tests.yml/badge.svg)
 
 A Python package for analyzing pipeline-processed data from high resolution near-infrared echelle spectrographs.
