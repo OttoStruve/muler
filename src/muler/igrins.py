@@ -88,17 +88,28 @@ class IGRINSSpectrum(EchelleSpectrum):
             #if wavefile should still work here if people choose to use a different wavesol
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
-                sn_hdus = cached_hdus[1]
+                if "rtell" in file:
+                    sn = hdus['SNR'].data[order]
+                    sn_hdus = None
+                else:
+                    sn_hdus = cached_hdus[1]
                 if wavefile is not None:
                     wave_hdus = cached_hdus[2]
             else:
-                hdus = fits.open(str(file))
-                try:
-                    sn_hdus = fits.open(sn_file)
-                except:
+                if "rtell" not in file:
+                    hdus = fits.open(str(file))
+                    try:
+                        sn_hdus = fits.open(sn_file)
+                    except:
+                        sn_hdus = None
+                    if wavefile is not None:
+                        wave_hdus = fits.open(wavefile)
+                else:
+                    hdus = fits.open(str(file))
+                    sn = hdus['SNR'].data[order]
                     sn_hdus = None
-                if wavefile is not None:
-                    wave_hdus = fits.open(wavefile)
+                    if wavefile is not None:
+                        wave_hdus = fits.open(wavefile)
 
             #header is the same for all extensions in the retell_H/K files
             hdr = hdus[0].header
@@ -134,8 +145,12 @@ class IGRINSSpectrum(EchelleSpectrum):
             #add to if statement and "retell_H/K" not in file
             #replace else with elif sn_hdus is None and "retell_H/K" not in file
             #else: unc = np.abs(flux / sn); uncertainty = StdDevUncertainty(unc); mask = np.isnan(flux) | np.isnan(unvertainty.array)
-            if sn_hdus is not None:
+            if sn_hdus is not None and ("rtell" not in file):
                 sn = sn_hdus[0].data[order]
+                unc = np.abs(flux / sn)
+                uncertainty = StdDevUncertainty(unc)
+                mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            elif sn_hdus is None and ("rtell" in file):
                 unc = np.abs(flux / sn)
                 uncertainty = StdDevUncertainty(unc)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
@@ -214,8 +229,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             sn_file = file[:-9] + "sn.fits"
         #add if "retell_H/K" not in file, then sn_hdus = ...; cached_hdus = ...;
         #else: cached_hdus = hdus;
-        sn_hdus = fits.open(sn_file, memmap=False)
-        cached_hdus = [hdus, sn_hdus]
+        if "rtell" not in file:
+            sn_hdus = fits.open(sn_file, memmap=False)
+            cached_hdus = [hdus, sn_hdus]
+        else:
+            cached_hdus = [hdus]
         #should still work if want to use different wavesol
         if wavefile is not None:
             wave_hdus = fits.open(wavefile, memmap=False)
