@@ -64,7 +64,6 @@ class IGRINSSpectrum(EchelleSpectrum):
         self.instrumental_resolution = 45_000.0
 
         if file is not None:
-            #works because retell files have .spec_a0v.fits in filename too
             assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
             # Determine the band
             if "SDCH" in file:
@@ -75,17 +74,11 @@ class IGRINSSpectrum(EchelleSpectrum):
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
 
-            #SNR is housed in the retell_H/K.spec_a0v.fits files now as the last extension, dont need to add else here
             if ".spec_a0v.fits" in file:
                 sn_file = file[:-13] + "sn.fits"
             elif ".spec.fits" in file:
                 sn_file = file[:-9] + "sn.fits"
 
-            #add additional if statement in first if:
-            #if "retell_H/K" not in file then use if cached_hdus as is, else: hdus = cached_hdus[0]; sn = hdus[:-1]; if wavefile is not None: wave_hdus = cached_hdus[1]
-            #replace else with elif "rtell_H/K" not in file
-            #else "retell_H/K" in file: hdus = fits.open(str(file)); sn = hdus[:-1];
-            #if wavefile should still work here if people choose to use a different wavesol
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 if "rtell" in file:
@@ -111,13 +104,11 @@ class IGRINSSpectrum(EchelleSpectrum):
                     if wavefile is not None:
                         wave_hdus = fits.open(wavefile)
 
-            #header is the same for all extensions in the retell_H/K files
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
                 log.warn(
                     "You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile."
                 )
-            #continues to work since wavelength solution is still in retell file hdus
             elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
@@ -142,9 +133,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
 
-            #add to if statement and "retell_H/K" not in file
-            #replace else with elif sn_hdus is None and "retell_H/K" not in file
-            #else: unc = np.abs(flux / sn); uncertainty = StdDevUncertainty(unc); mask = np.isnan(flux) | np.isnan(unvertainty.array)
             if sn_hdus is not None and ("rtell" not in file):
                 sn = sn_hdus[0].data[order]
                 unc = np.abs(flux / sn)
@@ -227,20 +215,15 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             sn_file = file[:-13] + "sn.fits"
         elif ".spec.fits" in file:
             sn_file = file[:-9] + "sn.fits"
-        #add if "retell_H/K" not in file, then sn_hdus = ...; cached_hdus = ...;
-        #else: cached_hdus = hdus;
         if "rtell" not in file:
             sn_hdus = fits.open(sn_file, memmap=False)
             cached_hdus = [hdus, sn_hdus]
         else:
             cached_hdus = [hdus]
-        #should still work if want to use different wavesol
         if wavefile is not None:
             wave_hdus = fits.open(wavefile, memmap=False)
             cached_hdus.append(wave_hdus)
 
-        # n_orders, n_pix = hdus["WAVELENGTH"].data.shape
-        #will use the wavesol here for retell files as well
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
