@@ -138,7 +138,7 @@ class IGRINSSpectrum(EchelleSpectrum):
             elif variance_hdus is None and ".spec_a0v.fits" in file:
                 s2n = fits.getdata
             else:
-                 = None
+                uncertainity = None
                 mask = np.isnan(flux)
 
             super().__init__(
