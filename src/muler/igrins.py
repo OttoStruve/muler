@@ -59,7 +59,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs
     ):
 
-        self.ancillary_spectra = None
+        # self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
 
@@ -119,9 +119,10 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-            if variance_hdus is not None:
-                variance = variance_hdus[0].data[order].astype(np.float64)
-                uncertainty = StdDevUncertainty(variance**0.5)
+            if sn_hdus is not None:
+                sn = sn_hdus[0].data[order]
+                unc = np.abs(flux / sn)
+                uncertainty = StdDevUncertainty(unc)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
                 uncertainty = None
@@ -145,6 +146,11 @@ class IGRINSSpectrum(EchelleSpectrum):
         # TODO: add a check lookup dictionary for other telescopes
         # to ensure astropy compatibility
         return self.meta["header"]["TELESCOP"]
+
+    @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return []
 
     @property
     def RA(self):
@@ -200,7 +206,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
-        for i in range(n_orders):
+        for i in range(n_orders - 1, -1, -1):
             spec = IGRINSSpectrum(
                 file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus
             )

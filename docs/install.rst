@@ -52,15 +52,38 @@ HPF and IGRINS do not have public archives (yet) and so their data are not widel
 
 https://github.com/OttoStruve/muler_example_data
 
-You can clone that repository and use your local paths to these fits files when experimenting with `muler` ::
+You can clone that repository and use your local paths to these `.fits`` files when experimenting with `muler` ::
 
     git clone https://github.com/OttoStruve/muler_example_data.git
     cd muler_example_data
 
+The tutorials assume you have downloadeded this `muler_example_directory` into the same parent directory as the `muler` project-- ::
+    
+        
+        muler
+        ├── data
+        ├── dist
+        ├── docs
+        ├── paper
+        ├── src
+        └── tests
+        muler_example_data
+        ├── HPF
+        ├── IGRINS
+        └── Keck_NIRSPEC
+
+If you mimic this directory structure, you should be able to run the tutorials with no code changes.  If you download the `muler_example_data` somewhere else, then you'll have to alter the cells in the Jupyter notebook that define the `filename=` variables.
+
 
 Running the tests
 -----------------
-You can run the tests in the `tests/` directory to double-check that everything installed correctly.  You'll need to have some example data, though.  We recommend copying the `muler_example_data` to a path `tests/data/muler_example_data`.  Then you can run pytest from inside the top level directory or `tests/` directory::
+
+Running the tests also requires some example data, so you'll want to follow the directions above for *Getting example data*.  You can then either copy the data into the `tests/data/` directory, or simlink it-- ::
+    
+        cd tests/data/
+        ln -s ../../../muler_example_data ./muler_example_data
+
+You can then run the tests in the `tests/` directory to double-check that everything installed correctly.  Run pytest from inside the top level directory or `tests/` directory ::
 
     py.test -vs
 

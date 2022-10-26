@@ -8,6 +8,8 @@ from specutils import Spectrum1D
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
 import glob
+import astropy.units as u
+
 
 local_files = glob.glob("**/SDCH*.spec_a0v.fits", recursive=True)
 file = local_files[0]
@@ -69,6 +71,53 @@ def test_basic():
     assert ax is not None
 
 
+def test_normalize():
+    """Do the basic methods work?"""
+
+    spec = IGRINSSpectrum(file=file, order=10)
+
+    new = spec.normalize(normalize_by="median")
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    new = spec.normalize(normalize_by="mean")
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    new = spec.normalize(normalize_by=42.0)
+
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    # This test should work: we now support (correct) units!
+    new = spec.normalize(normalize_by=42.0 * u.ct)
+    assert isinstance(new, Spectrum1D)
+    assert new.flux.unit == u.dimensionless_unscaled
+    assert len(spec.flux) == len(spec.wavelength)
+
+    # This test should not work: the normalizing units must comport
+    with pytest.raises(u.UnitConversionError):
+        new = spec.normalize(normalize_by=42.0 * u.m)
+
+    # Test normalization on a list of spectra
+    spec_list = IGRINSSpectrumList.read(file)
+
+    # We don't (yet) support normalize_by in lists
+    with pytest.raises(TypeError):
+        new = spec_list.normalize(normalize_by="median")
+
+    new = spec_list.normalize(order_index=5)
+
+    assert isinstance(new, IGRINSSpectrumList)
+    assert len(new) == len(spec_list)
+    assert new[0].flux.unit == u.dimensionless_unscaled
+
+
 def test_uncertainty():
     """Does uncertainty propagation work?"""
 
@@ -126,6 +175,19 @@ def test_smoothing():
     assert new_spec.shape[0] <= spec.shape[0]
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
+
+
+def test_sorting():
+    """Does Sorting method work?"""
+    spec_list = IGRINSSpectrumList.read(file=file)
+    full_spec = spec_list.remove_nans().stitch()
+
+    new_spec = full_spec.sort()
+
+    assert new_spec is not None
+    assert len(new_spec.flux) == len(full_spec.flux)
+
+    assert np.all(np.diff(new_spec.wavelength.value) > 0)
 
 
 def test_RV():
