@@ -214,3 +214,21 @@ def concatenate_orders(spec_list1, spec_list2):
     combined_list = copy.deepcopy(spec_list1)
     combined_list.extend(spec_list2)
     return combined_list
+
+def is_list(check_this):
+    """
+    Checks if a given object is some sort of list or array object.
+    For example, checks if a given object is an EchelleSpectrumList or single number for band math.
+
+    Parameters
+    check_this: Object to check
+
+    Returns
+    -------
+    True: Object has more than one element (e.g. is a list or array)
+    False: Object has a single element (e.g. a single variable like 10.0)
+    """
+    if np.size(check_this) > 1:
+        return True
+    else:
+        return False

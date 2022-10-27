@@ -73,7 +73,7 @@ class HPFSpectrum(EchelleSpectrum):
     def __init__(self, *args, file=None, order=19, cached_hdus=None, **kwargs):
 
         self.site_name = "mcdonald"
-        self.ancillary_spectra = ["sky", "lfc"]
+        # self.ancillary_spectra = ["sky", "lfc"]
         self.noisy_edges = (3, 2045)
         self.instrumental_resolution = 55_000.0
 
@@ -202,6 +202,11 @@ class HPFSpectrum(EchelleSpectrum):
     def lfc(self):
         """Sky fiber spectrum stored as its own HPFSpectrum object"""
         return self.meta["lfc"]
+
+    @property
+    def ancillary_spectra(self):
+        """The list of conceivable ancillary spectra"""
+        return ["sky", "lfc"]
 
     @property
     def RA(self):

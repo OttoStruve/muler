@@ -10,7 +10,7 @@ authors:
   - name: Michael A. Gully-Santiago
     orcid: 0000-0002-4020-3457
     affiliation: 1
-  - name: Jessica L. Luna # note this makes a footnote saying 'co-first author'
+  - name: Jessica L. Luna
     orcid: 0000-0003-2152-9248
     affiliation: 1
   - name: Caroline V. Morley
@@ -21,6 +21,9 @@ authors:
     affiliation: 2
   - name: Aishwarya Ganesh
     orcid: 0000-0002-1846-196X
+    affiliation: 1
+  - name: Erica A. Sawczynec
+    orcid: 0000-0002-8378-1062
     affiliation: 1
   - name: Joel Burke
     affiliation: 1
@@ -40,7 +43,7 @@ bibliography: paper.bib
 
 # Summary
 
-Modern astronomical échelle spectrographs produce information-rich 2D echellograms that undergo standard reduction procedures to produce extracted 1D spectra. The final post-processing steps of these 1D spectra are often left to the end-user scientists, since the order of operations and algorithm choice may depend on the scientific application. Implementing these post-processing steps from scatch acts as a barrier to entry to newcomers, taxes scientific innovation, and erodes scientific reproducibility. Here we assemble and streamline a collection of spectroscopic data analysis methods into a single easy-to-use Application Programming Interface (API), `muler`. The `specutils`-based fluent interface enables method chaining that yields compact 1-line code for many applications, a dramatic reduction in complexity compared to existing industry practices. When applicable, some algorithms are customized to the pipeline data products of three near-infrared spectrographs: HPF, Keck NIRSPEC, and IGRINS. The framework could be extended to other spectrographs in the future. The tutorials in `muler` may also serve as a central onboarding point for new entrants to the practice of near-infrared échelle spectroscopy data. The open-source permissively licensed Python 3 implementation lowers the barrier to entry and accelerates the investigation of astronomical spectra. 
+Modern astronomical échelle spectrographs produce information-rich 2D echellograms that undergo standard reduction procedures to produce extracted 1D spectra. The final post-processing steps of these 1D spectra are often left to the end-user scientists, since the order of operations and algorithm choice may depend on the scientific application. Implementing these post-processing steps from scratch acts as a barrier to entry to newcomers, taxes scientific innovation, and erodes scientific reproducibility. Here we assemble and streamline a collection of spectroscopic data analysis methods into a single easy-to-use Application Programming Interface (API), `muler`. The `specutils`-based fluent interface enables method chaining that yields compact 1-line code for many applications, a dramatic reduction in complexity compared to existing industry practices. When applicable, some algorithms are customized to the pipeline data products of three near-infrared spectrographs: HPF, Keck NIRSPEC, and IGRINS. The framework could be extended to other spectrographs in the future. The tutorials in `muler` may also serve as a central onboarding point for new entrants to the practice of near-infrared échelle spectroscopy data. The open-source permissively licensed Python 3 implementation lowers the barrier to entry and accelerates the investigation of astronomical spectra. 
 
 # Statement of need
 

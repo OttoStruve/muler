@@ -14,6 +14,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../src/"))
+# sys.path.append(os.path.join(os.path.dirname(__name__), ".."))
+
+import muler
+
 
 # -- Project information -----------------------------------------------------
 
@@ -22,7 +26,7 @@ copyright = "2021, gully"
 author = "gully"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
+release = "0.3.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -39,7 +43,12 @@ extensions = [
     "nbsphinx",
     "sphinx.ext.githubpages",
     "sphinx.ext.ifconfig",
+    "sphinx_gallery.load_style",
+    "numpydoc",
 ]
+
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -50,8 +59,30 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/.ipynb_checkpoints"]
 nbsphinx_timeout = 60
 
+# Execute notebooks? Possible values: 'always', 'never', 'auto' (default)
+nbsphinx_execute = "always"
+
 autosummary_generate = True
 html_show_sourcelink = True
+
+# The name of the Pygments (syntax highlighting) style to use.
+pygments_style = "vs"
+
+nbsphinx_thumbnails = {
+    "tutorials/refined_sky_subtraction": "_static/sky_subtraction.png",
+    "tutorials/Deblazing_HPF_spectra": "_static/hpf_logo_short.png",
+    "tutorials/telluric_correction_with_gollum": "_static/gollum_logo.png",
+    "tutorials/blank_sky_observations": "_static/blank_sky_logo.png",
+    "tutorials/Combine_spectra_misaligned": "_static/multi_spec_logo.png",
+    "tutorials/All_spectral_orders": "_static/IGRINS_logo.png",
+    "tutorials/Download_IGRINS_data_from_GoogleDrive": "_static/logo_drive_2020q4_color_2x_web_64dp.png",
+    "tutorials/IGRINS_SpecList_demo": "_static/IGRINS_logo.png",
+    "tutorials/Masking_and_flattening": "_static/hpf_logo_short.png",
+    "tutorials/Masking_and_flattening_plus": "_static/celerite_logo.png",
+    "tutorials/Flattening_with_savgol": "_static/savgol_logo.png",
+    "tutorials/Combining_uncertainties_with_specutils": "_static/error_propagation.png",
+    "tutorials/Download_IGRINS_data_from_Box": "_static/320pxBoxlogo.png",
+}
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -71,6 +102,7 @@ html_static_path = ["_static"]
 html_title = "Home"
 
 nbsphinx_codecell_lexer = "python3"
+nbsphinx_allow_errors = True
 
 # Material theme options (see theme.conf for more information)
 html_theme_options = {

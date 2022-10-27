@@ -1,13 +1,22 @@
 sphinx>=3.2.1
 numpy
-astropy<5.0
+astropy
 specutils
 sphinx-material
 scipy
 pandas
 nbsphinx
-gwcs<0.17
+gwcs
 celerite2
 matplotlib
 requests
+ipykernel
+importlib_resources
 h5py
+celerite2
+tqdm
+bokeh # needed for gollum to install on RTD
+gollum==0.2.1
+muler
+numpydoc
+sphinx-gallery

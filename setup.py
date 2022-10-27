@@ -4,7 +4,7 @@ import os.path
 
 readme = ""
 here = os.path.abspath(os.path.dirname(__file__))
-readme_path = os.path.join(here, "README.rst")
+readme_path = os.path.join(here, "README.md")
 if os.path.exists(readme_path):
     with open(readme_path, "rb") as stream:
         readme = stream.read().decode("utf8")
@@ -12,7 +12,7 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.3.0",
+    version="0.3.4",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from IGRINS and HPF",
@@ -22,8 +22,8 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "scipy",
-        # "astropy>=4.1,<5.0",
-        "specutils",
+        "astropy>=4.1",
+        "specutils>=1.5",
         "pandas",
         "importlib_resources",
         "matplotlib",
@@ -40,5 +40,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )
