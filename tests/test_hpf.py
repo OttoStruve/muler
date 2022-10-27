@@ -313,8 +313,8 @@ def test_spectrumlist_performance(precache_hdus):
 
 def test_bandmath():
     """Does band math work?"""
-    spec1 = HPFSpectrumList(file=file)
-    spec2 = HPFSpectrumList(file=file)
+    spec1 = HPFSpectrumList.read(file=file)
+    spec2 = HPFSpectrumList.read(file=file)
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
