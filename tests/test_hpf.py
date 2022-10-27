@@ -309,3 +309,63 @@ def test_spectrumlist_performance(precache_hdus):
     print(f"\n\t Precached HDUs {precache_hdus}: {net_time:0.5f} seconds", end="\t")
 
     assert spec_list is not None
+
+
+def test_bandmath():
+    """Does band math work?"""
+    spec1 = HPFSpectrumList(file=file)
+    spec2 = HPFSpectrumList(file=file)
+
+    #Test band math for orders
+    new_order = spec1[10] + spec2[10]
+    assert new_order is not None
+    assert isinstance(new_order, HPFSpectrumList)
+    assert new_order.shape = spec1[10].shape
+    new_order = spec1[10] - spec2[10]
+    assert new_order is not None
+    assert isinstance(new_order, HPFSpectrumList)
+    assert new_order.shape = spec1[10].shape
+    new_order = spec1[10] * spec2[10]
+    assert new_order is not None
+    assert isinstance(new_order, HPFSpectrumList)
+    new_order = spec1[10] / spec2[10]
+    assert new_order.shape = spec1[10].shape
+    assert new_order is not None
+    assert isinstance(new_order, HPFSpectrumList)
+    assert new_order.shape = spec1[10].shape
+
+    #Test band math for lists
+    new_spec = spec1 + spec2
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 - spec2
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 * spec2
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 / spec2
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+
+    #Test band math for list and single number
+    new_spec = spec1 + 10.0
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 - 10.0
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 * 10.0
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
+    new_spec = spec1 / 10.0
+    assert new_spec is not None
+    assert isinstance(new_spec, HPFSpectrumList)
+    assert new_spec.shape = spec1.shape
