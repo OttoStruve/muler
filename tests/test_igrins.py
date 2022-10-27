@@ -264,56 +264,57 @@ def test_bandmath():
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
     assert new_order is not None
-    assert isinstance(new_order, IGRINSSpectrumList)
-    assert new_order.shape = spec1[10].shape
+    assert isinstance(new_order, IGRINSSpectrum)
+    assert new_order.shape == spec1[10].shape
     new_order = spec1[10] - spec2[10]
     assert new_order is not None
-    assert isinstance(new_order, IGRINSSpectrumList)
-    assert new_order.shape = spec1[10].shape
+    assert isinstance(new_order, IGRINSSpectrum)
+    assert new_order.shape == spec1[10].shape
     new_order = spec1[10] * spec2[10]
     assert new_order is not None
-    assert isinstance(new_order, IGRINSSpectrumList)
+    assert isinstance(new_order, IGRINSSpectrum)
     new_order = spec1[10] / spec2[10]
-    assert new_order.shape = spec1[10].shape
+    assert new_order.shape == spec1[10].shape
     assert new_order is not None
-    assert isinstance(new_order, IGRINSSpectrumList)
-    assert new_order.shape = spec1[10].shape
+    assert isinstance(new_order, IGRINSSpectrum)
+    assert new_order.shape == spec1[10].shape
+    assert isinstance(new_order, IGRINSSpectrum)
 
     #Test band math for lists
     new_spec = spec1 + spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 - spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 * spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 / spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
 
     #Test band math for list and single number
     new_spec = spec1 + 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 - 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 * 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
     new_spec = spec1 / 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape = spec1.shape
+    assert new_spec.shape == spec1.shape
 
 @pytest.mark.parametrize(
     "precache_hdus", [True, False],
