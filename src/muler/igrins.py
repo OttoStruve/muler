@@ -144,10 +144,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-<<<<<<< HEAD
             if uncertainity_hdus is not None:
-
-
 
                 if not sn_fits_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
@@ -161,12 +158,6 @@ class IGRINSSpectrum(EchelleSpectrum):
 
                 
                 uncertainty = StdDevUncertainty(stddev)
-=======
-            if sn_hdus is not None:
-                sn = sn_hdus[0].data[order]
-                unc = np.abs(flux / sn)
-                uncertainty = StdDevUncertainty(unc)
->>>>>>> band_math_update
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             # elif sn_hdus is not None:
             #    sn = sn_hdus[0].data[order]
