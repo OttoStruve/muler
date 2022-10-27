@@ -27,7 +27,7 @@ from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import apply_numpy_mask
+from muler.utilities import apply_numpy_mask, is_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -898,8 +898,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] - other[i]
             else:
                 spec_out[i] = self[i] - other
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
@@ -911,8 +911,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] * other[i]
             else:
                 spec_out[i] = self[i] * other
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
@@ -924,8 +924,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] / other[i]
             else:
                 spec_out[i] = self[i] / other
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
