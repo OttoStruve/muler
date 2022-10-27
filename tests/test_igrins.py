@@ -157,7 +157,7 @@ def test_uncertainty_spec_a0v():
 def test_uncertainty_spec_fits():
     """Does uncertainty propagation work?"""
 
-    spec = IGRINSSpectrumList.read(file=file_2, wavefile="SDCH_20201202_0063.wave.fits", order=10)
+    spec = IGRINSSpectrum(file=file_2, wavefile="SDCH_20201202_0063.wave.fits", order=10)
 
     assert spec.uncertainty is not None
     assert hasattr(spec.uncertainty, "array")
@@ -259,62 +259,61 @@ def test_deblaze():
 def test_bandmath():
     """Does band math work?"""
     spec1 = IGRINSSpectrumList.read(file=file)
-    spec2 = IGRINSSpectrumList.read(file=file_2)
+    spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SDCH_20201202_0063.wave.fits")
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
     assert new_order is not None
     assert isinstance(new_order, IGRINSSpectrum)
-    assert new_order.shape == spec1[10].shape
+    assert np.shape(new_order) == np.shape(spec1[10])
     new_order = spec1[10] - spec2[10]
     assert new_order is not None
     assert isinstance(new_order, IGRINSSpectrum)
-    assert new_order.shape == spec1[10].shape
+    assert np.shape(new_order) == np.shape(spec1[10])
     new_order = spec1[10] * spec2[10]
     assert new_order is not None
     assert isinstance(new_order, IGRINSSpectrum)
+    assert np.shape(new_order) == np.shape(spec1[10])
     new_order = spec1[10] / spec2[10]
-    assert new_order.shape == spec1[10].shape
     assert new_order is not None
     assert isinstance(new_order, IGRINSSpectrum)
-    assert new_order.shape == spec1[10].shape
-    assert isinstance(new_order, IGRINSSpectrum)
+    assert np.shape(new_order) == np.shape(spec1[10])
 
     #Test band math for lists
     new_spec = spec1 + spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 - spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 * spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 / spec2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
 
     #Test band math for list and single number
     new_spec = spec1 + 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 - 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 * 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 / 10.0
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
-    assert new_spec.shape == spec1.shape
+    assert np.shape(new_spec) == np.shape(spec1)
 
 @pytest.mark.parametrize(
     "precache_hdus", [True, False],
