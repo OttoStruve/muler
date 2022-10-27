@@ -227,7 +227,12 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         variance_hdus = fits.open(variance_file, memmap=False)
         cached_hdus = [hdus, variance_hdus]
         if wavefile is not None:
-            wave_hdus = fits.open(wavefile, memmap=False)
+            if os.path.exists(wavefile): #Check if user provided path to wavefile exists
+                wave_hdus = fits.open(wavefile, memmap=False)
+            else: #If not, check file name inside directory from file
+                base_path = os.path.dirname(file)
+                full_path = base_path + '/' + os.path.basename(wavefile)
+                wave_hdus = fits.open(full_path, memmap=False)
             cached_hdus.append(wave_hdus)
 
         # n_orders, n_pix = hdus["WAVELENGTH"].data.shape
