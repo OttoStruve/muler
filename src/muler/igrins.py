@@ -75,33 +75,13 @@ class IGRINSSpectrum(EchelleSpectrum):
             else:
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
-            if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
-                uncertainity_file_base = file[:-13]
-            elif ".spec.fits" in file:
-                uncertainity_file_base = file[:-9] 
-            uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
-            uncertainity_file_variance = uncertainity_file_base + 'variance.fits'
-            if os.path.exists(uncertainity_file_variance): #Check if variance.fits exists, if it does use that for the uncertainity
-                uncertainity_hdus = fits.open(uncertainity_file_variance)
-                sn_fits_used = False #False if variance.fits file used for uncertainity
-            elif os.path.exists(uncertainity_file_sn): #If variance.fits does not exist, try using sn.fits for the uncertainity
-                uncertainity_hdus = fits.open(uncertainity_file_sn)
-                sn_fits_used = True #true if sn.fits file used for uncertainity
-            elif cached_hdus is None:
-                raise Exception(
-                    "Neither variance.fits or sn.fits exists to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
-                    )                
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 uncertainity_hdus = cached_hdus[1]
                 if wavefile is not None:
                     wave_hdus = cached_hdus[2]
-            else:
+            else: #Read in files if cached_hdus are not provided
                 hdus = fits.open(str(file))
-                try:
-                    uncertainity_hdus = fits.open(uncertainity_file)
-                except:
-                    uncertainity_hdus = None
                 if wavefile is not None:
                     if os.path.exists(wavefile): #Check if user provided path to wavefile exists
                         wave_hdus = fits.open(wavefile)
@@ -109,6 +89,21 @@ class IGRINSSpectrum(EchelleSpectrum):
                         base_path = os.path.dirname(file)
                         full_path = base_path + '/' + os.path.basename(wavefile)
                         wave_hdus = fits.open(full_path)
+                if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
+                    uncertainity_file_base = file[:-13]
+                elif ".spec.fits" in file:
+                    uncertainity_file_base = file[:-9] 
+                uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
+                uncertainity_file_variance = uncertainity_file_base + 'variance.fits'
+                if os.path.exists(uncertainity_file_variance): #Check if variance.fits exists, if it does use that for the uncertainity
+                    uncertainity_hdus = fits.open(uncertainity_file_variance)
+                elif os.path.exists(uncertainity_file_sn): #If variance.fits does not exist, try using sn.fits for the uncertainity
+                    uncertainity_hdus = fits.open(uncertainity_file_sn)
+                    sn_fits_used = True #true if sn.fits file used for uncertainity, else it is false
+                else:
+                    raise Exception(
+                        "Neither variance.fits or sn.fits exists to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                        )                
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
                 log.warn(
