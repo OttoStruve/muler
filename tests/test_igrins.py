@@ -258,8 +258,8 @@ def test_deblaze():
 
 def test_bandmath():
     """Does band math work?"""
-    spec1 = IGRINSSpectrum(file=file)
-    spec2 = IGRINSSpectrum(file=file_2)
+    spec1 = IGRINSSpectrumList.read(file=file)
+    spec2 = IGRINSSpectrumList.read(file=file_2)
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
