@@ -885,7 +885,7 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = spec_out[i] + other[i]
             else:
                 spec_out[i] = spec_out[i] + other
-            if "x_values" not in spec_out[i].meta:
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
@@ -898,7 +898,7 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] - other[i]
             else:
                 spec_out[i] = self[i] - other
-            if "x_values" not in spec_out[i].meta:
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
@@ -911,7 +911,7 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] * other[i]
             else:
                 spec_out[i] = self[i] * other
-            if "x_values" not in spec_out[i].meta:
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
@@ -924,7 +924,7 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] / other[i]
             else:
                 spec_out[i] = self[i] / other
-            if "x_values" not in spec_out[i].meta:
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
