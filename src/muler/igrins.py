@@ -75,11 +75,6 @@ class IGRINSSpectrum(EchelleSpectrum):
             else:
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
-
-
-
-
-
             if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
                 uncertainity_file_base = file[:-13]
             elif ".spec.fits" in file:
@@ -145,7 +140,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
             if uncertainity_hdus is not None:
-
                 if not sn_fits_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
                     stddev = np.sqrt(variance)
@@ -155,8 +149,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                     dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
                     pixel_per_res_element = (lamb/40000.)/dw
                     stddev = stddev_per_resolution_element / pixel_per_res_element
-
-                
                 uncertainty = StdDevUncertainty(stddev)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             # elif sn_hdus is not None:
@@ -169,7 +161,6 @@ class IGRINSSpectrum(EchelleSpectrum):
             else:
                 uncertainity = None
                 mask = np.isnan(flux)
-
             super().__init__(
                 spectral_axis=lamb.to(u.Angstrom),
                 flux=flux,
