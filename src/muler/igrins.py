@@ -245,3 +245,4 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             )
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
+

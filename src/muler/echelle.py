@@ -950,4 +950,3 @@ class EchelleSpectrumList(SpectrumList):
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
-
