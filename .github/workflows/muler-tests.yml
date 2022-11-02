@@ -16,7 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ""
+          fetch-depth: 0
+          ref: ''
       - uses: actions/checkout@v2
         with:
           repository: OttoStruve/muler_example_data
@@ -38,9 +39,7 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
-        run: 
-            with ""
-            |
+        run: |            |
           python setup.py develop
           python -c "import sys; print('Python version: ', sys.version)"
           python -c "import specutils; print('specutils version: ', specutils.__version__)"
