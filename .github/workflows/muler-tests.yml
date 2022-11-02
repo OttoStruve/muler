@@ -11,12 +11,12 @@ jobs:
       matrix:
         python-version: [3.8, 3.9]
         specutils-version: [1.5, 1.6, 1.7]
-        astropy-version: [4.3, 5.0, 5.0.1]
+        astropy-version: [5.0.1]
 
     steps:
       - uses: actions/checkout@v2
-	with:
-		ref: ''
+        with:
+          ref: ""
       - uses: actions/checkout@v2
         with:
           repository: OttoStruve/muler_example_data
