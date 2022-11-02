@@ -16,8 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0
-          ref: ''
+          ref: fix_igrins_uncertainity_test
       - uses: actions/checkout@v2
         with:
           repository: OttoStruve/muler_example_data
