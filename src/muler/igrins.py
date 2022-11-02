@@ -10,7 +10,7 @@ IGRINSSpectrum
 """
 import logging
 import warnings
-from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+from muler.echelle_renamed import EchelleSpectrum, EchelleSpectrumList
 from astropy.time import Time
 import numpy as np
 import astropy

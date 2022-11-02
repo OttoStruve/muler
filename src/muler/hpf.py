@@ -11,7 +11,7 @@ HPFSpectrum
 
 import warnings
 import logging
-from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+from muler.echelle_renamed import EchelleSpectrum, EchelleSpectrumList
 import numpy as np
 import astropy
 from astropy.io import fits
