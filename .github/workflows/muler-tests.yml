@@ -15,6 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+	with:
+		ref: ''
       - uses: actions/checkout@v2
         with:
           repository: OttoStruve/muler_example_data
@@ -41,4 +43,4 @@ jobs:
           python -c "import sys; print('Python version: ', sys.version)"
           python -c "import specutils; print('specutils version: ', specutils.__version__)"
           python -c "import astropy; print('astropy version: ', astropy.__version__)"
-          pytest -vs --cache-clear
+          pytest -vs
