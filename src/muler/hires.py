@@ -18,6 +18,7 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
+from astropy.coordinates import Angle
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 
 # from barycorrpy import get_BC_vel
@@ -166,12 +167,12 @@ class KeckHIRESSpectrum(EchelleSpectrum):
     @property
     def RA(self):
         """The right ascension from header files"""
-        return self.meta["header"]["RA"] * u.hourangle
+        return Angle(self.meta["header"]["RA"], unit=u.hourangle)
 
     @property
     def DEC(self):
         """The declination from header files"""
-        return self.meta["header"]["DEC"] * u.deg
+        return Angle(self.meta["header"]["DEC"], unit=u.deg)
 
     @property
     def astropy_time(self):
