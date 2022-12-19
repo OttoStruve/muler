@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8, 3.9]
-        specutils-version: [1.5, 1.6, 1.7, 1.8]
+        specutils-version: [1.5, 1.6, 1.7, 1.8, 1.9.1]
         astropy-version: [5.1]
 
     steps:
@@ -26,7 +26,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install flake8 pytest
-          if [ -f docs/requirements.txt ]; then pip install -r docs/requirements.txt; fi
+          if [ -f docs/requirements_actions.txt ]; then pip install -r docs/requirements_actions.txt; fi
           pip install astropy==${{ matrix.astropy-version }} specutils==${{ matrix.specutils-version }}
       - name: Lint with flake8
         run: |
