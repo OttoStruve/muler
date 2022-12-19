@@ -75,9 +75,9 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             hdu0 = hdu[1]
 
             ## Target Spectrum
-            lamb = hdu0.data["wave (A)"].astype(np.float64) * u.AA
-            flux = hdu0.data["flux (cnts)"].astype(np.float64) * u.ct
-            unc = hdu0.data["noise (cnts)"].astype(np.float64) * u.ct
+            lamb = hdu0.data["wave (A)"].astype(float) * u.AA
+            flux = hdu0.data["flux (cnts)"].astype(float) * u.ct
+            unc = hdu0.data["noise (cnts)"].astype(float) * u.ct
 
             uncertainty = StdDevUncertainty(unc)
             mask = np.array(
@@ -100,7 +100,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 hdr = None
 
             meta_dict = {
-                "x_values": hdu0.data["col"].astype(np.int),
+                "x_values": hdu0.data["col"].astype(int),
                 "pipeline": pipeline,
                 "m": grating_order,
                 "header": hdr,
@@ -117,7 +117,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
             )
 
             ## Sky Spectrum
-            flux = hdu0.data["sky (cnts)"].astype(np.float64) * u.ct
+            flux = hdu0.data["sky (cnts)"].astype(float) * u.ct
 
             sky_spectrum = KeckNIRSPECSpectrum(
                 spectral_axis=lamb,
