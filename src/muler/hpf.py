@@ -93,9 +93,9 @@ class HPFSpectrum(EchelleSpectrum):
             hdr = hdus[0].header
 
             ## Target Spectrum
-            lamb = hdus[7].data[order].astype(np.float64) * u.AA
-            flux = hdus[1].data[order].astype(np.float64) * u.ct
-            unc = hdus[4].data[order].astype(np.float64) * u.ct
+            lamb = hdus[7].data[order].astype(float) * u.AA
+            flux = hdus[1].data[order].astype(float) * u.ct
+            unc = hdus[4].data[order].astype(float) * u.ct
             if pipeline == "HPF":
                 unc = np.sqrt(unc.value) * u.ct
 
@@ -122,9 +122,9 @@ class HPFSpectrum(EchelleSpectrum):
             )
 
             ## Sky Spectrum
-            lamb = hdus[8].data[order].astype(np.float64) * u.AA
-            flux = hdus[2].data[order].astype(np.float64) * u.ct
-            unc = hdus[5].data[order].astype(np.float64) * u.ct
+            lamb = hdus[8].data[order].astype(float) * u.AA
+            flux = hdus[2].data[order].astype(float) * u.ct
+            unc = hdus[5].data[order].astype(float) * u.ct
             if pipeline == "HPF":
                 unc = np.sqrt(unc.value) * u.ct
             uncertainty = StdDevUncertainty(unc)
@@ -142,9 +142,9 @@ class HPFSpectrum(EchelleSpectrum):
             )
 
             ## LFC Spectrum
-            lamb = hdus[9].data[order].astype(np.float64) * u.AA
-            flux = hdus[3].data[order].astype(np.float64) * u.ct
-            unc = hdus[6].data[order].astype(np.float64) * u.ct
+            lamb = hdus[9].data[order].astype(float) * u.AA
+            flux = hdus[3].data[order].astype(float) * u.ct
+            unc = hdus[6].data[order].astype(float) * u.ct
             if pipeline == "HPF":
                 unc = np.sqrt(unc.value) * u.ct
             uncertainty = StdDevUncertainty(unc)
