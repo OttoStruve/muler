@@ -78,19 +78,32 @@ class IGRINSSpectrum(EchelleSpectrum):
                 sn_file = file[:-13] + "sn.fits"
             elif ".spec.fits" in file:
                 sn_file = file[:-9] + "sn.fits"
+
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
-                sn_hdus = cached_hdus[1]
+                if "rtell" in file:
+                    sn = hdus['SNR'].data[order]
+                    sn_hdus = None
+                else:
+                    sn_hdus = cached_hdus[1]
                 if wavefile is not None:
                     wave_hdus = cached_hdus[2]
             else:
-                hdus = fits.open(str(file))
-                try:
-                    sn_hdus = fits.open(sn_file)
-                except:
+                if "rtell" not in file:
+                    hdus = fits.open(str(file))
+                    try:
+                        sn_hdus = fits.open(sn_file)
+                    except:
+                        sn_hdus = None
+                    if wavefile is not None:
+                        wave_hdus = fits.open(wavefile)
+                else:
+                    hdus = fits.open(str(file))
+                    sn = hdus['SNR'].data[order]
                     sn_hdus = None
-                if wavefile is not None:
-                    wave_hdus = fits.open(wavefile)
+                    if wavefile is not None:
+                        wave_hdus = fits.open(wavefile)
+
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
                 log.warn(
@@ -119,8 +132,13 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-            if sn_hdus is not None:
+
+            if sn_hdus is not None and ("rtell" not in file):
                 sn = sn_hdus[0].data[order]
+                unc = np.abs(flux / sn)
+                uncertainty = StdDevUncertainty(unc)
+                mask = np.isnan(flux) | np.isnan(uncertainty.array)
+            elif sn_hdus is None and ("rtell" in file):
                 unc = np.abs(flux / sn)
                 uncertainty = StdDevUncertainty(unc)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
@@ -193,22 +211,25 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         ----------
         file : (str)
             A path to a reduced IGRINS spectrum from plp
-        wafeile : (str)
+        wavefile : (str)
 
         """
+        #still works
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
         hdus = fits.open(file, memmap=False)
         if ".spec_a0v.fits" in file:
             sn_file = file[:-13] + "sn.fits"
         elif ".spec.fits" in file:
             sn_file = file[:-9] + "sn.fits"
-        sn_hdus = fits.open(sn_file, memmap=False)
-        cached_hdus = [hdus, sn_hdus]
+        if "rtell" not in file:
+            sn_hdus = fits.open(sn_file, memmap=False)
+            cached_hdus = [hdus, sn_hdus]
+        else:
+            cached_hdus = [hdus]
         if wavefile is not None:
             wave_hdus = fits.open(wavefile, memmap=False)
             cached_hdus.append(wave_hdus)
 
-        # n_orders, n_pix = hdus["WAVELENGTH"].data.shape
         n_orders, n_pix = hdus[0].data.shape
 
         list_out = []
