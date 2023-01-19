@@ -66,7 +66,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         sn_fits_used = False #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
 
         if file is not None:
-            assert (".spec_a0v.fits" in file) or (".spec.fits" in file)
+            assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits")
             # Determine the band
             if "SDCH" in file:
                 band = "H"
@@ -91,6 +91,8 @@ class IGRINSSpectrum(EchelleSpectrum):
                         wave_hdus = fits.open(full_path)
                 if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
                     uncertainity_file_base = file[:-13]
+                elif ".spec_flattened.fits" in file:
+                    uncertainity_file_base = file[:-19]
                 elif ".spec.fits" in file:
                     uncertainity_file_base = file[:-9] 
                 uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
