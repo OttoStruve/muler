@@ -146,7 +146,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
             if "rtell" in file:
-                stddev = np.abs(s2n / flux)
+                stddev = np.abs(sn / flux)
                 uncertainty = StdDevUncertainty(stddev)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)        
             elif uncertainity_hdus is not None:
