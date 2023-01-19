@@ -1,4 +1,4 @@
-name: muler_dev
+name: muler
 channels:
   - conda-forge
   - nodefaults
@@ -18,7 +18,7 @@ dependencies:
   - ipython
   - seaborn
   - importlib_resources
-  - h5py 
+  - h5py
   - pytest
   - sphinx # for documentation and testing
   - nbsphinx # for documentation and testing

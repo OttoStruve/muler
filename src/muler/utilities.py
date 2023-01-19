@@ -18,7 +18,7 @@ def combine_spectra_misaligned(
 ):
     """Combines spectra that might not be aligned pixel-by-pixel
 
-    Misaligned spectra can arise when significant Radial Velocity shifts have been applied 
+    Misaligned spectra can arise when significant Radial Velocity shifts have been applied
     before combination.  This method is not suitable for precision radial velocities.
 
     Parameters
@@ -28,9 +28,9 @@ def combine_spectra_misaligned(
     propagate_uncertainty: boolean or String
         How to propagate uncertainty: if True and uncertainties are provided, it will propagate them.
         If False, it will determine uncertainties from sample standard deviation of the mean.
-        If "max", and uncertainties are provided, it will take whichever is higher. 
+        If "max", and uncertainties are provided, it will take whichever is higher.
     pixel_midpoints: numpy.float or astropy.Quantity
-        A vector of wavelength coordinates that represent the desired pixel midpoints 
+        A vector of wavelength coordinates that represent the desired pixel midpoints
         of the output spectrum.  If None, the coordinates are determined from the input,
         using coarse bin spacings from the first input spectrum
 

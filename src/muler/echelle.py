@@ -538,7 +538,7 @@ class EchelleSpectrum(Spectrum1D):
             spectral_axis=self.wavelength.value * self.wavelength.unit,
             flux=mean_model * self.flux.unit,
             uncertainty=None,
-            mask=np.zeros_like(mean_model, dtype=np.bool),
+            mask=np.zeros_like(mean_model, dtype=bool),
             meta=copy.deepcopy(self.meta),
             wcs=None,
         )

@@ -12,18 +12,18 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.3.4",
+    version="0.4.0",
     author="gully",
     author_email="igully@gmail.com",
-    description="A Python package for working with data from IGRINS and HPF",
+    description="A Python package for working with data from various echelle spectrographs",
     long_description=readme,
     long_description_content_type="text/markdown",
     url="https://github.com/OttoStruve/muler",
     install_requires=[
         "numpy",
         "scipy",
-        "astropy>=4.1",
-        "specutils>=1.5",
+        "astropy>=5.2",
+        "specutils>=1.9",
         "pandas",
         "importlib_resources",
         "matplotlib",
