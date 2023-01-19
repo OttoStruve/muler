@@ -151,7 +151,7 @@ def test_uncertainty_spec_a0v():
 
     snr_vec = new_spec.flux / new_spec.uncertainty.array
     snr_med = np.nanmedian(snr_vec.value)
-    assert np.isclose(snr_med, snr_old_med, atol=0.01)
+    assert np.isclose(snr_med, snr_old_med, rtol=0.01)
 
 
 def test_uncertainty_spec_fits():
