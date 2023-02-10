@@ -245,8 +245,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             variance_file = file[:-9] + "variance.fits"
         elif ".spec_flattened.fits" in file:
             variance_file = file[:-19] + "variance.fits"
-        variance_hdus = fits.open(variance_file, memmap=False)
         if "rtell" not in file:
+            variance_hdus = fits.open(variance_file, memmap=False)
             cached_hdus = [hdus, variance_hdus]
         else:
             cached_hdus = [hdus]
