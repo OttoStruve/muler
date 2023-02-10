@@ -146,9 +146,13 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
             if "rtell" in file:
+                stddev_per_resolution_element = np.abs(flux / sn) #Get uncertainity per resoultion element
+                dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
+                pixel_per_res_element = (lamb/40000.)/dw
                 stddev = np.abs(sn / flux)
+                stddev = stddev_per_resolution_element / pixel_per_res_element
                 uncertainty = StdDevUncertainty(stddev)
-                mask = np.isnan(flux) | np.isnan(uncertainty.array)        
+                mask = np.isnan(flux) | np.isnan(uncertainty.array)
             elif uncertainity_hdus is not None:
                 if not sn_fits_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
