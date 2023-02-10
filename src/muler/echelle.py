@@ -27,7 +27,7 @@ from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import apply_numpy_mask
+from muler.utilities import apply_numpy_mask, is_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -879,36 +879,52 @@ class EchelleSpectrumList(SpectrumList):
     def __add__(self, other):
         """Bandmath addition"""
         spec_out = copy.deepcopy(self)
+        other_is_list = is_list(other)
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i] + other[i]
-            # if "x_values" not in spec_out[i].meta:
-            #    spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            if other_is_list:
+                spec_out[i] = spec_out[i] + other[i]
+            else:
+                spec_out[i] = spec_out[i] + other
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+               spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
         """Bandmath subtraction"""
         spec_out = copy.deepcopy(self)
+        other_is_list = is_list(other)
         for i in range(len(self)):
-            spec_out[i] = self[i] - other[i]
-            if "x_values" not in spec_out[i].meta:
+            if other_is_list:
+                spec_out[i] = self[i] - other[i]
+            else:
+                spec_out[i] = self[i] - other
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
         """Bandmath multiplication"""
         spec_out = copy.deepcopy(self)
+        other_is_list = is_list(other)
         for i in range(len(self)):
-            spec_out[i] = self[i] * other[i]
-            if "x_values" not in spec_out[i].meta:
+            if other_is_list:
+                spec_out[i] = self[i] * other[i]
+            else:
+                spec_out[i] = self[i] * other
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
         """Bandmath division"""
         spec_out = copy.deepcopy(self)
+        other_is_list = is_list(other)
         for i in range(len(self)):
-            spec_out[i] = self[i] / other[i]
-            if "x_values" not in spec_out[i].meta:
+            if other_is_list:
+                spec_out[i] = self[i] / other[i]
+            else:
+                spec_out[i] = self[i] / other
+            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
@@ -934,4 +950,3 @@ class EchelleSpectrumList(SpectrumList):
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
-
