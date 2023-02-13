@@ -57,13 +57,13 @@ class IGRINSSpectrum(EchelleSpectrum):
     """
 
     def __init__(
-        self, *args, file=None, order=10, cached_hdus=None, wavefile=None, **kwargs
+        self, *args, file=None, order=10, sn_fits_used = False, cached_hdus=None, wavefile=None, **kwargs
     ):
 
         # self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
-        sn_fits_used = False #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
+         #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
 
         if file is not None:
             assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits")
@@ -94,26 +94,22 @@ class IGRINSSpectrum(EchelleSpectrum):
                         base_path = os.path.dirname(file)
                         full_path = base_path + '/' + os.path.basename(wavefile)
                         wave_hdus = fits.open(full_path)
-                if "rtell" not in file:           
+                if "rtell" not in file:  
                     if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
                         uncertainity_file_base = file[:-13]
                     elif ".spec_flattened.fits" in file:
                         uncertainity_file_base = file[:-19]
                     elif ".spec.fits" in file:
-                        uncertainity_file_base = file[:-9] 
-                    uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
-                    uncertainity_file_variance = uncertainity_file_base + 'variance.fits'
-                    if os.path.exists(uncertainity_file_variance): #Check if variance.fits exists, if it does use that for the uncertainity
-                        uncertainity_hdus = fits.open(uncertainity_file_variance)
-                    elif os.path.exists(uncertainity_file_sn): #If variance.fits does not exist, try using sn.fits for the uncertainity
-                        uncertainity_hdus = fits.open(uncertainity_file_sn)
-                        sn_fits_used = True #true if sn.fits file used for uncertainity, else it is false
+                        uncertainity_file_base = file[:-9]
+                    if sn_fits_used:
+                        uncertainity_hdus = fits.open(uncertainity_file_base + 'sn.fits')
                     else:
-                        raise Exception(
-                            "Neither variance.fits or sn.fits exists to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
-                            )             
-                else:
+                        uncertainity_hdus = fits.open(uncertainity_file_base + 'variance.fits')
+                    uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
+                    uncertainity_file_variance = uncertainity_file_base + 'variance.fits'          
+                else: #If rtell file is used, grab SNR stored in extension
                     sn = hdus["SNR"].data[order]
+                    sn_fits_used = True
                     uncertainity_hdus = None
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
@@ -145,29 +141,26 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-            if "rtell" in file:
-                stddev_per_resolution_element = np.abs(flux / sn) #Get uncertainity per resoultion element
-                dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
-                pixel_per_res_element = (lamb/40000.)/dw
-                stddev = np.abs(sn / flux)
-                stddev = stddev_per_resolution_element / pixel_per_res_element
-                uncertainty = StdDevUncertainty(stddev)
-                mask = np.isnan(flux) | np.isnan(uncertainty.array)
-            elif uncertainity_hdus is not None:
+            if uncertainity_hdus is not None or ("rtell" in file):
                 if not sn_fits_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
                     stddev = np.sqrt(variance)
-                else: #Else if .sn.fits used
-                    sn = uncertainity_hdus[0].data[order].astype(np.float64)
-                    stddev_per_resolution_element = np.abs(flux / sn) #Get uncertainity per resoultion element
+                    if ("rtell" in file) or ("spec_a0v" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
+                        unprocessed_flux = hdus["TGT_SPEC"].data[order].astype(np.float64)
+                        stddev *= (flux.value / unprocessed_flux)
+                else: #Else if .sn.fits (or SNR HDU in rtell file) used
+                    if not "rtell" in file:
+                        sn = uncertainity_hdus[0].data[order].astype(np.float64)
                     dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
                     pixel_per_res_element = (lamb/40000.)/dw
-                    stddev = stddev_per_resolution_element / pixel_per_res_element
+                    sn_per_pixel =  sn / np.sqrt(pixel_per_res_element)
+                    stddev = flux.value / sn_per_pixel.value
                 uncertainty = StdDevUncertainty(stddev)
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
                 uncertainity = None
                 mask = np.isnan(flux)
+
             super().__init__(
                 spectral_axis=lamb.to(u.Angstrom),
                 flux=flux,
@@ -240,16 +233,29 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file)
         hdus = fits.open(file, memmap=False)
         if ".spec_a0v.fits" in file:
-            variance_file = file[:-13] + "variance.fits"
+            truncate_filename = 13
         elif ".spec.fits" in file:
-            variance_file = file[:-9] + "variance.fits"
+            truncate_filename = 9
         elif ".spec_flattened.fits" in file:
-            variance_file = file[:-19] + "variance.fits"
-        if "rtell" not in file:
-            variance_hdus = fits.open(variance_file, memmap=False)
-            cached_hdus = [hdus, variance_hdus]
-        else:
+            truncate_filename = 19
+        variance_file = file[:-truncate_filename] + "variance.fits"
+        sn_file = file[:-truncate_filename] + "sn.fits"
+        if "rtell" not in file: #Default, if no rtell file is used
+            if os.path.exists(variance_file): #Prefer .variance.fits file
+                variance_hdus = fits.open(variance_file, memmap=False)
+                cached_hdus = [hdus, variance_hdus]
+                sn_fits_used = False
+            elif os.path.exists(sn_file): #If no .variance.fits file found, try using the .sn.fits file
+                sn_hdus = fits.open(sn_file, memmap=False)
+                cached_hdus = [hdus, sn_hdus]
+                sn_fits_used = True
+            else:
+                raise Exception(
+                    "Neither variance.fits or sn.fits exists to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                    )             
+        else: #If rtell file is used
             cached_hdus = [hdus]
+            sn_fits_used = True
         if wavefile is not None:
             if os.path.exists(wavefile): #Check if user provided path to wavefile exists
                 wave_hdus = fits.open(wavefile, memmap=False)
@@ -264,7 +270,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         list_out = []
         for i in range(n_orders - 1, -1, -1):
             spec = IGRINSSpectrum(
-                file=file, wavefile=wavefile, order=i, cached_hdus=cached_hdus
+                file=file, wavefile=wavefile, order=i, sn_fits_used=sn_fits_used, cached_hdus=cached_hdus
             )
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
