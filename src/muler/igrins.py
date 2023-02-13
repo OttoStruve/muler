@@ -155,7 +155,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                     pixel_per_res_element = (lamb/40000.)/dw
                     sn_per_pixel =  sn / np.sqrt(pixel_per_res_element)
                     stddev = flux.value / sn_per_pixel.value
-                uncertainty = StdDevUncertainty(stddev)
+                uncertainty = StdDevUncertainty(np.abs(stddev))
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
                 uncertainity = None
