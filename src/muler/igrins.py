@@ -128,7 +128,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                         wave_hdus = fits.open(full_path)
                 if "rtell" not in file:  
                     uncertainty_filepath = getUncertainityFilepath(file)
-                    uncertainity_hdus = fits.open(uncertainityFilepath, memmap=False)   
+                    uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)   
                     if '.sn.fits' in uncertainty_filepath:
                         sn_used = True
                 else: #If rtell file is used, grab SNR stored in extension
