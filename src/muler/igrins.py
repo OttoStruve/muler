@@ -39,6 +39,38 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 grating_order_offsets = {"H": 98, "K": 71}
 
 
+
+def getUncertainityFilepath(filepath):
+    """Returns path for uncertainity file (.variance.fits or .sn.fits)
+
+        Will first search for a .variance.fits file but if that does not exist
+        will serach for a .sn.fits file.
+
+    Parameters
+    ----------
+    filepath: Filepath to fits file storing the data.  Can be .spec.fits or .spec_a0v.fits.
+
+    Returns
+    -------
+    uncertainityFilepath: string
+        Returns the file path to the uncertianity (.variance.fits or .sn.fits) file.
+
+    """
+    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainity file
+        path_base = filepath[:-14]
+    elif ".spec_flattened.fits" in filepath:
+        path_base = filepath[:-20]
+    elif ".spec.fits" in filepath:
+        path_base = filepath[:-10]
+    if os.path.exists(path_base + '.variance.fits'): #Prefer .variance.fits file
+        return path_base + '.variance.fits'
+    elif os.path.exists(path_base + '.sn.fits'): #If no .variance.fits file found, try using the .sn.fits file
+        return path_base + '.sn.fits'
+    else:
+        raise Exception(
+            "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+            )             
+
 class IGRINSSpectrum(EchelleSpectrum):
     r"""
     A container for IGRINS spectra
@@ -57,7 +89,7 @@ class IGRINSSpectrum(EchelleSpectrum):
     """
 
     def __init__(
-        self, *args, file=None, order=10, sn_fits_used = False, cached_hdus=None, wavefile=None, **kwargs
+        self, *args, file=None, order=10, sn_used = False, cached_hdus=None, wavefile=None, **kwargs
     ):
 
         # self.ancillary_spectra = None
@@ -95,21 +127,13 @@ class IGRINSSpectrum(EchelleSpectrum):
                         full_path = base_path + '/' + os.path.basename(wavefile)
                         wave_hdus = fits.open(full_path)
                 if "rtell" not in file:  
-                    if ".spec_a0v.fits" in file: #Grab base file name for the uncertainity file
-                        uncertainity_file_base = file[:-13]
-                    elif ".spec_flattened.fits" in file:
-                        uncertainity_file_base = file[:-19]
-                    elif ".spec.fits" in file:
-                        uncertainity_file_base = file[:-9]
-                    if sn_fits_used:
-                        uncertainity_hdus = fits.open(uncertainity_file_base + 'sn.fits')
-                    else:
-                        uncertainity_hdus = fits.open(uncertainity_file_base + 'variance.fits')
-                    uncertainity_file_sn = uncertainity_file_base + 'sn.fits' #Construct file names to check for both possible sn.fits and variance.fits uncertainity files
-                    uncertainity_file_variance = uncertainity_file_base + 'variance.fits'          
+                    uncertainty_filepath = getUncertainityFilepath(file)
+                    uncertainity_hdus = fits.open(uncertainityFilepath, memmap=False)   
+                    if '.sn.fits' in uncertainty_filepath:
+                        sn_used = True
                 else: #If rtell file is used, grab SNR stored in extension
                     sn = hdus["SNR"].data[order]
-                    sn_fits_used = True
+                    sn_used = True
                     uncertainity_hdus = None
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
@@ -142,7 +166,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "header": hdr,
             }
             if uncertainity_hdus is not None or ("rtell" in file):
-                if not sn_fits_used: #If .variance.fits used
+                if not sn_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
                     stddev = np.sqrt(variance)
                     if ("rtell" in file) or ("spec_a0v" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
@@ -231,31 +255,17 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         """
         # still works
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file)
+        sn_used = False #Default
         hdus = fits.open(file, memmap=False)
-        if ".spec_a0v.fits" in file:
-            truncate_filename = 13
-        elif ".spec.fits" in file:
-            truncate_filename = 9
-        elif ".spec_flattened.fits" in file:
-            truncate_filename = 19
-        variance_file = file[:-truncate_filename] + "variance.fits"
-        sn_file = file[:-truncate_filename] + "sn.fits"
         if "rtell" not in file: #Default, if no rtell file is used
-            if os.path.exists(variance_file): #Prefer .variance.fits file
-                variance_hdus = fits.open(variance_file, memmap=False)
-                cached_hdus = [hdus, variance_hdus]
-                sn_fits_used = False
-            elif os.path.exists(sn_file): #If no .variance.fits file found, try using the .sn.fits file
-                sn_hdus = fits.open(sn_file, memmap=False)
-                cached_hdus = [hdus, sn_hdus]
-                sn_fits_used = True
-            else:
-                raise Exception(
-                    "Neither variance.fits or sn.fits exists to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
-                    )             
+            uncertainty_filepath = getUncertainityFilepath(file)
+            uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)    
+            cached_hdus = [hdus, uncertainity_hdus]   
+            if '.sn.fits' in uncertainty_filepath:
+                sn_used = True     
         else: #If rtell file is used
             cached_hdus = [hdus]
-            sn_fits_used = True
+            sn_used = True
         if wavefile is not None:
             if os.path.exists(wavefile): #Check if user provided path to wavefile exists
                 wave_hdus = fits.open(wavefile, memmap=False)
@@ -270,7 +280,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         list_out = []
         for i in range(n_orders - 1, -1, -1):
             spec = IGRINSSpectrum(
-                file=file, wavefile=wavefile, order=i, sn_fits_used=sn_fits_used, cached_hdus=cached_hdus
+                file=file, wavefile=wavefile, order=i, sn_used=sn_used, cached_hdus=cached_hdus
             )
             list_out.append(spec)
         return IGRINSSpectrumList(list_out)
