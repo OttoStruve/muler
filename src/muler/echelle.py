@@ -1060,7 +1060,7 @@ class EchelleSpectrumList(SpectrumList):
             flux calibration.
         """
         if model_b is None:
-            spec_gollum = resample_list(model_a, input_spectrum)
+            spec_gollum = resample_list(model_a, self)
         else:
             spec_gollum = resample_list(model_a, self)*fraction_a + resample_list(model_b, self)*(1.0-fraction_a)
         
