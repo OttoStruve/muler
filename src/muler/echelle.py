@@ -109,7 +109,6 @@ class EchelleSpectrum(Spectrum1D):
         if hasattr(self, "ancillary_spectra"):
             if self.ancillary_spectra is not None:
                 output = [
-                    ancillary_spectrum
                     for ancillary_spectrum in self.ancillary_spectra
                     if ancillary_spectrum in self.meta.keys()
                 ]
@@ -727,7 +726,6 @@ class EchelleSpectrum(Spectrum1D):
     
         Returns
         -------
-        spec_gollum:
             EchelleSpectrum object derived from the synthetic spectrum from the model(s) from gollum with the same
             wavelengths and naned pixels as this (self) EchelleSpectrum object.  You can then use this outputted object for
             flux calibration.
@@ -740,7 +738,8 @@ class EchelleSpectrum(Spectrum1D):
 
         spec_gollum.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
         
-        return spec_gollum
+        return self.__class__(
+            spectral_axis=spec_gollum.spectral_axis, flux=spec_gollum.flux, meta=self.meta, wcs=None)
 
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.

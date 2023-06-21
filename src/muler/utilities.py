@@ -196,9 +196,13 @@ def resample_list(spec_to_resample, specList, **kwargs):
     spec_out = copy.deepcopy(specList)
     for i in range(len(specList)):
         meta_out = specList[i].meta
-        spec_out[i] = spec_to_resample.resample(specList[i], **kwargs)
-        spec_out[i].meta = meta_out
-    breakpoint()
+        resampled_spec = spec_to_resample.resample(specList[i], **kwargs)
+        if hasattr(resampled_spec, "unc"):
+            spec_out[i] = specList[i].__class__(
+                spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, uncertainty=resampled_spec.unc, meta=meta_out, wcs=None)
+        else:
+            spec_out[i] = specList[i].__class__(
+                spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=meta_out, wcs=None)            
     return spec_out
 
 
