@@ -28,6 +28,8 @@ from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
 from muler.utilities import apply_numpy_mask, is_list, resample_list
+from specutils.manipulation import LinearInterpolatedResampler
+LinInterpResampler = LinearInterpolatedResampler()
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -700,7 +702,7 @@ class EchelleSpectrum(Spectrum1D):
 
         return spec
 
-    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0)
+    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0):
         """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
         and returns an EchelleSpectrum object with the same wavelength array and naned pixels as this object.
         Applications include flux calibration or fitting models to science targets.
@@ -1027,7 +1029,7 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
-    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0)
+    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0):
         """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
         and returns an EchelleSpectrumList object with the same wavelength array and naned pixels as this object.
         Applications include flux calibration or fitting models to science targets.
@@ -1059,7 +1061,7 @@ class EchelleSpectrumList(SpectrumList):
         if model_b is None:
             spec_gollum = resample_list(model_a, input_spectrum)
         else:
-            spec_gollum = resample_list(model_a, self)*fraction_a + resample_list(modek_b, self)*(1.0-fraction_a)
+            spec_gollum = resample_list(model_a, self)*fraction_a + resample_list(model_b, self)*(1.0-fraction_a)
         
         for i in range(len(spec_gollum)): #Copy over nans from self to avoid weird errors later on
             spec_gollum[i].flux[np.isnan(self[i].flux)] = np.nan
