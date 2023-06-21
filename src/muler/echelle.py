@@ -109,6 +109,7 @@ class EchelleSpectrum(Spectrum1D):
         if hasattr(self, "ancillary_spectra"):
             if self.ancillary_spectra is not None:
                 output = [
+                    ancillary_spectrum
                     for ancillary_spectrum in self.ancillary_spectra
                     if ancillary_spectrum in self.meta.keys()
                 ]
