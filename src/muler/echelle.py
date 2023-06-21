@@ -27,7 +27,7 @@ from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
-from muler.utilities import apply_numpy_mask, is_list
+from muler.utilities import apply_numpy_mask, is_list, resample_list
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -699,6 +699,46 @@ class EchelleSpectrum(Spectrum1D):
             )
 
         return spec
+
+    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0)
+        """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
+        and returns an EchelleSpectrum object with the same wavelength array and naned pixels as this object.
+        Applications include flux calibration or fitting models to science targets.
+
+        Before running resample_gollum, you want to prepare your gollum precomputed spectra by reading them from 
+        your model grid with the desired parameters (Teff, logg, Z, etc.), rv shifting them, rotationally broadening
+        them, and then instrumentally broadening them.
+
+        Parameters
+        -------
+        model_a : PrecomputedSpectrum from gollum
+            PrecomputedSpectrum object (e.g. PHOENIXSpectrum) read in using gollum representing a synthetic
+            spectrum computed from a stellar atmosphere model.
+
+        model_b : PrecomputedSpectrum from gollum (default=None)
+            You can optionally specify a second PrecomputedSpectrum object from gollum such that model_a and model_b 
+            will be linearly interpolated together as set by fraction_a.
+        fraction_a: 
+            If model_b is provided, this is the fraction the combined spectrum of model_a and model_b is from model_a,
+            while model_b will have (1-fraction_a) contribution to the final model.
+    
+        Returns
+        -------
+        spec_gollum:
+            EchelleSpectrum object derived from the synthetic spectrum from the model(s) from gollum with the same
+            wavelengths and naned pixels as this (self) EchelleSpectrum object.  You can then use this outputted object for
+            flux calibration.
+        """
+        if model_b is None:
+            spec_gollum = LinInterpResampler(model_a, self.spectral_axis)
+        else:
+            spec_gollum = LinInterpResampler(model_a, model_a.spectral_axis)*(fraction_a) + LinInterpResampler(model_b, model_a.spectral_axis)*(1.0 - fraction_a)
+            spec_gollum = LinInterpResampler(spec_gollum, self.spectral_axis)
+
+        spec_gollum.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
+        
+        return spec_gollum
+
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
         Uuseful for airmass correction.  Uncertainity is propogated by keeping the 
@@ -986,3 +1026,43 @@ class EchelleSpectrumList(SpectrumList):
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
+
+    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0)
+        """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
+        and returns an EchelleSpectrumList object with the same wavelength array and naned pixels as this object.
+        Applications include flux calibration or fitting models to science targets.
+
+        Before running resample_gollum, you want to prepare your gollum precomputed spectra by reading them from 
+        your model grid with the desired parameters (Teff, logg, Z, etc.), rv shifting them, rotationally broadening
+        them, and then instrumentally broadening them.
+
+        Parameters
+        -------
+        model_a : PrecomputedSpectrum from gollum
+            PrecomputedSpectrum object (e.g. PHOENIXSpectrum) read in using gollum representing a synthetic
+            spectrum computed from a stellar atmosphere model.
+
+        model_b : PrecomputedSpectrum from gollum (default=None)
+            You can optionally specify a second PrecomputedSpectrum object from gollum such that model_a and model_b 
+            will be linearly interpolated together as set by fraction_a.
+        fraction_a: 
+            If model_b is provided, this is the fraction the combined spectrum of model_a and model_b is from model_a,
+            while model_b will have (1-fraction_a) contribution to the final model.
+    
+        Returns
+        -------
+        spec_gollum:
+            EchelleSpectrumList object derived from the synthetic spectrum from the model(s) from gollum with the same
+            wavelengths and naned pixels as this (self) EchelleSpectrumList object.  You can then use this outputted object for
+            flux calibration.
+        """
+        if model_b is None:
+            spec_gollum = resample_list(model_a, input_spectrum)
+        else:
+            spec_gollum = resample_list(model_a, self)*fraction_a + resample_list(modek_b, self)*(1.0-fraction_a)
+        
+        for i in range(len(spec_gollum)): #Copy over nans from self to avoid weird errors later on
+            spec_gollum[i].flux[np.isnan(self[i].flux)] = np.nan
+        
+        return spec_gollum
+
