@@ -195,7 +195,10 @@ def resample_list(spec_to_resample, specList, **kwargs):
     """
     spec_out = copy.deepcopy(specList)
     for i in range(len(specList)):
+        meta_out = specList[i].meta
         spec_out[i] = spec_to_resample.resample(specList[i], **kwargs)
+        spec_out[i].meta = meta_out
+    breakpoint()
     return spec_out
 
 
