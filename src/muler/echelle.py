@@ -74,7 +74,7 @@ class EchelleSpectrum(Spectrum1D):
 
         # self.ancillary_spectra = None
         super().__init__(*args, **kwargs)
-        self.available_ancillary_spectra = []
+
 
     @property
     def snr(self):
