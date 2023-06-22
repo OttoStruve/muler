@@ -703,44 +703,41 @@ class EchelleSpectrum(Spectrum1D):
 
         return spec
 
-    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0):
-        """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
-        and returns an EchelleSpectrum object with the same wavelength array and naned pixels as this object.
-        Applications include flux calibration or fitting models to science targets.
-
-        Before running resample_gollum, you want to prepare your gollum precomputed spectra by reading them from 
-        your model grid with the desired parameters (Teff, logg, Z, etc.), rv shifting them, rotationally broadening
-        them, and then instrumentally broadening them.
+    def LinResample(self, input_spec, fractions=1.0):
+        """Linearly resample in a spectrum, or a list of spectra, to match this spectrum return an EchelleSpectrum
+        object with the same wavelength array and naned pixels.  Applications include resampling
+        synthetic spectra generated from stellar atmosphere models to match a real spectrum.
 
         Parameters
         -------
-        model_a : PrecomputedSpectrum from gollum
-            PrecomputedSpectrum object (e.g. PHOENIXSpectrum) read in using gollum representing a synthetic
-            spectrum computed from a stellar atmosphere model.
-
-        model_b : PrecomputedSpectrum from gollum (default=None)
-            You can optionally specify a second PrecomputedSpectrum object from gollum such that model_a and model_b 
-            will be linearly interpolated together as set by fraction_a.
-        fraction_a: 
-            If model_b is provided, this is the fraction the combined spectrum of model_a and model_b is from model_a,
-            while model_b will have (1-fraction_a) contribution to the final model.
+        input_spec :
+            A muler spectrum or similar specutils object, or list of such objects to be resampled to match this spectrum.
+        fractions :
+            If a list of input spectra are provided, the user must provide a list of floats denoting what
+            fraction each of the input spectra make up the final resampled spectrum.  The total must equal 1.
+            For example, if I am stacking 3 input spectra and the first two spectra make up 40% of my resampled
+            spectrum and the last spectrum makes up 20%, fractions=[0.4, 0.4, 0.2].
     
         Returns
         -------
-            EchelleSpectrum object derived from the synthetic spectrum from the model(s) from gollum with the same
-            wavelengths and naned pixels as this (self) EchelleSpectrum object.  You can then use this outputted object for
-            flux calibration.
+        An EchelleSpectrum object with the same wavelength array and naned pixels as this (self) object.
         """
-        if model_b is None:
-            spec_gollum = LinInterpResampler(model_a, self.spectral_axis)
+        if is_list(input_spec):
+            fractions = np.array(fractions) #Check that fractions are a list and their sum equals 1
+            sum_fractions = np.sum(fractions)
+            assert len(fractions) > 1, "You need to provide a fraction for each input spectrum.  This is inputted as a list of floats."
+            assert sum_fractions == 1, "Total fractions in fraction list is "+str(sum_fractions)+" but total must equal to 1."
+            resampled_spec = LinInterpResampler(input_spec[0], input_spec[0].spectral_axis)*(fractions[0]) #Resample spectra
+            for i in range(1, len(input_spec)):
+                resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], input_spec[0].spectral_axis)*(fractions[i])
+            resampled_spec = LinInterpResampler(resampled_spec, self.spectral_axis) #Resample spectrum
         else:
-            spec_gollum = LinInterpResampler(model_a, model_a.spectral_axis)*(fraction_a) + LinInterpResampler(model_b, model_a.spectral_axis)*(1.0 - fraction_a)
-            spec_gollum = LinInterpResampler(spec_gollum, self.spectral_axis)
+            resampled_spec = LinInterpResampler(models, self.spectral_axis)
 
-        spec_gollum.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
+        resampled_spec.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
         
         return self.__class__(
-            spectral_axis=spec_gollum.spectral_axis, flux=spec_gollum.flux, meta=self.meta, wcs=None)
+            spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=self.meta, wcs=None)
 
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
@@ -1030,42 +1027,38 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
-    def resample_gollum(self, model_a, model_b=None, fraction_a=1.0):
-        """Reads in a synthetic spectrum (or two) from gollum generated from model stellar atmospheres 
-        and returns an EchelleSpectrumList object with the same wavelength array and naned pixels as this object.
-        Applications include flux calibration or fitting models to science targets.
-
-        Before running resample_gollum, you want to prepare your gollum precomputed spectra by reading them from 
-        your model grid with the desired parameters (Teff, logg, Z, etc.), rv shifting them, rotationally broadening
-        them, and then instrumentally broadening them.
+    def LinResample(self, input_spec, fractions=1.0):
+        """Linearly resample in a spectrum, or a list of spectra, to match this spectrum return an EchelleSpectrumList
+        object with the same wavelength arrays and naned pixels.  Applications include resampling
+        synthetic spectra generated from stellar atmosphere models to match a real spectrum.
 
         Parameters
         -------
-        model_a : PrecomputedSpectrum from gollum
-            PrecomputedSpectrum object (e.g. PHOENIXSpectrum) read in using gollum representing a synthetic
-            spectrum computed from a stellar atmosphere model.
-
-        model_b : PrecomputedSpectrum from gollum (default=None)
-            You can optionally specify a second PrecomputedSpectrum object from gollum such that model_a and model_b 
-            will be linearly interpolated together as set by fraction_a.
-        fraction_a: 
-            If model_b is provided, this is the fraction the combined spectrum of model_a and model_b is from model_a,
-            while model_b will have (1-fraction_a) contribution to the final model.
+        input_spec :
+            A muler spectrum or similar specutils object, or list of such objects to be resampled to match this spectrum.
+        fractions :
+            If a list of input spectra are provided, the user must provide a list of floats denoting what
+            fraction each of the input spectra make up the final resampled spectrum.  The total must equal 1.
+            For example, if I am stacking 3 input spectra and the first two spectra make up 40% of my resampled
+            spectrum and the last spectrum makes up 20%, fractions=[0.4, 0.4, 0.2].
     
         Returns
         -------
-        spec_gollum:
-            EchelleSpectrumList object derived from the synthetic spectrum from the model(s) from gollum with the same
-            wavelengths and naned pixels as this (self) EchelleSpectrumList object.  You can then use this outputted object for
-            flux calibration.
+        An EchelleSpectrumList object with the same wavelength arrays and naned pixels as this (self) object.
         """
-        if model_b is None:
-            spec_gollum = resample_list(model_a, self)
+        if is_list(input_spec): #
+            fractions = np.array(fractions) #Check that fractions are a list and their sum equals 1
+            sum_fractions = np.sum(fractions)
+            assert len(fractions) > 1, "You need to provide a fraction for each input spectrum.  This is inputted as a list of floats."
+            assert sum_fractions == 1, "Total fractions in fraction list is "+str(sum_fractions)+" but total must equal to 1."
+            resampled_spec = resample_list(input_spec[0], self)*(fractions[0]) #Resample spectra
+            for i in range(1, len(input_spec)):
+                resampled_spec = resampled_spec + resample_list(input_spec[i], self)*(fractions[i])
         else:
-            spec_gollum = resample_list(model_a, self)*fraction_a + resample_list(model_b, self)*(1.0-fraction_a)
+            resampled_spec = resample_list(input_spec, self) #Resample spectrum
+
+        for i in range(len(resampled_spec)): #Copy over nans from self to avoid weird errors later on
+            resampled_spec[i].flux[np.isnan(self[i].flux)] = np.nan
         
-        for i in range(len(spec_gollum)): #Copy over nans from self to avoid weird errors later on
-            spec_gollum[i].flux[np.isnan(self[i].flux)] = np.nan
-        
-        return spec_gollum
+        return resampled_spec
 
