@@ -732,7 +732,7 @@ class EchelleSpectrum(Spectrum1D):
                 resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], input_spec[0].spectral_axis)*(fractions[i])
             resampled_spec = LinInterpResampler(resampled_spec, self.spectral_axis) #Resample spectrum
         else:
-            resampled_spec = LinInterpResampler(models, self.spectral_axis)
+            resampled_spec = LinInterpResampler(resampled_spec, self.spectral_axis)
 
         resampled_spec.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
         
