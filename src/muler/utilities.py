@@ -2,6 +2,7 @@ import numpy as np
 import copy
 from specutils.spectra import Spectrum1D
 from astropy.nddata.nduncertainty import StdDevUncertainty
+from astropy.modeling import models, fitting #import the astropy model fitting package
 from scipy.stats import binned_statistic
 
 
@@ -240,3 +241,92 @@ def is_list(check_this):
     else:
         return False
 
+def estimate_slit_throughput_ABBA(y, x=None, slit_length=14.8, slit_width=1.0, PA=90.0, guiding_error=1.5, print_info=True):
+    """
+    Given a collapsed spatial profile long slit for a point (stellar) source nodded
+    ABBA along the slit, returns a numerical estimate of the fraction of light through the slit.
+    The A and B nods are fit with Moffat functions which are then projected from 1D to 2D and then
+    a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
+    are integrated to estimate the fraction of light that passes through the slit.
+
+    Parameters 
+    ----------
+    y: numpy array of floats
+        Array representing the spatial profile of the source on the slit.  It should be the PSF for
+        a point source nodded ABBA on the slit.
+    x: numpy array of floats (optional)
+        Array representing the spatial position along the slit in pixel space corrisponding to y.
+    slit_length: float
+        Length of the slit on the sky in arcsec.
+    slit_width: float
+        Width of the slit on the sky in arcsec.
+    PA: float
+        Position angle of the slit on the sky in degrees.  Measured counterclockwise from North to East.
+    guilding_error: float
+        Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
+        This should be used carefully and only for telescopes on equitorial mounts.
+    print_info: bool
+        Print information about the fit.
+
+    Returns: 
+    ----------
+    Float: The fraction of light from the source estimated to pass through the slit.
+    """
+
+
+    slit_width_to_length_ratio = slit_width / slit_length
+    if x is None: #Generate equally spaced x array if it is not provided
+        ny = len(y)
+        x = (np.arange(ny) / ny) * slit_length
+    #Find maximum and minimum
+    i_max = np.where(y == np.nanmax(y))[0][0]
+    i_min = np.where(y == np.nanmin(y))[0][0]
+    if np.size(i_max) > 1: #Error catch for the rare event when two or more pixels match the max or min y values
+        i_max = i_max[0]
+    if np.size(i_min) > 1:
+        i_min = i_min[0]
+    #Fit 2 Moffat distributions to the psfs from A and B positions (see https://docs.astropy.org/en/stable/modeling/compound-models.html)
+    g1 = models.Moffat1D(amplitude=y[i_max], x_0=x[i_max], alpha=1.0, gamma=1.0)
+    g2 = models.Moffat1D(amplitude=y[i_min], x_0=x[i_min], alpha=1.0, gamma=1.0)
+    gg_init = g1 + g2
+    fitter = fitting.TRFLSQFitter()
+    gg_fit = fitter(gg_init, x, y)
+    if print_info:
+        print('FWHM A beam:', gg_fit[0].fwhm)
+        print('FWHM B beam:', gg_fit[1].fwhm)
+    #Numerically estimate light through slit
+    g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*slit_length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
+    g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*slit_length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
+    #Generate a 2D grid in x and y for numerically calculating slit loss
+    n_axis = 5000
+    half_n_axis = n_axis / 2
+    max_x = np.nanmax(x)
+    dx = 1.2 * (max_x / n_axis)
+    dy = 1.2 * (max_x / n_axis)
+    y2d, x2d = np.meshgrid(np.arange(n_axis), np.arange(n_axis))
+    x2d = (x2d - half_n_axis) * dx
+    y2d = (y2d - half_n_axis) * dy
+    #simulate  guiding error by "smearing out" PSF
+    position_angle_in_radians = PA * (np.pi)/180.0 #PA in radians
+    fraction_guiding_error = np.cos(position_angle_in_radians)*guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+    diff_x0 = fraction_guiding_error * np.cos(position_angle_in_radians)
+    diff_y0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+    g1_fit.x_0 += 0.5*diff_x0
+    g2_fit.x_0 += 0.5*diff_x0
+    g1_fit.y_0 += 0.5*diff_y0
+    g2_fit.y_0 += 0.5*diff_y0
+    profiles_2d = np.zeros(np.shape(x2d))
+    n = 5
+    for i in range(n):
+        profiles_2d += (1/n)*(g1_fit(x2d, y2d) + g2_fit(x2d, y2d))
+        g1_fit.x_0 -= (1/(n-1))*diff_x0
+        g2_fit.x_0 -= (1/(n-1))*diff_x0
+        g1_fit.y_0 -= (1/(n-1))*diff_y0
+        g2_fit.y_0 -= (1/(n-1))*diff_y0
+    #Mask esitmated 2D PSFs to estimate fraction of light through the slit
+    profiles_2d = profiles_2d / np.nansum(profiles_2d) #Normalize each pixel by fraction of starlight
+    outside_slit = (y2d <= -0.5*slit_width) | (y2d >= 0.5*slit_width) | (x2d <= -0.5*slit_length) | (x2d >= 0.5*slit_length) #Apply mask
+    profiles_2d[outside_slit] = np.nan
+    fraction_through_slit = np.nansum(profiles_2d)
+
+    return fraction_through_slit

@@ -10,7 +10,9 @@ IGRINSSpectrum
 """
 import logging
 import warnings
+import json
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+from muler.utilities import estimate_slit_throughput_ABBA
 from astropy.time import Time
 import numpy as np
 import astropy
@@ -18,6 +20,8 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
+from specutils.manipulation import LinearInterpolatedResampler
+LinInterpResampler = LinearInterpolatedResampler()
 
 import copy
 import os
@@ -44,7 +48,7 @@ def getUncertainityFilepath(filepath):
     """Returns path for uncertainity file (.variance.fits or .sn.fits)
 
         Will first search for a .variance.fits file but if that does not exist
-        will serach for a .sn.fits file.
+        will search for a .sn.fits file.
 
     Parameters
     ----------
@@ -71,6 +75,87 @@ def getUncertainityFilepath(filepath):
             "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
             )             
 
+def getSlitProfileFilepath(filepath, band):
+    """Returns the path for the slit profile file (.slit_profile.json).
+
+    Parameters
+    ----------
+    filepath: Filepath to fits file storing the data.  Can be .spec.fits or .spec_a0v.fits.
+
+    Returns
+    -------
+    slitProfileFilepath: string
+        Returns the file path to .slit_profile.json file.
+    """
+    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainity file
+        path_base = filepath[:-14]
+    elif ".spec_flattened.fits" in filepath:
+        path_base = filepath[:-20]
+    elif ".spec.fits" in filepath:
+        path_base = filepath[:-10]
+    path_base = path_base.replace('SDCH', 'SDC'+band).replace('SDCK', 'SDC'+band) #Make sure we are using the correct band
+    return path_base + '.slit_profile.json'
+
+
+
+def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+    """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit and return the 
+    coefficients of a linear fit.
+
+    Parameters
+    ----------
+    file:
+        Path to fits file (e.g. spec.fits) from which the slit_profile.json file is also in the same directory.
+        These should all be in the same IGRINS PLP output directory.
+    slit_length: float
+        Length of the slit on the sky in arcsec.
+    PA: float
+        Position angle of the slit on the sky in degrees.  Measured counterclockwise from North to East.
+    guilding_error: float
+        Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
+        This should be used carefully and only for telescopes on equitorial mounts.
+    print_info: bool
+        Print information about the fit.
+
+    Returns
+    -------
+    m, b:
+        Coefficients for a fit of a linear trend of m*(1/wavelength)+b to the fractional slit throughput with the
+        wavelength units in microns.
+
+    """
+    h_band_filepath = getSlitProfileFilepath(file, 'H') #Get paths to .slit_profile.json files
+    k_band_filepath = getSlitProfileFilepath(file, 'K')
+
+    assert os.path.exists(h_band_filepath) and os.path.exists(k_band_filepath)
+
+
+    slit_width = slit_length * (1.0/14.8) #Calculate slit width from slit length since IGRINS always uses the same slit no matter the telescope
+    #Get throughput for H band
+    json_file = open(h_band_filepath)
+    json_obj = json.load(json_file)
+    x = np.array(json_obj['profile_x']) * slit_length
+    y = np.array(json_obj['profile_y'])
+    f_through_slit_H = estimate_slit_throughput_ABBA(y, x=x, slit_length=slit_length, slit_width=slit_width, PA=PA, print_info=print_info)
+    #Get throughput for K band
+    json_file = open(k_band_filepath)
+    json_obj = json.load(json_file)
+    x = np.array(json_obj['profile_x']) * slit_length
+    y = np.array(json_obj['profile_y'])
+    f_through_slit_K = estimate_slit_throughput_ABBA(y, x=x, slit_length=slit_length, slit_width=slit_width, PA=PA, print_info=print_info)
+    #Fit linear trend through slit throughput as function of wavelength and using fitting a line through two points
+    m = (f_through_slit_K - f_through_slit_H) / ((1/2.2) - (1/1.65))
+    b = f_through_slit_H - m*(1/1.65)
+    if print_info:
+        print('H-band slit throughput: ', f_through_slit_H)
+        print('K-band slit throughput:', f_through_slit_K)
+        print('m: ', m)
+        print('b: ', b)
+
+    return m, b
+
+
+
 class IGRINSSpectrum(EchelleSpectrum):
     r"""
     A container for IGRINS spectra
@@ -95,9 +180,11 @@ class IGRINSSpectrum(EchelleSpectrum):
         # self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
+
          #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
 
         if file is not None:
+            
             assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits")
             # Determine the band
             if "SDCH" in file:
@@ -231,6 +318,39 @@ class IGRINSSpectrum(EchelleSpectrum):
         mjd = self.meta["header"]["MJD-OBS"]
         return Time(mjd, format="mjd", scale="utc")
 
+    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+        """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
+
+        Parameters
+        ----------
+        h_band_slitprofile_filepath:
+            Filepath to *.slit_profile.json file outputted by the IGRINS PLP storing the spatial
+            profile of the target along the slit for the H band.
+        k_band_slitprofile_filepath:
+            Filepath to *.slit_profile.json file outputted by the IGRINS PLP storing the spatial
+            profile of the target along the slit for the K band.
+        slit_length: float
+            Length of the slit on the sky in arcsec.
+        PA: float
+            Position angle of the slit on the sky in degrees.  Measured counterclockwise from North to East.
+        guilding_error: float
+            Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
+            This should be used carefully and only for telescopes on equitorial mounts.
+        print_info: bool
+            Print information about the fit.
+
+        Returns
+        -------
+        Returns array of fractional slit throughput as a function of wavelength
+        """
+
+        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info)
+        return m*(1/self.wavelength.um) + b
+
+
+
+
+
 
 class IGRINSSpectrumList(EchelleSpectrumList):
     r"""
@@ -255,6 +375,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         """
         # still works
         assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file)
+        
         sn_used = False #Default
         hdus = fits.open(file, memmap=False)
         if "rtell" not in file: #Default, if no rtell file is used
@@ -283,5 +404,36 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 file=file, wavefile=wavefile, order=i, sn_used=sn_used, cached_hdus=cached_hdus
             )
             list_out.append(spec)
-        return IGRINSSpectrumList(list_out)
+        specList = IGRINSSpectrumList(list_out)
+        return IGRINSSpectrumList(specList)
+    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+        """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
 
+        Parameters
+        ----------
+        h_band_slitprofile_filepath:
+            Filepath to *.slit_profile.json file outputted by the IGRINS PLP storing the spatial
+            profile of the target along the slit for the H band.
+        k_band_slitprofile_filepath:
+            Filepath to *.slit_profile.json file outputted by the IGRINS PLP storing the spatial
+            profile of the target along the slit for the K band.
+        slit_length: float
+            Length of the slit on the sky in arcsec.
+        PA: float
+            Position angle of the slit on the sky in degrees.  Measured counterclockwise from North to East.
+        guilding_error: float
+            Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
+            This should be used carefully and only for telescopes on equitorial mounts.
+        print_info: bool
+            Print information about the fit.
+
+        Returns
+        -------
+        Returns list of arrays of fractional slit throughput as a function of wavelength
+        """
+
+        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info)
+        f_throughput = []
+        for i in range(len(self)):
+            f_throughput.append(m*(1/self[i].wavelength.um) + b)
+        return f_throughput
