@@ -739,6 +739,47 @@ class EchelleSpectrum(Spectrum1D):
         return self.__class__(
             spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=self.meta, wcs=None)
 
+    def get_slit_profile(self, lower=None, upper=None, slit_length=1.0):
+        """"For a 2D spectrum, returns the slit profile
+
+        Parameters
+        ----------
+        lower : AstroPy Quantity or float
+            The short wavelength limit at which to define the slit profile.
+            If the value is a float, it assume Angstrom units.
+        upper : AstroPy Quantity or float
+            The long wavelength limit at which to define the slit profiled.
+            If the value is a float, it assume Angstrom units.
+
+        Returns
+        -------
+        Array with the same height as the 2D spectrum of the median estimated slit profile
+        """
+        #Get the upper and lower wavelength limits in the correct units
+
+        assert len(np.shape(self.flux)) == 2, "Spectrum must be 2D to estimate slit profile." #Test to make sure this is a 2D spectrum
+
+        if lower is None:
+            lower = self.wavelength.min().value
+        if upper is None:
+            upper = self.wavelength.max().value
+
+        if type(lower) is not u.Quantity:
+            # Assume it's Angstroms
+            lower = lower * u.Angstrom
+        if type(upper) is not u.Quantity:
+            upper = upper * u.Angstrom
+
+        mask = (self.wavelength >= lower) & (self.wavelength <= upper)
+
+        flux = self.flux[:, mask].value
+        normalized_flux = flux / np.nansum(flux, axis=0)
+        median_slit_profile = np.nanmedian(normalized_flux, axis=1)
+
+        return median_slit_profile
+
+
+
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
         Uuseful for airmass correction.  Uncertainity is propogated by keeping the 

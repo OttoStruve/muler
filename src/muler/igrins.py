@@ -411,7 +411,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         hdus0_shape = hdus[0].data.shape
         if len(hdus0_shape) == 2: #1D spectrum
             n_orders, n_pix = hdus[0].data.shape
-        elif len(hdus0_shape) == 3: #3D spectrum
+        elif len(hdus0_shape) == 3: #2D spectrum
             n_orders, n_height, n_pix = hdus[0].data.shape
 
         list_out = []
