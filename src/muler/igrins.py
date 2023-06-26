@@ -66,14 +66,24 @@ def getUncertainityFilepath(filepath):
         path_base = filepath[:-20]
     elif ".spec.fits" in filepath:
         path_base = filepath[:-10]
-    if os.path.exists(path_base + '.variance.fits'): #Prefer .variance.fits file
-        return path_base + '.variance.fits'
-    elif os.path.exists(path_base + '.sn.fits'): #If no .variance.fits file found, try using the .sn.fits file
-        return path_base + '.sn.fits'
+    elif ".spec2d.fits" in filepath:
+        path_base = filepath[:-12]
+    if ".spec2d.fits" in filepath:
+        if os.path.exists(path_base + '.var2d.fits'):
+            return path_base + '.var2d.fits'
+        else:
+            raise Exception(
+                "The file .var2d.fits does not exist in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                )             
     else:
-        raise Exception(
-            "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
-            )             
+        if os.path.exists(path_base + '.variance.fits'): #Prefer .variance.fits file
+            return path_base + '.variance.fits'
+        elif os.path.exists(path_base + '.sn.fits'): #If no .variance.fits file found, try using the .sn.fits file
+            return path_base + '.sn.fits'
+        else:
+            raise Exception(
+                "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                )             
 
 def getSlitProfileFilepath(filepath, band):
     """Returns the path for the slit profile file (.slit_profile.json).
@@ -93,6 +103,8 @@ def getSlitProfileFilepath(filepath, band):
         path_base = filepath[:-20]
     elif ".spec.fits" in filepath:
         path_base = filepath[:-10]
+    elif ".spec2d.fits" in filepath:
+        path_base = filepath[:-12]
     path_base = path_base.replace('SDCH', 'SDC'+band).replace('SDCK', 'SDC'+band) #Make sure we are using the correct band
     return path_base + '.slit_profile.json'
 
@@ -185,7 +197,7 @@ class IGRINSSpectrum(EchelleSpectrum):
 
         if file is not None:
             
-            assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits")
+            assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or ('.spec2d.fits' in file)
             # Determine the band
             if "SDCH" in file:
                 band = "H"
@@ -232,7 +244,7 @@ class IGRINSSpectrum(EchelleSpectrum):
             elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(float) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
-            elif (("spec.fits" in file) or ("spec_flattened.fits" in file)) and (wavefile is not None):
+            elif (("spec.fits" in file) or ("spec_flattened.fits" in file) or ('.spec2d.fits' in file)) and (wavefile is not None):
                 lamb = (
                     wave_hdus[0].data[order].astype(float) * 1e-3 * u.micron
                 )  # Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
@@ -374,7 +386,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         """
         # still works
-        assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file)
+        assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file)
         
         sn_used = False #Default
         hdus = fits.open(file, memmap=False)
@@ -396,7 +408,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 wave_hdus = fits.open(full_path, memmap=False)
             cached_hdus.append(wave_hdus)
 
-        n_orders, n_pix = hdus[0].data.shape
+        hdus0_shape = hdus[0].data.shape
+        if len(hdus0_shape) == 2: #1D spectrum
+            n_orders, n_pix = hdus[0].data.shape
+        elif len(hdus0_shape) == 3: #3D spectrum
+            n_orders, n_height, n_pix = hdus[0].data.shape
 
         list_out = []
         for i in range(n_orders - 1, -1, -1):
