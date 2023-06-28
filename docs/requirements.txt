@@ -17,6 +17,5 @@ celerite2
 tqdm
 bokeh # needed for gollum to install on RTD
 gollum==0.2.1
-muler
 numpydoc
 sphinx-gallery
