@@ -699,7 +699,26 @@ class EchelleSpectrum(Spectrum1D):
             )
 
         return spec
+    def __pow__(self, power):
+        """Take flux to a power while preserving the exiting flux units.
+        Uuseful for airmass correction.  Uncertainity is propogated by keeping the 
+        singal-to-noise constant.
 
+        Parameters
+        ----------
+        power : float
+            The power to take the flux to.
+            flux = flux ** power
+
+        """
+        flux = self.flux
+        unc = self.uncertainty
+        s2n = np.abs(flux.value / unc.array)
+        flux = flux ** power
+        unc = StdDevUncertainty(flux.value / s2n) #Recaulted uncertianity by preserving the S/N
+
+        return self.__class__(
+            spectral_axis=self.spectral_axis, flux=flux, uncertainty=unc, meta=self.meta, wcs=None)
 
 class EchelleSpectrumList(SpectrumList):
     r"""
@@ -926,6 +945,23 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i] / other
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        return spec_out
+
+    def __pow__(self, power):
+        """Take flux to a power while preserving the exiting flux units.
+        Uuseful for airmass correction.  Uncertainity is propagated by keeping the 
+        singal-to-noise constant.
+
+        Parameters
+        ----------
+        power : float
+            The power to take the flux to.
+            flux = flux ** power
+
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i]**power
         return spec_out
 
     def rv_shift(self, velocity):

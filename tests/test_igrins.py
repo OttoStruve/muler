@@ -250,6 +250,11 @@ def test_bandmath():
     assert new_order is not None
     assert isinstance(new_order, IGRINSSpectrum)
     assert np.shape(new_order) == np.shape(spec1[10])
+    new_order = spec1[10] ** 2
+    assert new_order is not None
+    assert isinstance(new_order, IGRINSSpectrum)
+    assert np.shape(new_order) == np.shape(spec1[10])
+
 
     #Test band math for lists
     new_spec = spec1 + spec2
@@ -268,6 +273,10 @@ def test_bandmath():
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
     assert np.shape(new_spec) == np.shape(spec1)
+    new_spec = spec1 ** 2
+    assert new_spec is not None
+    assert isinstance(new_spec, IGRINSSpectrumList)
+    assert np.shape(new_spec) == np.shape(spec1)
 
     #Test band math for list and single number
     new_spec = spec1 + 10.0
@@ -283,6 +292,10 @@ def test_bandmath():
     assert isinstance(new_spec, IGRINSSpectrumList)
     assert np.shape(new_spec) == np.shape(spec1)
     new_spec = spec1 / 10.0
+    assert new_spec is not None
+    assert isinstance(new_spec, IGRINSSpectrumList)
+    assert np.shape(new_spec) == np.shape(spec1)
+    new_spec = spec1 ** 2
     assert new_spec is not None
     assert isinstance(new_spec, IGRINSSpectrumList)
     assert np.shape(new_spec) == np.shape(spec1)
