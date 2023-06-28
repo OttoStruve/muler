@@ -196,12 +196,12 @@ class IGRINSSpectrum(EchelleSpectrum):
             )
         else:
             super().__init__(*args, **kwargs)
-            if not ("header" in self.meta.keys()):
-                log.warn(
-                    "The spectrum metadata appears to be missing.  "
-                    "The functionality of muler may be impaired without metadata.  "
-                    "See discussion at https://github.com/OttoStruve/muler/issues/79."
-                )
+            # if not ("header" in self.meta.keys()):
+            #     log.warn(
+            #         "The spectrum metadata appears to be missing.  "
+            #         "The functionality of muler may be impaired without metadata.  "
+            #         "See discussion at https://github.com/OttoStruve/muler/issues/79."
+            #     )
 
     @property
     def site_name(self):
