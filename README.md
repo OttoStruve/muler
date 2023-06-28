@@ -1,6 +1,6 @@
 # `muler` (_μler_)
 
-### version 0.3.4
+### version 0.4.0
 
 <a href="https://muler.readthedocs.io/en/latest/"><img src="https://img.shields.io/badge/Read-the%20docs-blue"></a>
 [![DOI](https://zenodo.org/badge/322031013.svg)](https://zenodo.org/badge/latestdoi/322031013)  
