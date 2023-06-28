@@ -714,7 +714,7 @@ class EchelleSpectrum(Spectrum1D):
         flux = self.flux
         unc = self.uncertainty
         s2n = np.abs(flux.value / unc.array)
-        flux = Quantity(flux.value ** power, unit=self.flux.unit)
+        flux = flux ** power
         unc = StdDevUncertainty(flux.value / s2n) #Recaulted uncertianity by preserving the S/N
 
         return self.__class__(
