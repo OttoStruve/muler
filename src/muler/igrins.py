@@ -66,10 +66,15 @@ def getUncertainityFilepath(filepath):
         return path_base + '.variance.fits'
     elif os.path.exists(path_base + '.sn.fits'): #If no .variance.fits file found, try using the .sn.fits file
         return path_base + '.sn.fits'
+    elif path_base[0:4] == 'http':
+        # Try to read in the variance file...
+        return path_base + '.variance.fits'
     else:
-        raise Exception(
-            "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
-            )             
+        # No Uncertainty file available.  That's OK.  We will just have coarse uncertainty...
+        # TODO: support this scenario!
+        warnings.warn("Neither .variance.fits or .sn.fits exists locally in the same path as the spectrum file to get the uncertainity."
+            )         
+        raise Exception('Reading IGRINS without uncertainty files is unsupported at this time.')    
 
 class IGRINSSpectrum(EchelleSpectrum):
     r"""
