@@ -28,8 +28,6 @@ from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 import specutils
 from muler.utilities import apply_numpy_mask, is_list, resample_list
-from specutils.manipulation import LinearInterpolatedResampler
-LinInterpResampler = LinearInterpolatedResampler()
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -703,42 +701,6 @@ class EchelleSpectrum(Spectrum1D):
 
         return spec
 
-    def LinResample(self, input_spec, fractions=1.0):
-        """Linearly resample in a spectrum, or a list of spectra, to match this spectrum return an EchelleSpectrum
-        object with the same wavelength array and naned pixels.  Applications include resampling
-        synthetic spectra generated from stellar atmosphere models to match a real spectrum.
-
-        Parameters
-        -------
-        input_spec :
-            A muler spectrum or similar specutils object, or list of such objects to be resampled to match this spectrum.
-        fractions :
-            If a list of input spectra are provided, the user must provide a list of floats denoting what
-            fraction each of the input spectra make up the final resampled spectrum.  The total must equal 1.
-            For example, if I am stacking 3 input spectra and the first two spectra make up 40% of my resampled
-            spectrum and the last spectrum makes up 20%, fractions=[0.4, 0.4, 0.2].
-    
-        Returns
-        -------
-        An EchelleSpectrum object with the same wavelength array and naned pixels as this (self) object.
-        """
-        if is_list(input_spec):
-            fractions = np.array(fractions) #Check that fractions are a list and their sum equals 1
-            sum_fractions = np.sum(fractions)
-            assert len(fractions) > 1, "You need to provide a fraction for each input spectrum.  This is inputted as a list of floats."
-            assert sum_fractions == 1, "Total fractions in fraction list is "+str(sum_fractions)+" but total must equal to 1."
-            resampled_spec = LinInterpResampler(input_spec[0], input_spec[0].spectral_axis)*(fractions[0]) #Resample spectra
-            for i in range(1, len(input_spec)):
-                resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], input_spec[0].spectral_axis)*(fractions[i])
-            resampled_spec = LinInterpResampler(resampled_spec, self.spectral_axis) #Resample spectrum
-        else:
-            resampled_spec = LinInterpResampler(resampled_spec, self.spectral_axis)
-
-        resampled_spec.flux[np.isnan(self.flux)] = np.nan #Copy over nans from self to avoid weird errors later on
-        
-        return self.__class__(
-            spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=self.meta, wcs=None)
-
     def get_slit_profile(self, lower=None, upper=None, slit_length=1.0):
         """"For a 2D spectrum, returns the slit profile
 
@@ -1067,39 +1029,4 @@ class EchelleSpectrumList(SpectrumList):
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
-
-    def LinResample(self, input_spec, fractions=1.0):
-        """Linearly resample in a spectrum, or a list of spectra, to match this spectrum return an EchelleSpectrumList
-        object with the same wavelength arrays and naned pixels.  Applications include resampling
-        synthetic spectra generated from stellar atmosphere models to match a real spectrum.
-
-        Parameters
-        -------
-        input_spec :
-            A muler spectrum or similar specutils object, or list of such objects to be resampled to match this spectrum.
-        fractions :
-            If a list of input spectra are provided, the user must provide a list of floats denoting what
-            fraction each of the input spectra make up the final resampled spectrum.  The total must equal 1.
-            For example, if I am stacking 3 input spectra and the first two spectra make up 40% of my resampled
-            spectrum and the last spectrum makes up 20%, fractions=[0.4, 0.4, 0.2].
-    
-        Returns
-        -------
-        An EchelleSpectrumList object with the same wavelength arrays and naned pixels as this (self) object.
-        """
-        if is_list(input_spec): #
-            fractions = np.array(fractions) #Check that fractions are a list and their sum equals 1
-            sum_fractions = np.sum(fractions)
-            assert len(fractions) > 1, "You need to provide a fraction for each input spectrum.  This is inputted as a list of floats."
-            assert sum_fractions == 1, "Total fractions in fraction list is "+str(sum_fractions)+" but total must equal to 1."
-            resampled_spec = resample_list(input_spec[0], self)*(fractions[0]) #Resample spectra
-            for i in range(1, len(input_spec)):
-                resampled_spec = resampled_spec + resample_list(input_spec[i], self)*(fractions[i])
-        else:
-            resampled_spec = resample_list(input_spec, self) #Resample spectrum
-
-        for i in range(len(resampled_spec)): #Copy over nans from self to avoid weird errors later on
-            resampled_spec[i].flux[np.isnan(self[i].flux)] = np.nan
-        
-        return resampled_spec
 

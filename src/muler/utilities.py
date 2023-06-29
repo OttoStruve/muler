@@ -4,6 +4,67 @@ from specutils.spectra import Spectrum1D
 from astropy.nddata.nduncertainty import StdDevUncertainty
 from astropy.modeling import models, fitting #import the astropy model fitting package
 from scipy.stats import binned_statistic
+from specutils.manipulation import LinearInterpolatedResampler
+LinInterpResampler = LinearInterpolatedResampler()
+
+
+def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
+        """Linearly resample input_spectra, which can be a list of spectra, to match specrum_to_match and return an EchelleSpectrum
+        or EchelleSpectrumList object with the same spectral axis and naned pixels as specrum_to_match.  One main applications
+        for this is to match multiple synthetic spectra generated from stellar atmosphere models to a real spectrum.
+
+        Parameters
+        -------
+        input_spec :
+            A EchelleSpectrumm EchelleSpectrumList, or similar specutils object (or list of objects) to be resampled to match spec_to_match.
+        specrum_to_match :
+            A EchelleSpectrum or EchelleSpectrumLis spectrum which the input_spec will be resampled to match in both wavelength and naned pixels
+        weights :
+            A list or array giving the fraction of each spectrum in input_spec that makes up the final resampled spectrum.
+            Useful for grid interpolation for stellar atmosphere models or just stacking spectra from multiple objects
+            into one spectrum.
+    
+        Returns
+        -------
+        An EchelleSpectrum or EchelleSpectrumList object with the same wavelength arrays and naned pixels as spec_to_match.
+        """
+
+        if is_list(input_spec): #
+            weights = np.array(weights) #Check that weights are a list and their sum equals 1
+            sum_weights = np.sum(weights)
+            assert (len(weights)==1 and weights[0] == 1) or (len(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
+            assert sum_weights == 1, "Total weights in weights list is "+str(sum_weights)+" but total must equal to 1."
+           
+            if is_list(spec_to_match):
+                resampled_spec = resample_list(input_spec[0], spec_to_match)*(weights[0]) #Resample spectra
+                for i in range(1, len(input_spec)):
+                    if len(weights)==1 and weights[0] == 1:
+                        resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)*(weights[i])
+                    else:
+                        resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)
+            else:
+                resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)*(weights[0]) #Resample spectra
+                for i in range(1, len(input_spec)):
+                    if len(weights)==1 and weights[0] == 1:
+                        resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)*(weights[i])
+                    else:
+                        resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)
+        else:
+            if is_list(spec_to_match):
+                resampled_spec = resample_list(input_spec, specrum_to_match) #Resample spectrum
+            else:
+                resampled_spec = LinInterpResampler(input_spec, spec_to_match.spectral_axis)
+            resampled_spec = spec_to_match.__class__( #Ensure resampled_spec is the same object as spec_to_match
+                spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=self.meta, wcs=None)
+
+        if is_list(spec_to_match): #Propogate nans from spec_to_match to avoid wierd errors
+            for i in range(len(spec_to_match)):
+                resampled_spec[i].flux[np.isnan(spec_to_match[i].flux.value)] = np.nan
+        else:
+            resampled_spec.flux[np.isnan(spec_to_match.flux.value)] = np.nan
+
+        return resampled_spec
+
 
 
 def combine_spectra(spec_list):
