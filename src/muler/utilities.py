@@ -56,11 +56,11 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)
         else:
             if is_list(spec_to_match):
-                resampled_spec = resample_list(input_spec, specrum_to_match) #Resample spectrum
+                resampled_spec = resample_list(input_spec, spec_to_match) #Resample spectrum
             else:
                 resampled_spec = LinInterpResampler(input_spec, spec_to_match.spectral_axis)
             resampled_spec = spec_to_match.__class__( #Ensure resampled_spec is the same object as spec_to_match
-                spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=self.meta, wcs=None)
+                spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=resampled_spec.meta, wcs=None)
 
         if is_list(spec_to_match): #Propogate nans from spec_to_match to avoid wierd errors
             for i in range(len(spec_to_match)):
