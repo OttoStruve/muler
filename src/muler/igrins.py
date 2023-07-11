@@ -12,7 +12,7 @@ import logging
 import warnings
 import json
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
-from muler.utilities import estimate_slit_throughput_ABBA
+from muler.utilities import Slit
 from astropy.time import Time
 import numpy as np
 import astropy
@@ -110,7 +110,7 @@ def getSlitProfileFilepath(filepath, band):
 
 
 
-def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
     """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit and return the 
     coefficients of a linear fit.
 
@@ -128,6 +128,8 @@ def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guidi
         This should be used carefully and only for telescopes on equitorial mounts.
     print_info: bool
         Print information about the fit.
+    plot: bool
+        Visualize slit throughput calculations.
 
     Returns
     -------
@@ -143,22 +145,39 @@ def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guidi
 
 
     slit_width = slit_length * (1.0/14.8) #Calculate slit width from slit length since IGRINS always uses the same slit no matter the telescope
+    igrins_slit = Slit(length=slit_length, width=slit_width, PA=PA)
     #Get throughput for H band
     json_file = open(h_band_filepath)
     json_obj = json.load(json_file)
     x = np.array(json_obj['profile_x']) * slit_length
     y = np.array(json_obj['profile_y'])
-    f_through_slit_H = estimate_slit_throughput_ABBA(y, x=x, slit_length=slit_length, slit_width=slit_width, PA=PA, print_info=print_info)
+    igrins_slit.clear()
+    igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
+    if plot:
+        print('2D plot of H-band')
+        igrins_slit.plot2d()
+        #breakpoint()
+    f_through_slit_H = igrins_slit.estimate_slit_throughput()
     #Get throughput for K band
     json_file = open(k_band_filepath)
     json_obj = json.load(json_file)
     x = np.array(json_obj['profile_x']) * slit_length
     y = np.array(json_obj['profile_y'])
-    f_through_slit_K = estimate_slit_throughput_ABBA(y, x=x, slit_length=slit_length, slit_width=slit_width, PA=PA, print_info=print_info)
+    igrins_slit.clear()
+    igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
+    if plot:
+        print('2D plot of K-band')
+        igrins_slit.plot2d()
+        breakpoint()
+    f_through_slit_K = igrins_slit.estimate_slit_throughput()
     #Fit linear trend through slit throughput as function of wavelength and using fitting a line through two points
     m = (f_through_slit_K - f_through_slit_H) / ((1/2.2) - (1/1.65))
     b = f_through_slit_H - m*(1/1.65)
     if print_info:
+        # log.info('H-band slit throughput: ', f_through_slit_H)
+        # log.info('K-band slit throughput:', f_through_slit_K)
+        # log.info('m: ', m)
+        # log.info('b: ', b)
         print('H-band slit throughput: ', f_through_slit_H)
         print('K-band slit throughput:', f_through_slit_K)
         print('m: ', m)
@@ -330,7 +349,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         mjd = self.meta["header"]["MJD-OBS"]
         return Time(mjd, format="mjd", scale="utc")
 
-    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
 
         Parameters
@@ -356,7 +375,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         Returns array of fractional slit throughput as a function of wavelength
         """
 
-        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info)
+        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
         return m*(1/self.wavelength.um) + b
 
 
@@ -422,7 +441,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             list_out.append(spec)
         specList = IGRINSSpectrumList(list_out)
         return IGRINSSpectrumList(specList)
-    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True):
+    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
 
         Parameters
@@ -448,7 +467,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         Returns list of arrays of fractional slit throughput as a function of wavelength
         """
 
-        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info)
+        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
         f_throughput = []
         for i in range(len(self)):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
