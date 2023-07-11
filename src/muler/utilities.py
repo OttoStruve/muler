@@ -368,7 +368,7 @@ class Slit:
         slit_width_to_length_ratio = self.width / self.length
         if x is None: #Generate equally spaced x array if it is not provided
             ny = len(y)
-            x = (np.arange(ny) / ny) * slit_length
+            x = (np.arange(ny) / ny) * self.length
         #Find maximum and minimum
         i_max = np.where(y == np.nanmax(y))[0][0]
         i_min = np.where(y == np.nanmin(y))[0][0]
