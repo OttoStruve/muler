@@ -217,16 +217,6 @@ def apply_numpy_mask(spec, mask):
             " The boolean mask should have the same shape as the spectrum."
         )
 
-    if spec.uncertainty is not None:
-        masked_unc = spec.uncertainty[mask]
-    else:
-        masked_unc = None
-
-    if spec.mask is not None:
-        mask_out = spec.mask[mask]
-    else:
-        mask_out = None
-
     if spec.meta is not None:
         meta_out = copy.deepcopy(spec.meta)
         if "x_values" in spec.meta.keys():
@@ -234,14 +224,45 @@ def apply_numpy_mask(spec, mask):
     else:
         meta_out = None
 
-    return spec.__class__(
-        spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
-        flux=spec.flux[mask],
-        mask=mask_out,
-        uncertainty=masked_unc,
-        wcs=None,
-        meta=meta_out,
-    )
+    ndim = spec.flux.ndim #Grab dimensionality of spec, can be 1D or 2D
+    if ndim == 1: #For 1D spectra
+        if spec.uncertainty is not None:
+            masked_unc = spec.uncertainty[mask]
+        else:
+            masked_unc = None
+
+        if spec.mask is not None:
+            mask_out = spec.mask[mask]
+        else:
+            mask_out = None
+
+        return spec.__class__(
+            spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
+            flux=spec.flux[mask],
+            mask=mask_out,
+            uncertainty=masked_unc,
+            wcs=None,
+            meta=meta_out,
+        )
+    elif ndim == 2: #For 2D (e.g. slit) spectra
+        if spec.uncertainty is not None:
+            masked_unc = spec.uncertainty[:, mask]
+        else:
+            masked_unc = None
+
+        if spec.mask is not None:
+            mask_out = spec.mask[:, mask]
+        else:
+            mask_out = None
+
+        return spec.__class__(
+            spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
+            flux=spec.flux[:, mask],
+            mask=mask_out,
+            uncertainty=masked_unc,
+            wcs=None,
+            meta=meta_out,
+        )
 
 
 def resample_list(spec_to_resample, specList, **kwargs):
@@ -420,7 +441,7 @@ class Slit:
         a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
         are integrated to estimate the fraction of light that passes through the slit.
         """
-        if normalize: #You almost alwyas want to normalize
+        if normalize: #You almost always want to normalize
             self.normalize()
         fraction_through_slit = np.nansum(self.f2d[~self.mask]) #Get fraction of light inside the slit mask
         return fraction_through_slit
