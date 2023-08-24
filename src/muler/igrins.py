@@ -85,17 +85,26 @@ def getUncertainityFilepath(filepath):
                 "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
                 )             
 
-def getSlitProfileFilepath(filepath, band):
-    """Returns the path for the slit profile file (.slit_profile.json).
+def getSlitProfile(filepath, band, slit_length):
+    """Returns the path for the slit profile.  Will first look for a 2D
+    spectrum .spec2d.fits file to calculate the profile from.  If a spec2d.fits
+    file does not exist, will look for a .slit_profile.json.
 
     Parameters
     ----------
-    filepath: Filepath to fits file storing the data.  Can be .spec.fits or .spec_a0v.fits.
+    filepath: string
+        Filepath to fits file storing the data.  Can be .spec.fits or .spec_a0v.fits.
+    band: string
+        'H' or 'K' specifying which band
+    slit_length: float
+        Length of the slit on the sky in arcsec.
 
     Returns
     -------
-    slitProfileFilepath: string
-        Returns the file path to .slit_profile.json file.
+    x: float
+        Distance in arcsec along the slit
+    y: float
+        Flux of beam profile across the slit
     """
     if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainity file
         path_base = filepath[:-14]
@@ -105,8 +114,29 @@ def getSlitProfileFilepath(filepath, band):
         path_base = filepath[:-10]
     elif ".spec2d.fits" in filepath:
         path_base = filepath[:-12]
-    path_base = path_base.replace('SDCH', 'SDC'+band).replace('SDCK', 'SDC'+band) #Make sure we are using the correct band
-    return path_base + '.slit_profile.json'
+    path_base = path_base.replace('SDCH', 'SDC'+band).replace('SDCK', 'SDC'+band)
+    spec2d_filepath = path_base + '.spec2d.fits'
+    json_filepath = path_base + '.slit_profile.json'
+    if os.path.exists(filepath): #First try to use the 2D spectrum in a .spec2d.fits file to estimate the slit proflie
+        spec2d = fits.getdata(spec2d_filepath)
+        long_spec2d = spec2d[0,:,800:1200] #Chop off order edges at columns 800 and 1200
+        for i in range(1, len(spec2d)):
+            long_spec2d = np.concatenate([long_spec2d, spec2d[i,:,800:1200]], axis=1)
+        y = np.nanmedian(long_spec2d, axis=1)
+        x = np.arange(len(y)) * (slit_length / len(y))
+    elif os.path.exists(json_filepath): #If no 2D spectrum exists, try using the PLP estimate in .slit_profile.json
+        json_file = open(filepath)
+        json_obj = json.load(json_file)
+        x = np.array(json_obj['profile_x']) * slit_length
+        y = np.array(json_obj['profile_y'])
+        json_file.close()
+    else:
+        raise Exception(
+            "Need either .spec2d.fits or .slit_profile.json file in the same directory as "
+            + filepath
+            + " in order to get an estimate of the slit profile.  .spec2d.fits or .slit_profile.json are missing."
+        )        
+    return x, y
 
 
 
@@ -138,19 +168,9 @@ def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guidi
         wavelength units in microns.
 
     """
-    h_band_filepath = getSlitProfileFilepath(file, 'H') #Get paths to .slit_profile.json files
-    k_band_filepath = getSlitProfileFilepath(file, 'K')
-
-    assert os.path.exists(h_band_filepath) and os.path.exists(k_band_filepath)
-
-
-    slit_width = slit_length * (1.0/14.8) #Calculate slit width from slit length since IGRINS always uses the same slit no matter the telescope
-    igrins_slit = Slit(length=slit_length, width=slit_width, PA=PA)
+    igrins_slit = Slit(length=slit_length, width=slit_length*(1/14.8), PA=PA, guiding_error=guiding_error)
     #Get throughput for H band
-    json_file = open(h_band_filepath)
-    json_obj = json.load(json_file)
-    x = np.array(json_obj['profile_x']) * slit_length
-    y = np.array(json_obj['profile_y'])
+    x, y = getSlitProfile(file, band='H', slit_length=slit_length) #Get slit profile
     igrins_slit.clear()
     igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
     if plot:
@@ -159,10 +179,7 @@ def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guidi
         #breakpoint()
     f_through_slit_H = igrins_slit.estimate_slit_throughput()
     #Get throughput for K band
-    json_file = open(k_band_filepath)
-    json_obj = json.load(json_file)
-    x = np.array(json_obj['profile_x']) * slit_length
-    y = np.array(json_obj['profile_y'])
+    x, y = getSlitProfile(file, band='K', slit_length=slit_length) #Get slit profile
     igrins_slit.clear()
     igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
     if plot:
@@ -182,7 +199,6 @@ def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guidi
         print('K-band slit throughput:', f_through_slit_K)
         print('m: ', m)
         print('b: ', b)
-
     return m, b
 
 
@@ -211,6 +227,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         # self.ancillary_spectra = None
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
+        self.file = file
 
          #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
 
@@ -349,7 +366,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         mjd = self.meta["header"]["MJD-OBS"]
         return Time(mjd, format="mjd", scale="utc")
 
-    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
+    def getSlitThroughput(self, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
 
         Parameters
@@ -375,7 +392,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         Returns array of fractional slit throughput as a function of wavelength
         """
 
-        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
+        m, b = getIGRINSSlitThroughputABBACoefficients(self.file, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
         return m*(1/self.wavelength.um) + b
 
 
@@ -390,6 +407,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
     """
 
     def __init__(self, *args, **kwargs):
+        self.file = None
         self.normalization_order_index = 14
         super().__init__(*args, **kwargs)
 
@@ -400,8 +418,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         Parameters
         ----------
         file : (str)
-            A path to a reduced IGRINS spectrum from plp
+            A path to a reduced IGRINS spectrum from plp.
         wavefile : (str)
+            Path to a file storing a wavelength soultion for a night from the plp.
+            Wave files are found in the IGRINS PLP callib/primary/DATE/ directory with
+            the extension wvlsol_v1.fits.
 
         """
         # still works
@@ -440,8 +461,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             )
             list_out.append(spec)
         specList = IGRINSSpectrumList(list_out)
-        return IGRINSSpectrumList(specList)
-    def getSlitThroughput(self, filepath, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
+        specList.file = file
+        return specList
+    def getSlitThroughput(self, slit_length=14.8, PA=90, guiding_error=1.5,  print_info=True, plot=False):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit.
 
         Parameters
@@ -467,7 +489,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         Returns list of arrays of fractional slit throughput as a function of wavelength
         """
 
-        m, b = getIGRINSSlitThroughputABBACoefficients(filepath, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
+        m, b = getIGRINSSlitThroughputABBACoefficients(self.file, slit_length=slit_length, PA=PA, guiding_error=guiding_error, print_info=print_info, plot=plot)
         f_throughput = []
         for i in range(len(self)):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
