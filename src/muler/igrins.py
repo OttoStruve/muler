@@ -282,7 +282,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
             elif (("spec.fits" in file) or ("spec_flattened.fits" in file) or ('.spec2d.fits' in file)) and (wavefile is not None):
                 lamb = (
-                    wave_hdus[0].data[order].astype(float) * 1e-3 * u.micron
+                    wave_hdus[0].data[order].astype(float) * u.micron
                 )  # Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
                 flux = hdus[0].data[order].astype(float) * u.ct
             elif (("spec.fits" in file) or ("spec_flattened.fits" in file)) and (wavefile is None):
