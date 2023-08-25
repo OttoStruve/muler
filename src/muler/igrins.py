@@ -119,9 +119,9 @@ def getSlitProfile(filepath, band, slit_length):
     json_filepath = path_base + '.slit_profile.json'
     if os.path.exists(filepath): #First try to use the 2D spectrum in a .spec2d.fits file to estimate the slit proflie
         spec2d = fits.getdata(spec2d_filepath)
-        long_spec2d = spec2d[0,:,800:1200] #Chop off order edges at columns 800 and 1200
-        for i in range(1, len(spec2d)):
-            long_spec2d = np.concatenate([long_spec2d, spec2d[i,:,800:1200]], axis=1)
+        long_spec2d = spec2d[2,:,1000:1300] #Chop off order edges at columns 800 and 1200
+        for i in range(3, len(spec2d)-2):
+            long_spec2d = np.concatenate([long_spec2d, spec2d[i,:,1000:1300]], axis=1)
         y = np.nanmedian(long_spec2d, axis=1)
         x = np.arange(len(y)) * (slit_length / len(y))
     elif os.path.exists(json_filepath): #If no 2D spectrum exists, try using the PLP estimate in .slit_profile.json
