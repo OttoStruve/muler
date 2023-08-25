@@ -821,6 +821,34 @@ class EchelleSpectrumList(SpectrumList):
 
         return spec_out
 
+    def trim_overlap(self):
+        """Trim all the edges that overlap with adjacent spectra (e.g. orders)
+        in the list.  Useful for running before stitch()."""
+        spec_out = copy.deepcopy(self)
+        n = len(spec_out)
+
+        for i in range(n): #Loop through each spectrum/order in list
+            print('starting i ', i)
+            if i == 0: #Figure out where to trim the left side
+                left_limit = 0
+            elif self[i].spectral_axis[0] >  self[i-1].spectral_axis[-1]:
+                left_limit = 0
+            else:
+                mid_wave = 0.5*(self[i].spectral_axis[0] + self[i-1].spectral_axis[-1])
+                left_limit = np.where(self[i].spectral_axis > mid_wave)[-1][0] + 1
+            if i == n-1: #Figure out where to trim the right side
+                right_limit = len(self[i].spectral_axis)
+            elif self[i].spectral_axis[-1] <  self[i+1].spectral_axis[0]:
+                right_limit = len(self[i].spectral_axis)
+            else:
+                mid_wave = 0.5*(self[i].spectral_axis[-1] + self[i+1].spectral_axis[0])
+                right_limit = np.where(self[i].spectral_axis > mid_wave)[0][0] - 1
+
+            if left_limit > 0 or right_limit < len(self[i].spectral_axis):
+                spec_out[i] = spec_out[i].trim_edges((left_limit, right_limit))
+
+        return spec_out        
+
     def deblaze(self, method="spline"):
         """Remove blaze function from all orders by interpolating a spline function
 
