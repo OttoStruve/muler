@@ -31,10 +31,10 @@ dependencies:
   - coveralls
   - twine
   - dust_extinction
+  - tynt
   - pip
   - pip:
       - sphinx-material
       - celerite2
       - specutils==1.9.1
-      - tynt
 
