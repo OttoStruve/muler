@@ -16,3 +16,4 @@ bokeh # needed for gollum to install on RTD
 gollum==0.2.1
 numpydoc
 sphinx-gallery
+tynt
