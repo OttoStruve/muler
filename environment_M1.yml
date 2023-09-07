@@ -31,8 +31,8 @@ dependencies:
   - coveralls
   - twine
   - dust_extinction
-  - tynt
   - pip
   - pip:
       - sphinx-material
       - celerite2
+      - tynt
