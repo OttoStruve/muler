@@ -12,7 +12,7 @@ import logging
 import warnings
 import json
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
-from muler.utilities import Slit
+from muler.utilities import Slit, concatenate_orders
 from astropy.time import Time
 import numpy as np
 import astropy
@@ -42,6 +42,52 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 ## For typical operating temperature, offsets should be exact.
 grating_order_offsets = {"H": 98, "K": 71}
 
+
+def readPLP(plppath, date, frameno, waveframeno, dim='1D'):
+    """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands)
+    from the IGRINS PLP output
+
+    Parameters
+    ----------
+    plppath: string
+        Path to the IGRINS PLP (e.g. "/Users/Username/Desktop/plp/")
+    date: int or string
+        Date for night of IGIRNS observation in format of YYYYMMDD (e.g. "201401023")
+    frameno: int or string
+        Number of frame denoting target as specified as the first frame in the
+        recipes file for the night (e.g. 54 or "0054")
+    waveframeno: int or string
+        Number of frame denoting target as specified as the first frame in the
+        recipes file for the wavelength solution (e.g. 54 or "0054") from a wvlsol_v1 file.
+        This is usually the first frame number for the sky.
+    dim: string
+        Set to "1D" to read in the 1D extracted spectrum from the .spec.fits files
+        or "2D" to read in the rectified 2D spectrum from the .spec2d.fits files
+
+    Returns
+    -------
+    IGRINSSpectrumList containing all the orders for the H and K bands for the specified target
+    """
+    if type(date) is not str: #Converhet dates and frame numbers to the proper string format
+        date = '%.8d' % int(date)
+    if type(frameno) is not str:
+        frameno = '%.4d' % int(frameno)
+    if type(waveframeno) is not str:
+        waveframeno = '%.4d' % int(waveframeno)
+    if dim.upper() == '1D': #Use proper filename for 1D or 2D extractions
+        suffix = '.spec.fits'
+    elif dim.upper() == '2D':
+        suffix = '.spec2d.fits'
+    else:
+        raise Exception(
+            "Argument 'dim' must be '1D' for .spec.fits files or '2D' for .spec2d.fits files."
+            )
+    spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix, #Read in H band
+                                wavefile=plppath+'calib/primary/'+date +'/SKY_SDCH_'+date+'_'+waveframeno+'.wvlsol_v1.fits')
+    spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCK_'+date+'_'+frameno+suffix, #Read in K band
+                                wavefile=plppath+'calib/primary/'+date +'/SKY_SDCK_'+date+'_'+waveframeno+'.wvlsol_v1.fits')
+    spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
+    return spec_all
 
 
 def getUncertainityFilepath(filepath):

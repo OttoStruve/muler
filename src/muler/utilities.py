@@ -5,10 +5,13 @@ import copy
 from specutils.spectra import Spectrum1D
 from astropy.nddata.nduncertainty import StdDevUncertainty
 from astropy.modeling import models, fitting #import the astropy model fitting package
+from astropy import units as u
 from scipy.stats import binned_statistic
+from scipy.interpolate import interp1d
 from specutils.manipulation import LinearInterpolatedResampler
 from matplotlib import pyplot as plt
 LinInterpResampler = LinearInterpolatedResampler()
+from tynt import FilterGenerator
 
 log = logging.getLogger(__name__)
 
@@ -323,11 +326,7 @@ def is_list(check_this):
     True: Object has more than one element (e.g. is a list or array)
     False: Object has a single element (e.g. a single variable like 10.0)
     """
-    if np.size(check_this) > 1:
-        return True
-    else:
-        return False
-
+    return isinstance(check_this, list)
 
 class Slit:
     def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000):
@@ -470,3 +469,96 @@ class Slit:
         numerical_mask = np.ones(np.shape(self.mask))
         plt.contour(self.mask, levels=[0.0,0.5, 1.0], colors='white', linewidths=2)
         plt.show()
+
+
+class absoluteFluxCalibration:
+    def __init__(self, std_spec, synth_spec):
+        """
+        A  class to handle absolute flux calibration using a standard star spectrum and synthetic spectrum of the
+        standard star.
+
+        Parameters 
+        ----------
+        std_spec: EchelleSpectrum, EchelleSpectrumList, Spectrum1D, or SpectrumList like object 
+            Actual spectrum of the standard star
+        synth_spec: Spectrum1D, or SpectrumList like object from gollum
+            Synethic spectrum of the standard star from a stellar atmosphere model read in with gollum, or something similar
+        """
+        self.std_spec = std_spec
+        self.synth_spec = synth_spec
+
+
+class photometry:
+    def __init__(self):
+        f = FilterGenerator()
+        johnson_bands = np.array(['U', 'B','V','R','I']) #2MASS
+        twoMass_bands = np.array(['J', 'H', 'Ks']) #Johnson filters
+        self.bands =  np.concatenate((johnson_bands, twoMass_bands))
+        self.f0_lambda = np.array([3.96526e-9*1e4, 6.13268e-9*1e4, 3.62708e-9*1e4, 2.17037e-9*1e4, 1.12588e-9*1e4, #Source: http://svo2.cab.inta-csic.es/theory/fps3/index.php?mode=browse&gname=Generic&gname2=Bessell&asttype=, with units converted from erg cm^-2 s^-1 ang^-1 to erg cm^-2 s^-1 um^-1 by multiplying by 1e-4
+                3.129e-13*1e7, 1.133e-13*1e7, 4.283e-14*1e7]) #2MASS: Convert units to from W cm^-2 um^-1 to erg s^-1 cm^-2 um^-1
+        self.x = np.arange(0.0, 10.0, 1e-6)
+        self.delta_lambda = np.abs(self.x[1]-self.x[0])
+        n = len(self.bands)
+        tcurve_interp = []
+        tcurve_resampled = []
+        for i in range(n):
+            if self.bands[i] in twoMass_bands:
+                filt = f.reconstruct('2MASS/2MASS.'+self.bands[i])
+            elif self.bands[i] in johnson_bands:
+                filt = f.reconstruct('Generic/Johnson.'+self.bands[i])
+            interp_obj = interp1d(filt.wavelength.to('um'), filt.transmittance, kind='cubic', fill_value=0.0, bounds_error=False)
+            tcurve_interp.append(interp_obj)
+            tcurve_resampled.append(interp_obj(self.x))
+        self.tcurve_interp = tcurve_interp
+        self.tcurve_resampled = tcurve_resampled
+
+        # if band == 'K':
+        #     band = 'Ks' #Catch to set K band band name to 'Ks'
+        # twoMass_bands = np.array(['J', 'H', 'Ks'])
+        # johnson_bands = np.array(['U', 'B','V','R','I'])
+        # if band in twoMass_bands: #2MASS NIR filters
+        #     f0_lambda = (np.array([3.129e-13, 1.133e-13, 4.283e-14]) * 1e7) [band == twoMass_bands][0] #Convert units to from W cm^-2 um^-1 to erg s^-1 cm^-2 um^-1
+        #     filt = f.reconstruct('2MASS/2MASS.'+band)
+        # elif band in johnson_bands: #Johnson filters
+        #     f0_lambda = (np.array([417.5e-11, 632e-11, 363.1e-11, 217.7e-11, 112.6e-11]) * 1e4 )[band == johnson_bands][0] #Source: Table A2 from Bessel (1998), with units converted from erg cm^-2 s^-1 ang^-1 to erg cm^-2 s^-1 um^-1 by multiplying by 1e-4
+        #     filt = f.reconstruct('Generic/Johnson.'+band)
+        # else:
+        #     raise Exception(
+        #         "Band"+band+" not recognized. Must be U, B, V, R, I, J, H, or Ks."
+        #     )        
+        #self.f0_lambda = f0_lambda
+        
+        # self.tcurve_interp = interp1d(filt.wavelength.to('um'), filt.transmittance, kind='cubic', fill_value=0.0, bounds_error=False) #Create interp obj for the transmission curve
+        # self.tcurve_resampled = self.tcurve_interp(self.x)
+        #self.vega_V_flambdla_zero_point = 363.1e-7 #Vega flux zero point for V band from Bessell et al. (1998) in erg cm^2 s^-1 um^-1
+    def scale(self, synth_spec, band='V', mag=0.0):
+        i = self.grab_band_index(band)
+        resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
+        f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+        magnitude_scale = 10**(0.4*(-mag))
+        # print('self.f0_lambda', self.f0_lambda[i])
+        # print('f_lambda', f_lambda)
+        # print('magnitude_scale', magnitude_scale)
+        return synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
+    def get(self, synth_spec, band='V', resample=True):
+        i = self.grab_band_index(band)
+        if resample:
+            resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
+            f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+        else:
+            x = synth_spec.wavelength.to('um').value
+            delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
+            interp_obj = interp1d(self.x, self.tcurve_resampled[i], kind='linear', fill_value=0.0, bounds_error=False)
+            resampled_tcurve = interp_obj(x)
+            goodpix = (synth_spec.flux.value > 1e-20) & (synth_spec.flux.value < 1e10)
+            f_lambda = np.nansum(synth_spec.flux.value[goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix]) / np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix])
+            print(np.sum(np.isfinite(synth_spec.flux.value)))
+            #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
+            print(np.nansum(resampled_tcurve * x * delta_lambda))
+        magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
+        return magnitude
+    def grab_band_index(self, band):
+        if band == 'K':
+            band = 'Ks' #Catch to set K band band name to 'Ks' 
+        i = np.where(band == self.bands)[0][0]   
+        return i    
