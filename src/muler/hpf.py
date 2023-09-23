@@ -354,7 +354,7 @@ class HPFSpectrum(EchelleSpectrum):
             raise NotImplementedError
 
         # These steps should propagate uncertainty?
-        sky_estimator = spec.sky.multiply(beta, handle_meta="first_found")
+        sky_estimator = spec.sky_resample().sky.multiply(beta, handle_meta="first_found")
         return spec.subtract(sky_estimator, handle_meta="first_found")
 
     def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
