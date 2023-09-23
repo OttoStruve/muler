@@ -304,6 +304,20 @@ class HPFSpectrum(EchelleSpectrum):
             log.error("This method is deprecated!  Please use the new deblaze method")
             raise NotImplementedError
 
+    def sky_resample(self):
+        """
+        Resample's sky spectrum from the sky fiber to match the spectrum from the science fiber
+
+        Returns
+        -------
+        Spectrum with sky fiber spectrum resampled to match the wavelength solution of the science fiber
+
+        """
+        spec = copy.deepcopy(self)
+        spec.meta["sky"] = spec.sky.resample(spec)
+        #spec.sky = spec.sky.resample(spec)
+        return spec
+
     def sky_subtract(self, method="scalar"):
         """Subtract sky spectrum from science spectrum, with refinements for sky throughput
 
@@ -433,6 +447,22 @@ class HPFSpectrumList(EchelleSpectrumList):
             spec_out[i] = spec_out[i].deblaze()
 
         return spec_out
+
+    def sky_resample(self):
+        """
+        Resample's sky spectrum from the sky fiber to match the spectrum from the science fiber
+
+        Returns
+        -------
+        Spectrum with sky fiber spectrum resampled to match the wavelength solution of the science fiber
+
+        """
+        spec_out = copy.copy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].sky_resample()
+
+        return spec_out
+               
 
     def sky_subtract(self, method="vector"):
         """Sky subtract the entire spectrum"""
