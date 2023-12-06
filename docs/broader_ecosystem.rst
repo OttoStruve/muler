@@ -72,3 +72,5 @@ Abundances / Correlations
 ==========================
 * `zaspe <https://github.com/rabrahm/zaspe>`_ - A Code to Measure Stellar Atmospheric Parameters and their Covariance from Spectra
 * `Chem-I-Calc <https://chem-i-calc.readthedocs.io>`_ - Chemical information calculator
+* `smhr <https://github.com/andycasey/smhr>`_ - Spectroscopy Made Harder
+* `turbospectrum <https://github.com/bertrandplez/Turbospectrum2019>`_ - Synthetic spectrum calculation companion to MARCS
