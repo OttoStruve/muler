@@ -62,6 +62,7 @@ Radial velocity
 * `doppler <https://doppler.readthedocs.io/en/latest/>`_ - Derive RV from an input spectrum 
 * `igrins_rv <https://github.com/shihyuntang/igrins_rv>`_ - Radial velocity analysis specific to IGRINS
 * `eniric <https://github.com/jason-neal/eniric>`_ - Extended Near InfraRed spectra Information Content analysis
+* `sapphires <https://github.com/tofflemire/saphires>`_ - Stellar Analysis in Python for HIgh REsolution Spectroscopy
 
 Doppler Imaging
 ===============
