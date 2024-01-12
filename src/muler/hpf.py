@@ -12,12 +12,14 @@ HPFSpectrum
 import warnings
 import logging
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+from muler.utilities import resample_list
 import numpy as np
 import astropy
 from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
+from scipy.ndimage import median_filter
 from scipy.interpolate import InterpolatedUnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.time import Time
@@ -27,6 +29,7 @@ from specutils.manipulation import LinearInterpolatedResampler
 from scipy.ndimage import binary_dilation
 from . import templates
 import pandas as pd
+
 
 log = logging.getLogger(__name__)
 
@@ -349,6 +352,9 @@ class HPFSpectrum(EchelleSpectrum):
             beta_native_spectrum = spec.get_static_sky_ratio_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="zero_fill")
             beta = resampler(beta_native_spectrum, spec.spectral_axis)
+        # elif method == 'median': #Attempt to measure the scale of the sky lines between the fibers using a median of the pixels
+        #     resampled_sky = spec.sky.resample(spec)
+        #     good_sci_pixels = self.flux.value -
         else:
             log.error("Method must be one of 'naive', 'scalar' or 'vector'. ")
             raise NotImplementedError
@@ -474,6 +480,24 @@ class HPFSpectrumList(EchelleSpectrumList):
             spec_out[i] = spec_out[i].sky_subtract(method=method, scale=scale)
 
         return spec_out
+
+    def test_print_sky_scale(self):
+        #reampled_sky = resample_list(self.sky, self) #Resample sky to match sci wavelengths
+        all_sky = np.zeros([2048, len(self)]) #Put all science and sky fiber flux into 2D arrays for easy manipulation
+        all_sci = np.zeros([2048, len(self)])
+        for i in range(len(self)):
+            all_sky[:, i] = (self[i].sky).resample(self[i]).flux.value
+            all_sci[:, i] = self[i].flux.value
+        all_sky -= median_filter(all_sky, [25, 1]) #Subtract continuum/background using a running median filter
+        all_sci -= median_filter(all_sci, [25, 1])
+        #all_sky[all_sky ]
+        max_sky_flux = np.nanmax(all_sky)
+        bad_pix = (all_sky < 0.1 * max_sky_flux) & (all_sci < 0.1 * max_sky_flux)
+        all_sky[bad_pix] = np.nan
+        all_sci[bad_pix] = np.nan
+        print(np.nanmedian(all_sci / all_sky))
+
+
 
     # def sky_subtract(self):
     #     """Sky subtract all orders

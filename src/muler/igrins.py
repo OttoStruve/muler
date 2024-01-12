@@ -494,11 +494,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 wave_hdus = fits.open(full_path, memmap=False)
             cached_hdus.append(wave_hdus)
 
-        hdus0_shape = hdus[0].data.shape
+        if hdus[0].data is not None:
+            hdus0_shape = hdus[0].data.shape #Normally we read from the 0th extension
+        else:
+            hdus0_shape = hdus[1].data.shape #To insure compatibility with new version of the PLP for spec_a0v.fits files
         if len(hdus0_shape) == 2: #1D spectrum
-            n_orders, n_pix = hdus[0].data.shape
+            n_orders, n_pix = hdus0_shape
         elif len(hdus0_shape) == 3: #2D spectrum
-            n_orders, n_height, n_pix = hdus[0].data.shape
+            n_orders, n_height, n_pix = hdus0_shape
 
         list_out = []
         for i in range(n_orders - 1, -1, -1):
