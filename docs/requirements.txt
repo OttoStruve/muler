@@ -16,7 +16,6 @@ h5py
 celerite2
 tqdm
 bokeh # needed for gollum to install on RTD
-gollum==0.2.1
-muler
+gollum==0.2.1 # Try with .readthedocs.yml this time...
 numpydoc
 sphinx-gallery
