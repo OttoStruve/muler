@@ -294,8 +294,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                 if "rtell" in file:
                     sn = hdus["SNR"].data[order]
                     uncertainity_hdus = None
-                elif "spec_a0v" in file:
-                    uncertainity_hdus = hdus["SPEC_DIVIDE_A0V_VARIANCE"]
                 else:
                     uncertainity_hdus = cached_hdus[1]
                 if wavefile is not None:
@@ -361,8 +359,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                         unprocessed_flux = hdus["TGT_SPEC"].data[order].astype(np.float64)
                         stddev *= (flux.value / unprocessed_flux)
                 else: #Else if .sn.fits (or SNR HDU in rtell file) used
-                    if "spec_a0v" in file:
-                        sn = uncertainity_hdus[0].data[order].astype(np.float64)**0.5 / flux.value
                     if not "rtell" in file:
                         sn = uncertainity_hdus[0].data[order].astype(np.float64)
                     dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
@@ -485,7 +481,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         
         sn_used = False #Default
         hdus = fits.open(file, memmap=False)
-        if "rtell" not in file and "spec_a0v" not in file: #Default, if no rtell file is used
+        if "rtell" not in file: #Default, if no rtell file is used
             uncertainty_filepath = getUncertainityFilepath(file)
             uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)    
             cached_hdus = [hdus, uncertainity_hdus]   
