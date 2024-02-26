@@ -323,6 +323,11 @@ class IGRINSSpectrum(EchelleSpectrum):
                 )
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
+                try:
+                    uncertainity_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
+                    sn_used = false
+                except:
+                    print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
             elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(float) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
@@ -350,7 +355,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 if not sn_used: #If .variance.fits used
                     variance = uncertainity_hdus[0].data[order].astype(np.float64)
                     stddev = np.sqrt(variance)
-                    if ("rtell" in file) or ("spec_a0v" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
+                    if ("rtell" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
                         unprocessed_flux = hdus["TGT_SPEC"].data[order].astype(np.float64)
                         stddev *= (flux.value / unprocessed_flux)
                 else: #Else if .sn.fits (or SNR HDU in rtell file) used
