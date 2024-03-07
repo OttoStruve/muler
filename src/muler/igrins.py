@@ -307,12 +307,12 @@ class IGRINSSpectrum(EchelleSpectrum):
                         base_path = os.path.dirname(file)
                         full_path = base_path + '/' + os.path.basename(wavefile)
                         wave_hdus = fits.open(full_path)
-                if "rtell" not in file:  
+                if "rtell" not in file and "spec_a0v" not in file:  
                     uncertainty_filepath = getUncertainityFilepath(file)
                     uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)   
                     if '.sn.fits' in uncertainty_filepath:
                         sn_used = True
-                else: #If rtell file is used, grab SNR stored in extension
+                elif "rtell" in file: #If rtell file is used, grab SNR stored in extension
                     sn = hdus["SNR"].data[order]
                     sn_used = True
                     uncertainity_hdus = None
@@ -325,12 +325,17 @@ class IGRINSSpectrum(EchelleSpectrum):
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
                 try:
                     uncertainity_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
-                    sn_used = false
+                    sn_used = False
                 except:
                     print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
             elif ".spec_a0v.fits" in file:
                 lamb = hdus["WAVELENGTH"].data[order].astype(float) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
+                try:
+                    uncertainity_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
+                    sn_used = False
+                except:
+                    print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
             elif (("spec.fits" in file) or ("spec_flattened.fits" in file) or ('.spec2d.fits' in file)) and (wavefile is not None):
                 lamb = (
                     wave_hdus[0].data[order].astype(float) * u.micron
@@ -481,7 +486,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         
         sn_used = False #Default
         hdus = fits.open(file, memmap=False)
-        if "rtell" not in file: #Default, if no rtell file is used
+
+        #hdus["SPEC_DIVIDE_A0V_VARIANCE"] 
+        if "SPEC_DIVIDE_A0V_VARIANCE" in hdus:
+            cached_hdus = [hdus, [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]] 
+        elif "rtell" not in file: #Default, if no rtell file is used
             uncertainty_filepath = getUncertainityFilepath(file)
             uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)    
             cached_hdus = [hdus, uncertainity_hdus]   
