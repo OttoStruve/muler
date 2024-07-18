@@ -289,7 +289,8 @@ class IGRINSSpectrum(EchelleSpectrum):
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
 
-            uncertainity_hdus = None #Default value
+            uncertainity_hdus = None #Default values
+            uncertainity = None
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 if "rtell" in file:
@@ -372,7 +373,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                 uncertainty = StdDevUncertainty(np.abs(stddev))
                 mask = np.isnan(flux) | np.isnan(uncertainty.array)
             else:
-                uncertainity = None
                 mask = np.isnan(flux)
 
             super().__init__(
