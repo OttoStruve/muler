@@ -90,8 +90,8 @@ def readPLP(plppath, date, frameno, waveframeno, dim='1D'):
     return spec_all
 
 
-def getUncertainityFilepath(filepath):
-    """Returns path for uncertainity file (.variance.fits or .sn.fits)
+def getUncertaintyFilepath(filepath):
+    """Returns path for uncertainty file (.variance.fits or .sn.fits)
 
         Will first search for a .variance.fits file but if that does not exist
         will search for a .sn.fits file.
@@ -102,11 +102,11 @@ def getUncertainityFilepath(filepath):
 
     Returns
     -------
-    uncertainityFilepath: string
+    uncertaintyFilepath: string
         Returns the file path to the uncertianity (.variance.fits or .sn.fits) file.
 
     """
-    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainity file
+    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainty file
         path_base = filepath[:-14]
     elif ".spec_flattened.fits" in filepath:
         path_base = filepath[:-20]
@@ -119,7 +119,7 @@ def getUncertainityFilepath(filepath):
             return path_base + '.var2d.fits'
         else:
             raise Exception(
-                "The file .var2d.fits does not exist in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                "The file .var2d.fits does not exist in the same path as the spectrum file to get the uncertainty.  Please provide one of these files in the same directory as your spectrum file."
                 )             
     else:
         if os.path.exists(path_base + '.variance.fits'): #Prefer .variance.fits file
@@ -128,7 +128,7 @@ def getUncertainityFilepath(filepath):
             return path_base + '.sn.fits'
         else:
             raise Exception(
-                "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainity.  Please provide one of these files in the same directory as your spectrum file."
+                "Neither .variance.fits or .sn.fits exists in the same path as the spectrum file to get the uncertainty.  Please provide one of these files in the same directory as your spectrum file."
                 )             
 
 def getSlitProfile(filepath, band, slit_length):
@@ -152,7 +152,7 @@ def getSlitProfile(filepath, band, slit_length):
     y: float
         Flux of beam profile across the slit
     """
-    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainity file
+    if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainty file
         path_base = filepath[:-14]
     elif ".spec_flattened.fits" in filepath:
         path_base = filepath[:-20]
@@ -275,7 +275,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         self.instrumental_resolution = 45_000.0
         self.file = file
 
-         #False if variance.fits file used for uncertainity, true if sn.fits file used for uncertainity
+         #False if variance.fits file used for uncertainty, true if sn.fits file used for uncertainty
 
         if file is not None:
             
@@ -289,14 +289,14 @@ class IGRINSSpectrum(EchelleSpectrum):
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
 
-            uncertainity_hdus = None #Default values
-            uncertainity = None
+            uncertainty_hdus = None #Default values
+            uncertainty = None
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 if "rtell" in file:
                     sn = hdus["SNR"].data[order]
                 else:
-                    uncertainity_hdus = cached_hdus[1]
+                    uncertainty_hdus = cached_hdus[1]
                 if wavefile is not None:
                     wave_hdus = cached_hdus[2]
             else: #Read in files if cached_hdus are not provided
@@ -309,8 +309,8 @@ class IGRINSSpectrum(EchelleSpectrum):
                         full_path = base_path + '/' + os.path.basename(wavefile)
                         wave_hdus = fits.open(full_path)
                 if "rtell" not in file and "spec_a0v" not in file:  
-                    uncertainty_filepath = getUncertainityFilepath(file)
-                    uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)   
+                    uncertainty_filepath = getUncertaintyFilepath(file)
+                    uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)   
                     if '.sn.fits' in uncertainty_filepath:
                         sn_used = True
                 elif "rtell" in file: #If rtell file is used, grab SNR stored in extension
@@ -324,7 +324,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
                 try:
-                    uncertainity_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
+                    uncertainty_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
                     sn_used = False
                 except:
                     print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
@@ -332,7 +332,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 lamb = hdus["WAVELENGTH"].data[order].astype(float) * u.micron
                 flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
                 try:
-                    uncertainity_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
+                    uncertainty_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
                     sn_used = False
                 except:
                     print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
@@ -356,17 +356,17 @@ class IGRINSSpectrum(EchelleSpectrum):
                 "m": grating_order,
                 "header": hdr,
             }
-            if uncertainity_hdus is not None or ("rtell" in file):
+            if uncertainty_hdus is not None or ("rtell" in file):
                 if not sn_used: #If .variance.fits used
-                    variance = uncertainity_hdus[0].data[order].astype(np.float64)
+                    variance = uncertainty_hdus[0].data[order].astype(np.float64)
                     stddev = np.sqrt(variance)
                     if ("rtell" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
                         unprocessed_flux = hdus["TGT_SPEC"].data[order].astype(np.float64)
                         stddev *= (flux.value / unprocessed_flux)
                 else: #Else if .sn.fits (or SNR HDU in rtell file) used
                     if not "rtell" in file:
-                        sn = uncertainity_hdus[0].data[order].astype(np.float64)
-                    dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainity per resolution element to get the uncertainity per pixel
+                        sn = uncertainty_hdus[0].data[order].astype(np.float64)
+                    dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainty per resolution element to get the uncertainty per pixel
                     pixel_per_res_element = (lamb/40000.)/dw
                     sn_per_pixel =  sn / np.sqrt(pixel_per_res_element)
                     stddev = flux.value / sn_per_pixel.value
@@ -490,9 +490,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         if "SPEC_DIVIDE_A0V_VARIANCE" in hdus:
             cached_hdus = [hdus, [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]] 
         elif "rtell" not in file: #Default, if no rtell file is used
-            uncertainty_filepath = getUncertainityFilepath(file)
-            uncertainity_hdus = fits.open(uncertainty_filepath, memmap=False)    
-            cached_hdus = [hdus, uncertainity_hdus]   
+            uncertainty_filepath = getUncertaintyFilepath(file)
+            uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)    
+            cached_hdus = [hdus, uncertainty_hdus]   
             if '.sn.fits' in uncertainty_filepath:
                 sn_used = True     
         else: #If rtell file is used

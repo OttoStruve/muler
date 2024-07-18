@@ -822,7 +822,7 @@ class EchelleSpectrum(Spectrum1D):
     def apply(self, method=np.nansum, **kwargs):
         """
         Apply any method to the spectrum.  This is very general and can be used for many
-        things.  Uncertainity is propogated.
+        things.  Uncertainty is propogated.
 
         Parameters
         ----------
@@ -840,7 +840,7 @@ class EchelleSpectrum(Spectrum1D):
 
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
-        Uuseful for airmass correction.  Uncertainity is propogated by keeping the 
+        Uuseful for airmass correction.  Uncertainty is propogated by keeping the 
         singal-to-noise constant.
 
         Parameters
@@ -1116,7 +1116,7 @@ class EchelleSpectrumList(SpectrumList):
 
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
-        Uuseful for airmass correction.  Uncertainity is propagated by keeping the 
+        Uuseful for airmass correction.  Uncertainty is propagated by keeping the 
         singal-to-noise constant.
 
         Parameters
@@ -1175,7 +1175,7 @@ class EchelleSpectrumList(SpectrumList):
     def apply(self, method=np.nansum, **kwargs):
         """
         Apply any method to the spectral list.  This is very general and can be used for many
-        things.  Uncertainity is propogated.
+        things.  Uncertainty is propogated.
 
         Parameters
         ----------
