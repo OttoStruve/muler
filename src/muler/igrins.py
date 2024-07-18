@@ -289,11 +289,11 @@ class IGRINSSpectrum(EchelleSpectrum):
                 raise NameError("Cannot identify file as an IGRINS spectrum")
             grating_order = grating_order_offsets[band] + order
 
+            uncertainity_hdus = None #Default value
             if cached_hdus is not None:
                 hdus = cached_hdus[0]
                 if "rtell" in file:
                     sn = hdus["SNR"].data[order]
-                    uncertainity_hdus = None
                 else:
                     uncertainity_hdus = cached_hdus[1]
                 if wavefile is not None:
@@ -315,7 +315,6 @@ class IGRINSSpectrum(EchelleSpectrum):
                 elif "rtell" in file: #If rtell file is used, grab SNR stored in extension
                     sn = hdus["SNR"].data[order]
                     sn_used = True
-                    uncertainity_hdus = None
             hdr = hdus[0].header
             if ("spec_a0v.fits" in file) and (wavefile is not None):
                 log.warn(
