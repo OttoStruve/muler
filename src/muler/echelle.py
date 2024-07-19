@@ -26,8 +26,10 @@ from scipy.interpolate import UnivariateSpline, interp1d
 from scipy.signal import savgol_filter
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
+from scipy.ndimage import median_filter, gaussian_filter1d
 import specutils
-from muler.utilities import apply_numpy_mask, is_list
+from muler.utilities import apply_numpy_mask, is_list, resample_list
+
 
 # from barycorrpy import get_BC_vel
 from astropy.coordinates import SkyCoord, EarthLocation
@@ -38,6 +40,9 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 import os
 import copy
+
+from specutils.manipulation import LinearInterpolatedResampler
+
 
 from specutils.spectra.spectral_region import SpectralRegion
 from specutils.analysis import equivalent_width
@@ -72,6 +77,7 @@ class EchelleSpectrum(Spectrum1D):
 
         # self.ancillary_spectra = None
         super().__init__(*args, **kwargs)
+
 
     @property
     def snr(self):
@@ -700,6 +706,158 @@ class EchelleSpectrum(Spectrum1D):
 
         return spec
 
+    def get_slit_profile(self, lower=None, upper=None, slit_length=1.0):
+        """"For a 2D spectrum, returns the slit profile
+
+        Parameters
+        ----------
+        lower : AstroPy Quantity or float
+            The short wavelength limit at which to define the slit profile.
+            If the value is a float, it assume Angstrom units.
+        upper : AstroPy Quantity or float
+            The long wavelength limit at which to define the slit profiled.
+            If the value is a float, it assume Angstrom units.
+
+        Returns
+        -------
+        Array with the same height as the 2D spectrum of the median estimated slit profile
+        """
+        #Get the upper and lower wavelength limits in the correct units
+
+        assert len(np.shape(self.flux)) == 2, "Spectrum must be 2D to estimate slit profile." #Test to make sure this is a 2D spectrum
+
+        if lower is None:
+            lower = self.wavelength.min().value
+        if upper is None:
+            upper = self.wavelength.max().value
+
+        if type(lower) is not u.Quantity:
+            # Assume it's Angstroms
+            lower = lower * u.Angstrom
+        if type(upper) is not u.Quantity:
+            upper = upper * u.Angstrom
+
+        mask = (self.wavelength >= lower) & (self.wavelength <= upper)
+
+        flux = self.flux[:, mask].value
+        normalized_flux = flux / np.nansum(flux, axis=0)
+        median_slit_profile = np.nanmedian(normalized_flux, axis=1)
+
+        return median_slit_profile
+
+
+    def resample(self, target_spectrum):
+        """Resample spectrum onto a new spectral_axis.
+        Copied from gollum.
+        
+        Parameters
+        ----------
+        target_spectrum : Spectrum1D
+            Spectrum whose wavelength grid you seek to match
+
+        Returns
+        -------
+        resampled_spec : PrecomputedSpectrum
+            Resampled spectrum
+        """
+        output = LinearInterpolatedResampler()(self, target_spectrum.wavelength)
+
+        return self._copy(
+            spectral_axis=output.wavelength.value * output.wavelength.unit,
+            flux=output.flux, uncertainty=output.uncertainty, meta=self.meta,
+            wcs=None,
+        )
+
+    def instrumental_broaden(self, resolving_power=55000):
+        r"""Instrumentally broaden the spectrum for a given instrumental resolution
+        Copied verbatim from gollum.
+
+        Known limitation: If the wavelength sampling changes with wavelength,
+          the convolution becomes inaccurate.  It may be better to FFT,
+          following Starfish.
+
+        Parameters
+        ----------
+        resolving_power : int
+            Instrumental resolving power :math:`R = \frac{\lambda}{\delta \lambda}`
+
+        Returns
+        -------
+        broadened_spec : PrecomputedSpectrum
+            Instrumentally broadened spectrum
+        """
+        # In detail the spectral resolution is wavelength dependent...
+        # For now we assume a constant resolving power
+        angstroms_per_pixel = np.median(np.diff(self.wavelength.angstrom))
+        lam0 = np.median(self.wavelength.value)
+        delta_lam = lam0 / resolving_power
+
+        scale_factor = 2.355
+        sigma = delta_lam / scale_factor / angstroms_per_pixel
+
+        convolved_flux = gaussian_filter1d(self.flux.value, sigma) * self.flux.unit
+        return self._copy(flux=convolved_flux)
+    def fill_nans(self, method=median_filter, **kwargs):
+        """Fill nans with the median of surrounding pixels using 
+        scipy.ndimage.median_filter
+        
+        Parameters
+        ----------
+        method: def
+            def to apply to smooth surrounding pixels (e.g. scipy.ndimage.median_filter)
+        **kwargs:
+            Gets passed to method (e.g. size for scipy.ndimage.median_filter)
+        """
+        flux = self.flux
+        unc = self.uncertainty.array
+        filtered_flux = Quantity(method(flux.value, **kwargs), unit=self.flux.unit)
+        filtered_variance = method(unc**2, **kwargs)
+        filtered_unc = (filtered_variance**0.5)
+        found_nans = np.isnan(flux.value)
+        flux[found_nans] = filtered_flux[found_nans]
+        unc[found_nans] = filtered_unc[found_nans]
+
+        return self.__class__(
+            spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
+    def apply(self, method=np.nansum, **kwargs):
+        """
+        Apply any method to the spectrum.  This is very general and can be used for many
+        things.  Uncertainty is propogated.
+
+        Parameters
+        ----------
+        method: def
+            def to apply to spectrum (e.g. np.nansum to collapse a multidimensional spectrum)
+        **kwargs:
+            Gets passed to method (e.g. axis for np.nansum)
+        """    
+        flux = self.flux
+        unc = self.uncertainty.array
+        flux = Quantity(method(self.flux.value, **kwargs), unit=self.flux.unit)
+        unc = method(self.uncertainty.array**2, **kwargs)**0.5
+        return self.__class__(
+            spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
+
+    def __pow__(self, power):
+        """Take flux to a power while preserving the exiting flux units.
+        Uuseful for airmass correction.  Uncertainty is propogated by keeping the 
+        singal-to-noise constant.
+
+        Parameters
+        ----------
+        power : float
+            The power to take the flux to.
+            flux = flux ** power
+
+        """
+        flux = self.flux
+        unc = self.uncertainty
+        s2n = np.abs(flux.value / unc.array)
+        flux = flux ** power
+        unc = StdDevUncertainty(flux.value / s2n) #Recaulted uncertianity by preserving the S/N
+
+        return self.__class__(
+            spectral_axis=self.spectral_axis, flux=flux, uncertainty=unc, meta=self.meta, wcs=None)
 
 class EchelleSpectrumList(SpectrumList):
     r"""
@@ -758,6 +916,34 @@ class EchelleSpectrumList(SpectrumList):
             spec_out[i] = spec_out[i].trim_edges(limits)
 
         return spec_out
+
+    def trim_overlap(self, pivot=0.5):
+        """Trim all the edges that overlap with adjacent spectra (e.g. orders)
+        in the list.  Useful for running before stitch()."""
+        spec_out = copy.deepcopy(self)
+        n = len(spec_out)
+
+        for i in range(n): #Loop through each spectrum/order in list
+            #print('starting i ', i)
+            if i == 0: #Figure out where to trim the left side
+                left_limit = 0
+            elif self[i].spectral_axis[0] >  self[i-1].spectral_axis[-1]:
+                left_limit = 0
+            else:
+                mid_wave = self[i].spectral_axis[0]*(1-pivot) + self[i-1].spectral_axis[-1]*(pivot)
+                left_limit = np.where(self[i].spectral_axis > mid_wave)[-1][0] + 1
+            if i == n-1: #Figure out where to trim the right side
+                right_limit = len(self[i].spectral_axis)
+            elif self[i].spectral_axis[-1] <  self[i+1].spectral_axis[0]:
+                right_limit = len(self[i].spectral_axis)
+            else:
+                mid_wave = self[i].spectral_axis[-1]*(pivot) + self[i+1].spectral_axis[0]*(1-pivot)
+                right_limit = np.where(self[i].spectral_axis > mid_wave)[0][0] - 1
+
+            if left_limit > 0 or right_limit < len(self[i].spectral_axis):
+                spec_out[i] = spec_out[i].trim_edges((left_limit, right_limit))
+
+        return spec_out        
 
     def deblaze(self, method="spline"):
         """Remove blaze function from all orders by interpolating a spline function
@@ -928,6 +1114,23 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
+    def __pow__(self, power):
+        """Take flux to a power while preserving the exiting flux units.
+        Uuseful for airmass correction.  Uncertainty is propagated by keeping the 
+        singal-to-noise constant.
+
+        Parameters
+        ----------
+        power : float
+            The power to take the flux to.
+            flux = flux ** power
+
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i]**power
+        return spec_out
+
     def rv_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
@@ -947,6 +1150,43 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        return spec_out
+
+    def fill_nans(self, method=median_filter, **kwargs):
+        """Fill nans with the median of surrounding pixels using 
+        scipy.ndimage.median_filter
+        
+        Parameters
+        ----------
+        method: def
+            def to apply to smooth surrounding pixels (e.g. scipy.ndimage.median_filter)
+        **kwargs:
+            Gets passed to method (e.g. size for scipy.ndimage.median_filter)
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].fill_nans(method=method, **kwargs)
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        return spec_out
+
+    def apply(self, method=np.nansum, **kwargs):
+        """
+        Apply any method to the spectral list.  This is very general and can be used for many
+        things.  Uncertainty is propogated.
+
+        Parameters
+        ----------
+        method: def
+            def to apply to spectrum (e.g. np.nansum to collapse a multidimensional spectrum)
+        **kwargs:
+            Gets passed to method (e.g. axis for np.nansum)
+        """    
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].apply(method=method, **kwargs)
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out

@@ -30,7 +30,9 @@ dependencies:
   - coverage
   - coveralls
   - twine
+  - dust_extinction
   - pip
   - pip:
       - sphinx-material
       - celerite2
+      - tynt

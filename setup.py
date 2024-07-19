@@ -12,7 +12,7 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.4.0",
+    version="0.4.1",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from various echelle spectrographs",

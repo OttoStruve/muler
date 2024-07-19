@@ -62,6 +62,7 @@ Radial velocity
 * `doppler <https://doppler.readthedocs.io/en/latest/>`_ - Derive RV from an input spectrum 
 * `igrins_rv <https://github.com/shihyuntang/igrins_rv>`_ - Radial velocity analysis specific to IGRINS
 * `eniric <https://github.com/jason-neal/eniric>`_ - Extended Near InfraRed spectra Information Content analysis
+* `sapphires <https://github.com/tofflemire/saphires>`_ - Stellar Analysis in Python for HIgh REsolution Spectroscopy
 
 Doppler Imaging
 ===============
@@ -71,3 +72,5 @@ Abundances / Correlations
 ==========================
 * `zaspe <https://github.com/rabrahm/zaspe>`_ - A Code to Measure Stellar Atmospheric Parameters and their Covariance from Spectra
 * `Chem-I-Calc <https://chem-i-calc.readthedocs.io>`_ - Chemical information calculator
+* `smhr <https://github.com/andycasey/smhr>`_ - Spectroscopy Made Harder
+* `turbospectrum <https://github.com/bertrandplez/Turbospectrum2019>`_ - Synthetic spectrum calculation companion to MARCS

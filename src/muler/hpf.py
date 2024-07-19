@@ -12,12 +12,14 @@ HPFSpectrum
 import warnings
 import logging
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
+from muler.utilities import resample_list
 import numpy as np
 import astropy
 from astropy.io import fits
 from astropy import units as u
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
+from scipy.ndimage import median_filter
 from scipy.interpolate import InterpolatedUnivariateSpline
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.time import Time
@@ -27,6 +29,7 @@ from specutils.manipulation import LinearInterpolatedResampler
 from scipy.ndimage import binary_dilation
 from . import templates
 import pandas as pd
+
 
 log = logging.getLogger(__name__)
 
@@ -304,7 +307,21 @@ class HPFSpectrum(EchelleSpectrum):
             log.error("This method is deprecated!  Please use the new deblaze method")
             raise NotImplementedError
 
-    def sky_subtract(self, method="scalar"):
+    def sky_resample(self):
+        """
+        Resample's sky spectrum from the sky fiber to match the spectrum from the science fiber
+
+        Returns
+        -------
+        Spectrum with sky fiber spectrum resampled to match the wavelength solution of the science fiber
+
+        """
+        spec = copy.deepcopy(self)
+        spec.meta["sky"] = spec.sky.resample(spec)
+        #spec.sky = spec.sky.resample(spec)
+        return spec
+
+    def sky_subtract(self, method="scalar", scale=0.93):
         """Subtract sky spectrum from science spectrum, with refinements for sky throughput
 
         Note: This operation does not wavelength shift or scale the sky spectrum
@@ -314,6 +331,9 @@ class HPFSpectrum(EchelleSpectrum):
         method : (str)
             The method for sky subtraction: "naive", "scalar", or "vector", as described in
             Gully-Santiago et al. in prep.  Default is scalar.
+
+        scale : (float)
+            When using the "scalar" method, sets the scale.  Default is 0.93.
 
         Returns
         -------
@@ -327,17 +347,20 @@ class HPFSpectrum(EchelleSpectrum):
             )
             beta = 1.0 * u.dimensionless_unscaled
         elif method == "scalar":
-            beta = 0.93 * u.dimensionless_unscaled
+            beta = scale * u.dimensionless_unscaled
         elif method == "vector":
             beta_native_spectrum = spec.get_static_sky_ratio_template()
             resampler = LinearInterpolatedResampler(extrapolation_treatment="zero_fill")
             beta = resampler(beta_native_spectrum, spec.spectral_axis)
+        # elif method == 'median': #Attempt to measure the scale of the sky lines between the fibers using a median of the pixels
+        #     resampled_sky = spec.sky.resample(spec)
+        #     good_sci_pixels = self.flux.value -
         else:
             log.error("Method must be one of 'naive', 'scalar' or 'vector'. ")
             raise NotImplementedError
 
         # These steps should propagate uncertainty?
-        sky_estimator = spec.sky.multiply(beta, handle_meta="first_found")
+        sky_estimator = spec.sky_resample().sky.multiply(beta, handle_meta="first_found")
         return spec.subtract(sky_estimator, handle_meta="first_found")
 
     def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
@@ -434,13 +457,47 @@ class HPFSpectrumList(EchelleSpectrumList):
 
         return spec_out
 
-    def sky_subtract(self, method="vector"):
+    def sky_resample(self):
+        """
+        Resample's sky spectrum from the sky fiber to match the spectrum from the science fiber
+
+        Returns
+        -------
+        Spectrum with sky fiber spectrum resampled to match the wavelength solution of the science fiber
+
+        """
+        spec_out = copy.copy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].sky_resample()
+
+        return spec_out
+               
+
+    def sky_subtract(self, method="vector", scale=0.93):
         """Sky subtract the entire spectrum"""
         spec_out = copy.copy(self)
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i].sky_subtract(method=method)
+            spec_out[i] = spec_out[i].sky_subtract(method=method, scale=scale)
 
         return spec_out
+
+    def test_print_sky_scale(self):
+        #reampled_sky = resample_list(self.sky, self) #Resample sky to match sci wavelengths
+        all_sky = np.zeros([2048, len(self)]) #Put all science and sky fiber flux into 2D arrays for easy manipulation
+        all_sci = np.zeros([2048, len(self)])
+        for i in range(len(self)):
+            all_sky[:, i] = (self[i].sky).resample(self[i]).flux.value
+            all_sci[:, i] = self[i].flux.value
+        all_sky -= median_filter(all_sky, [25, 1]) #Subtract continuum/background using a running median filter
+        all_sci -= median_filter(all_sci, [25, 1])
+        #all_sky[all_sky ]
+        max_sky_flux = np.nanmax(all_sky)
+        bad_pix = (all_sky < 0.1 * max_sky_flux) & (all_sci < 0.1 * max_sky_flux)
+        all_sky[bad_pix] = np.nan
+        all_sci[bad_pix] = np.nan
+        print(np.nanmedian(all_sci / all_sky))
+
+
 
     # def sky_subtract(self):
     #     """Sky subtract all orders
