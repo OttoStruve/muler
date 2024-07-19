@@ -231,7 +231,7 @@ def test_deblaze():
 def test_bandmath():
     """Does band math work?"""
     spec1 = IGRINSSpectrumList.read(file=file)
-    spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SDCH_20201202_0063.wave.fits")
+    spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
