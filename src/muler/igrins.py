@@ -46,6 +46,32 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 grating_order_offsets = {"H": 98, "K": 71}
 
 
+def readIGRINS(spec_filepath, wave_filepath):
+    """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands) given
+    the path to a single .spec.fits or .spec2d.fits file and a single wavelength solution file (.wvlsol_v1.fits).
+    You only need to provide the path to a file for the H or K band.  It will automatically find the files for the other band.
+    The associated .variance.fits or .var2d.fits files will also be automatically read in, if they exist in the same directory.
+    Use this to easily in data downloaded from RRISA.
+
+    Parameters
+    ----------    
+    spec_filepath: string
+        Path to a single spec.fits or spec2d.fits file
+        (e.g. "/Path/to/IGRINS/data/SDCH_20220521_0064.spec.fits")
+    wave_filepath: string
+         Path to a single wavelength solution file (.wvlsol_v1.fits)
+        (e.g. "/Path/to/IGRINS/data/SKY_SDCH_20220521_0055.wvlsol_v1.fits")
+
+    """
+    spec_H = IGRINSSpectrumList.read(spec_filepath.replace('SDCK_', 'SDCH_'), #Read in H band
+                                wavefile=wave_filepath.replace('SDCK_', 'SDCH_'))
+    spec_K = IGRINSSpectrumList.read(spec_filepath.replace('SDCH_', 'SDCK_'), #Read in K band
+                                wavefile=wave_filepath.replace('SDCH_', 'SDCK_'))
+    spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
+    return spec_all
+
+
+
 def readPLP(plppath, date, frameno, waveframeno, dim='1D'):
     """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands)
     from the IGRINS PLP output
