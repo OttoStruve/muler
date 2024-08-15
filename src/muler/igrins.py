@@ -590,7 +590,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         else: #If file does not exist, raise exception
             raise Exception(
                 "Need .spec2d.fits file in the same directory as "
-                + filepath
+                + self.file
                 + " in order to get an estimate of the slit profile.  .spec2d.fits is missing."
             )  
         if os.path.exists(path_K): #Check if 2D spectrum in a .spec2d.fits file exists
@@ -598,7 +598,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         else: #If file does not exist, raise exception
             raise Exception(
                 "Need .spec2d.fits file in the same directory as "
-                + filepath
+                + self.file
                 + " in order to get an estimate of the slit profile.  .spec2d.fits is missing."
             )  
 
