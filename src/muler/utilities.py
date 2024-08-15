@@ -365,7 +365,7 @@ class Slit:
         half_length = 0.5 * self.length
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
-    def ABBA(self, y, x=None, print_info=True, plot=False):
+    def ABBA(self, y, x=None, print_info=True, plot=False, pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
         ABBA along the slit, generate an estimate of A and B nods' 2D PSFs.
@@ -411,6 +411,8 @@ class Slit:
             plt.ylabel('Flux')
             plt.legend()
             plt.show()
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
         if print_info:
             #log.info('FWHM A beam:', gg_fit[0].fwhm)
             #log.info('FWHM B beam:', gg_fit[1].fwhm)
