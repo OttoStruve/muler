@@ -423,9 +423,8 @@ class Slit:
         g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
         #simulate  guiding error by "smearing out" PSF
         position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
-        fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        diff_x0 = fraction_guiding_error * np.cos(position_angle_in_radians)
-        diff_y0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+        diff_x0 = self.guiding_error * np.cos(position_angle_in_radians)
+        diff_y0 = self.guiding_error * np.sin(position_angle_in_radians)
         g1_fit.x_0 += 0.5*diff_x0
         g2_fit.x_0 += 0.5*diff_x0
         g1_fit.y_0 += 0.5*diff_y0
