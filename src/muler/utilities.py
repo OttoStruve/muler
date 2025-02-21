@@ -365,7 +365,7 @@ class Slit:
         half_length = 0.5 * self.length
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
-    def ABBA(self, y, x=None, print_info=True, plot=False):
+    def ABBA(self, y, x=None, print_info=True, plot=False, pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
         ABBA along the slit, generate an estimate of A and B nods' 2D PSFs.
@@ -411,6 +411,8 @@ class Slit:
             plt.ylabel('Flux')
             plt.legend()
             plt.show()
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
         if print_info:
             #log.info('FWHM A beam:', gg_fit[0].fwhm)
             #log.info('FWHM B beam:', gg_fit[1].fwhm)
@@ -422,8 +424,8 @@ class Slit:
         #simulate  guiding error by "smearing out" PSF
         position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
         fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        diff_x0 = fraction_guiding_error * np.cos(position_angle_in_radians)
-        diff_y0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+        diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+        diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
         g1_fit.x_0 += 0.5*diff_x0
         g2_fit.x_0 += 0.5*diff_x0
         g1_fit.y_0 += 0.5*diff_y0
