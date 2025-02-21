@@ -51,7 +51,7 @@ def readIGRINS(spec_filepath, wave_filepath):
     the path to a single .spec.fits or .spec2d.fits file and a single wavelength solution file (.wvlsol_v1.fits).
     You only need to provide the path to a file for the H or K band.  It will automatically find the files for the other band.
     The associated .variance.fits or .var2d.fits files will also be automatically read in, if they exist in the same directory.
-    Use this to easily in data downloaded from RRISA.
+    Use this to easily read in data downloaded from RRISA.
 
     Parameters
     ----------    
