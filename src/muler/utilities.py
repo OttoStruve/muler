@@ -445,18 +445,18 @@ class Slit:
         """
         if normalize: #You almost always want to normalize
             self.normalize()
-        initial_estimated_fraction_through_slit = np.nansum(self.f2d[~self.mask]) #Get fraction of light inside the slit mask
+        initial_estimated_fraction_through_slit = np.nansum(self.f2d[~self.mask]) / np.nansum(self.f2d) #Get fraction of light inside the slit mask
         #throughput correction calculated from monte carlo simualtions to convert the estimate to actual throughput, NOTE this is IGRINS specific
         throughput_correction_pointing_error_perpendicular_to_slit = models.Chebyshev2D(3, 3, c0_0=0.48615791, c1_0=0.32114591, c2_0=-0.0349109, c3_0=0.01192229, c0_1=-0.14611241, c1_1=-0.16490571, c2_1=-0.01045679, c3_1=0.01671257, c0_2=-0.02158197, c1_2=-0.02213463, c2_2=-0.00031099, c3_2=0.00002206, c0_3=0.01958147, c1_3=0.0302361, c2_3=0.01197411, c3_3=0.00266858, x_domain=(0.16251566201706763, 0.9999351856781427), y_domain=(0.000660434260749021, 1.999411871833546))
         throughput_correction_pointing_error_parallel_to_slit = models.Chebyshev2D(3, 3, c0_0=1.38140979, c1_0=1.54595726, c2_0=0.41060813, c3_0=-0.08619041, c0_1=1.26930674, c1_1=1.63718611, c2_1=0.60197849, c3_1=-0.16875158, c0_2=0.58352811, c1_2=0.65415013, c2_2=0.19616202, c3_2=-0.16319632, c0_3=0.09309019, c1_3=0.09296075, c2_3=-0.04573633, c3_3=-0.05109788, x_domain=(0.11128901778216015, 0.9999999946981601), y_domain=(0.0001453326995801696, 1.999326121378704))
         position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
-        fraction_guiding_error_perpendicular = cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        fraction_guiding_error_parallel = sin(position_angle_in_radians)*self.guiding_error
+        fraction_guiding_error_perpendicular = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+        fraction_guiding_error_parallel = np.sin(position_angle_in_radians)*self.guiding_error
         if np.any(self.f2d > 0.): #Error catch
-            if f_through_slit_for_this_order > 0:
+            if initial_estimated_fraction_through_slit > 0:
                 f_through_slit_perpendicular = throughput_correction_pointing_error_perpendicular_to_slit(initial_estimated_fraction_through_slit, fraction_guiding_error_perpendicular*(14.8/self.length)) #Apply a throughput correction to go from estimate to "actual" as determined from a monte carlo simualtion
                 f_through_slit_parallel = throughput_correction_pointing_error_parallel_to_slit(initial_estimated_fraction_through_slit, fraction_guiding_error_parallel*(14.8/self.length)) #Apply a throughput correction to go from estimate to "actual" as determined from a monte carlo simualtion
-                fraction_through_slit =  sqrt((f_through_slit_perpendicular*cos(position_angle_in_radians))**2 + (f_through_slit_parallel*sin(position_angle_in_radians))**2)
+                fraction_through_slit =  np.sqrt((f_through_slit_perpendicular*np.cos(position_angle_in_radians))**2 + (f_through_slit_parallel*np.sin(position_angle_in_radians))**2)
                 if fraction_through_slit < 0.:
                     fraction_through_slit = 0.
                 elif fraction_through_slit > 1.0:
