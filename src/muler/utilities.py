@@ -464,7 +464,7 @@ class Slit:
                 return fraction_through_slit
             else:
                 return np.nan
-        else
+        else:
             return np.nan
     def clear(self):
         """
