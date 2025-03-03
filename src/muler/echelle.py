@@ -1131,6 +1131,21 @@ class EchelleSpectrumList(SpectrumList):
             spec_out[i] = self[i]**power
         return spec_out
 
+    def sort(self):
+        """Sort each order in a spectrum list by acending wavelength
+
+        Returns
+        -------
+        sorted_spec : (EchelleSpectrumList)
+            Sorted orders in EchelleSpectrumList
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].sort()
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+        return spec_out
+
     def rv_shift(self, velocity):
         """
         Shift velocity of spectrum in km s^-1
