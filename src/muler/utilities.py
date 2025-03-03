@@ -461,7 +461,9 @@ class Slit:
                     fraction_through_slit = 0.
                 elif fraction_through_slit > 1.0:
                     fraction_through_slit = 1.0        
-            return fraction_through_slit
+                return fraction_through_slit
+            else:
+                return np.nan
         else
             return np.nan
     def clear(self):
