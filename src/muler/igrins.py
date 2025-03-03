@@ -644,6 +644,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.figure()
             plt.plot(wave, f_through_slit, '.')
             plt.plot(wave, fitted_line[0](1/wave))
+            plt.ylim([-0.2, 1.2])
             plt.xlabel('Wavelength (micron)')
             plt.ylabel('Estimated Slit Throughput')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
@@ -651,6 +652,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.figure()
             plt.plot(1/wave, f_through_slit, '.')
             plt.plot(1/wave, fitted_line[0](1/wave))
+            plt.ylim([-0.2, 1.2])
             plt.xlabel('Inverse Wavelength (1/micron)')
             plt.ylabel('Estimated Slit Throughput')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
