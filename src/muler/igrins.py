@@ -628,10 +628,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 igrins_slit.ABBA(y, x=x, print_info=False, plot=False)
             f_through_slit[order] = igrins_slit.estimate_slit_throughput()
             wave[order] = np.nanmedian(self[order].wavelength.um[col1:col2])
-
-
-
-
+        good_orders = np.isfinite(f_through_slit)  #mask out nans
+        f_through_slit = f_through_slit[good_orders]
+        wave = wave[good_orders]
         init_line = models.Linear1D() #Fit throughput across orders with a linear fit with x = 1/wavelength (1/microns)
         fitter = fitting.LinearLSQFitter()
         outlier_fitter = fitting.FittingWithOutlierRemoval(fitter, sigma_clip, niter=3, sigma=3.0) #Sigma
