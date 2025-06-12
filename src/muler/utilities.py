@@ -326,7 +326,7 @@ def is_list(check_this):
     True: Object has more than one element (e.g. is a list or array)
     False: Object has a single element (e.g. a single variable like 10.0)
     """
-    return isinstance(check_this, list)
+    return isinstance(check_this, list) or ((type(check_this) is np.ndarray) and (len(np.shape(check_this)) > 1))
 
 class Slit:
     def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000):
