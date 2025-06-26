@@ -227,27 +227,44 @@ class EchelleSpectrum(Spectrum1D):
 
         # Sort the wavelength indices
         sorted_indexes = np.argsort(spec.wavelength.value)
-        new_spec = spec._copy(
-            spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
-            flux=spec.flux[sorted_indexes],
-            uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
-            wcs=None,
-        )
-
-        # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
-        for ancillary_spectrum in self.available_ancillary_spectra:
-            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
-                spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                    sorted_indexes
-                ]
-                * meta_out[ancillary_spectrum].wavelength.unit,
-                flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
-                uncertainty=StdDevUncertainty(
-                    meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
-                ),
+
+        if spec.uncertainty is None:
+            new_spec = spec._copy(
+                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                flux=spec.flux[sorted_indexes],
                 wcs=None,
             )
+            # Each ancillary spectrum (e.g. sky) should also be normalized
+            for ancillary_spectrum in self.available_ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                        sorted_indexes
+                    ]
+                    * meta_out[ancillary_spectrum].wavelength.unit,
+                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                    wcs=None,
+                )
+        else:
+            new_spec = spec._copy(
+                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                flux=spec.flux[sorted_indexes],
+                uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
+                wcs=None,
+            )
+            # Each ancillary spectrum (e.g. sky) should also be normalized
+            for ancillary_spectrum in self.available_ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                        sorted_indexes
+                    ]
+                    * meta_out[ancillary_spectrum].wavelength.unit,
+                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                    uncertainty=StdDevUncertainty(
+                        meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
+                    ),
+                    wcs=None,
+                )
 
         meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
@@ -583,7 +600,7 @@ class EchelleSpectrum(Spectrum1D):
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.set_ylim(ylo, yhi)
-            ax.set_xlabel("$\lambda \;(\AA)$")
+            ax.set_xlabel(r"$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
             if hasattr(self, "spectrographname"):
                 ax.set_title(self.spectrographname + " Spectrum")
@@ -1052,7 +1069,7 @@ class EchelleSpectrumList(SpectrumList):
     def plot(self, ylo=0.0, yhi=None, **kwargs):
         """Plot the entire spectrum list"""
         if yhi is None:  # Automatically loop through each order to find yhi
-            yhi = np.nanpercentile(self.stitch().flux.value, 90.0) * 1.8
+            yhi = np.nanpercentile(self.sort().trim_overlap().stitch().flux.value, 90.0) * 1.8
         if not "ax" in kwargs:
             ax = self[0].plot(figsize=(25, 4), ylo=ylo, yhi=yhi, **kwargs)
             for i in range(1, len(self)):

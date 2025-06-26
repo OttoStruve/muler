@@ -10,10 +10,86 @@ from scipy.stats import binned_statistic
 from scipy.interpolate import interp1d
 from specutils.manipulation import LinearInterpolatedResampler
 from matplotlib import pyplot as plt
+from astropy.convolution import convolve, Gaussian1DKernel
+from scipy.ndimage import binary_dilation
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 
 log = logging.getLogger(__name__)
+
+
+
+def roll_along_axis(array_to_correct, correction, axis=0): #Apply flexure correction by numpy rolling along an axis and averaging between two rolled arrays to account for sub-pixel shifts
+    axis = int(axis)
+    integer_correction = np.round(correction) #grab whole number component of correction
+    fractional_correction = correction - float(integer_correction) #Grab fractional component of correction (remainder after grabbing whole number out)
+    rolled_array =  np.roll(array_to_correct, int(integer_correction), axis=axis) #role array the number of pixels matching the integer correction
+    if fractional_correction > 0.: #For a positive correction
+        rolled_array_plus_one = np.roll(array_to_correct, int(integer_correction+1), axis=axis) #Roll array an extra one pixel to the right
+    else: #For a negative correction
+        rolled_array_plus_one = np.roll(array_to_correct, int(integer_correction-1), axis=axis) #Roll array an extra one pixel to the left
+    corrected_array = rolled_array*(1.0-np.abs(fractional_correction)) + rolled_array_plus_one*np.abs(fractional_correction) #interpolate over the fraction of a pixel
+    return corrected_array
+
+def round_to_multiple(number, multiple):
+    return multiple * round(number / multiple)
+
+def find_nearest(array, value): #
+    """Return index of entry in sorted array closest to provided value.
+    Modified slightly from: https://stackoverflow.com/a/2566508
+
+    Parameters
+    -------
+    array:
+        Sorted array to search.
+    value:
+        Value to search for in array.
+
+    Returns
+        Index for entry in array closest to value
+    -------
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+
+
+def edge_normalize(x1, x2, specobj, window=20):  #Draw a line between the fluxes at points x1 and x2 and normalize to that line 
+    half_window = round(window / 2)
+    x = specobj.spectral_axis.value
+    ix1 = find_nearest(x, x1) #Grab points to normalize to
+    ix2 = find_nearest(x, x2)
+    y1 = np.nanmedian(specobj.flux.value[ix1-half_window:ix1+half_window]) #Normalize to end points using a linear fit that goes through the edges
+    y2 = np.nanmedian(specobj.flux.value[ix2-half_window:ix2+half_window])
+    m = (y2 - y1) / (x[ix2] - x[ix1]) #Fit for a line through two points
+    b = y2 - m * x[ix2]
+    specresult = specobj / (m*x+b)
+    #specresult = specobj / ((y1+y2)/2)
+    return specresult
+    
+
+def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
+    g_large = Gaussian1DKernel(stddev=40.0)
+    g = Gaussian1DKernel(stddev=20.0) #Do a little bit of smoothing of the blaze functions
+    if mask:
+        left_mask = binary_dilation((specobj[i-1].flux.value / convolve(specobj[i-1], g_large)) < 0.80, iterations=5) #Order to the left
+        left_order = convolve(convolve(specobj[i-1], g_large, mask=left_mask), g, mask=left_mask)
+        right_mask = binary_dilation((specobj[i+1].flux.value / convolve(specobj[i+1], g_large)) < 0.80, iterations=5) #order to the right
+        right_order = convolve(convolve(specobj[i+1], g_large, mask=right_mask),  g, mask=right_mask)
+    else:
+        left_order = convolve(specobj[i-1], g)
+        right_order = convolve(specobj[i+1], g)
+    cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
+    specresult = edge_normalize(x1=x1, x2=x2, specobj= specobj[i]/cont)
+    # ix1 = find_nearest(specobj[i].spectral_axis.value, x1) #Grab points to normalize to
+    # ix2 = find_nearest(specobj[i].spectral_axis.value, x2)
+    # y1 = specresult.flux[ix1] #Normalize to end points using a linear fit that goes through the edges
+    # y2 = specresult.flux[ix2]
+    # m = (y2 - y1) / (ix2 - ix1)
+    # b = y2 - m * ix2
+    # specresult = specresult / (m*x+b)
+    return specresult
 
 
 def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
@@ -295,6 +371,9 @@ def resample_list(spec_to_resample, specList, **kwargs):
             spec_out[i] = specList[i].__class__(
                 spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=meta_out, wcs=None)            
     return spec_out
+
+
+
 
 
 def concatenate_orders(spec_list1, spec_list2):
