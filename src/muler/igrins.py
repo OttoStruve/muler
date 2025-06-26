@@ -80,14 +80,18 @@ def readIGRINS(spec_filepath, wave_filepath=''):
         but the user can provide their own wavelength solution here
 
     """
+    spec_filename = spec_filepath.split('/')[-1] #To handle only changing the band in the filename, not any paths
+    spec_filepath = spec_filepath.split(spec_filename)[0]
     if wave_filepath != '': #Use user specified wavelength solution
-        spec_H = IGRINSSpectrumList.read(spec_filepath.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), #Read in H band
-                                wavefile=wave_filepath.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'))
-        spec_K = IGRINSSpectrumList.read(spec_filepath.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), #Read in K band
-                                wavefile=wave_filepath.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'))
+        wave_filename = wave_filepath.split('/')[-1]
+        wave_filepath = wave_filepath.split(wave_filename)[0]
+        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), #Read in H band
+                                wavefile=wave_filepath+wave_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'))
+        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), #Read in K band
+                                wavefile=wave_filepath+wave_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'))
     else: #Use wavelength solution built into each fits file (default)
-        spec_H = IGRINSSpectrumList.read(spec_filepath.replace('SDCK_', 'SDCH_').replace('_K.', '_H.')) #Read in H band
-        spec_K = IGRINSSpectrumList.read(spec_filepath.replace('SDCH_', 'SDCK_').replace('_H.', '_K.')) #Read in K band       
+        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.')) #Read in H band
+        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.')) #Read in K band       
     spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
     return spec_all
 
