@@ -192,7 +192,7 @@ def getUncertaintyFilepath(filepath):
     #     path_base = filepath[:-10]
     # elif ".spec2d.fits" in filepath:
     #     path_base = filepath[:-12]
-    path_base = filepath.replace('".spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','')
+    path_base = filepath.replace('".spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('spec_flattened.fits','')
     if ".spec2d.fits" in filepath:
         if os.path.exists(path_base + '.var2d.fits'):
             return path_base + '.var2d.fits'
