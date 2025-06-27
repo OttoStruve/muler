@@ -219,125 +219,6 @@ def getUncertaintyFilepath(filepath):
 
 
 
-# def getSlitProfile(filepath, band, slit_length):
-#     """Returns the path for the slit profile.  Will first look for a 2D
-#     spectrum .spec2d.fits file to calculate the profile from.  If a spec2d.fits
-#     file does not exist, will look for a .slit_profile.json.
-
-#     Parameters
-#     ----------
-#     filepath: string
-#         Filepath to fits file storing the data.  Can be .spec.fits or .spec_a0v.fits.
-#     band: string
-#         'H' or 'K' specifying which band
-#     slit_length: float
-#         Length of the slit on the sky in arcsec.
-
-#     Returns
-#     -------
-#     x: float
-#         Distance in arcsec along the slit
-#     y: float
-#         Flux of beam profile across the slit
-#     """
-#     if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainty file
-#         path_base = filepath[:-14]
-#     elif ".spec_flattened.fits" in filepath:
-#         path_base = filepath[:-20]
-#     elif ".spec.fits" in filepath:
-#         path_base = filepath[:-10]
-#     elif ".spec2d.fits" in filepath:
-#         path_base = filepath[:-12]
-#     path_base = path_base.replace('SDCH', 'SDC'+band).replace('SDCK', 'SDC'+band)
-#     spec2d_filepath = path_base + '.spec2d.fits'
-#     json_filepath = path_base + '.slit_profile.json'
-#     if os.path.exists(filepath): #First try to use the 2D spectrum in a .spec2d.fits file to estimate the slit proflie
-#         spec2d = fits.getdata(spec2d_filepath)
-#         long_spec2d = spec2d[2,:,1000:1300] #Chop off order edges at columns 800 and 1200
-#         for i in range(3, len(spec2d)-2):
-#             long_spec2d = np.concatenate([long_spec2d, spec2d[i,:,1000:1300]], axis=1)
-#         y = np.nanmedian(long_spec2d, axis=1)
-#         x = np.arange(len(y)) * (slit_length / len(y))
-#     elif os.path.exists(json_filepath): #If no 2D spectrum exists, try using the PLP estimate in .slit_profile.json
-#         json_file = open(filepath)
-#         json_obj = json.load(json_file)
-#         x = np.array(json_obj['profile_x']) * slit_length
-#         y = np.array(json_obj['profile_y'])
-#         json_file.close()
-#     else:
-#         raise Exception(
-#             "Need either .spec2d.fits or .slit_profile.json file in the same directory as "
-#             + filepath
-#             + " in order to get an estimate of the slit profile.  .spec2d.fits or .slit_profile.json are missing."
-#         )        
-#     breakpoint()
-#     print('x = ', x)
-#     print('y = ', y)
-#     return x, y
-
-
-
-# def getIGRINSSlitThroughputABBACoefficients(file, slit_length=14.8, PA=90, guiding_error=1.5, print_info=True, plot=False):
-#     """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit and return the 
-#     coefficients of a linear fit.
-
-#     Parameters
-#     ----------
-#     file:
-#         Path to fits file (e.g. spec.fits) from which the slit_profile.json file is also in the same directory.
-#         These should all be in the same IGRINS PLP output directory.
-#     slit_length: float
-#         Length of the slit on the sky in arcsec.
-#     PA: float
-#         Position angle of the slit on the sky in degrees.  Measured counterclockwise from North to East.
-#     guilding_error: float
-#         Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
-#         This should be used carefully and only for telescopes on equitorial mounts.
-#     print_info: bool
-#         Print information about the fit.
-#     plot: bool
-#         Visualize slit throughput calculations.
-
-#     Returns
-#     -------
-#     m, b:
-#         Coefficients for a fit of a linear trend of m*(1/wavelength)+b to the fractional slit throughput with the
-#         wavelength units in microns.
-
-#     """
-#     igrins_slit = Slit(length=slit_length, width=slit_length*(1/14.8), PA=PA, guiding_error=guiding_error)
-#     #Get throughput for H band
-#     x, y = getSlitProfile(file, band='H', slit_length=slit_length) #Get slit profile
-#     igrins_slit.clear()
-#     igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
-#     if plot:
-#         print('2D plot of H-band')
-#         igrins_slit.plot2d()
-#         #breakpoint()
-#     f_through_slit_H = igrins_slit.estimate_slit_throughput()
-#     #Get throughput for K band
-#     x, y = getSlitProfile(file, band='K', slit_length=slit_length) #Get slit profile
-#     igrins_slit.clear()
-#     igrins_slit.ABBA(y, x=x, print_info=print_info, plot=plot)
-#     if plot:
-#         print('2D plot of K-band')
-#         igrins_slit.plot2d()
-#         breakpoint()
-#     f_through_slit_K = igrins_slit.estimate_slit_throughput()
-#     #Fit linear trend through slit throughput as function of wavelength and using fitting a line through two points
-#     m = (f_through_slit_K - f_through_slit_H) / ((1/2.2) - (1/1.65))
-#     b = f_through_slit_H - m*(1/1.65)
-#     if print_info:
-#         # log.info('H-band slit throughput: ', f_through_slit_H)
-#         # log.info('K-band slit throughput:', f_through_slit_K)
-#         # log.info('m: ', m)
-#         # log.info('b: ', b)
-#         print('H-band slit throughput: ', f_through_slit_H)
-#         print('K-band slit throughput:', f_through_slit_K)
-#         print('m: ', m)
-#         print('b: ', b)
-#     return m, b
-
 
 
 
@@ -394,131 +275,6 @@ class IGRINSSpectrum(EchelleSpectrum):
         else:
             super().__init__(*args, **kwargs)
 
-
-        # # self.ancillary_spectra = None
-        # self.noisy_edges = (450, 1950)
-        # self.instrumental_resolution = 45_000.0
-        # self.file = file
-
-        #  #False if variance.fits file used for uncertainty, true if sn.fits file used for uncertainty
-
-        # if file is not None:
-            
-        #     assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or ('.spec2d.fits' in file)
-        #     # Determine the band
-        #     if ("SDCH" in file) or ("_H." in file):
-        #         band = "H"
-        #     elif ("SDCK" in file) or ("_K." in file):
-        #         band = "K"
-        #     else:
-        #         raise NameError("Cannot identify file as an IGRINS spectrum")
-        #     grating_order = grating_order_offsets[band] + order
-
-        #     uncertainty_hdus = None #Default values
-        #     uncertainty = None
-        #     if cached_hdus is not None:
-        #         hdus = cached_hdus[0]
-        #         if "rtell" in file:
-        #             sn = hdus["SNR"].data[order]
-        #         else:
-        #             uncertainty_hdus = cached_hdus[1]
-        #         if wavefile is not None:
-        #             wave_hdus = cached_hdus[2]
-        #     else:
-
-        #     # else: #Read in files if cached_hdus are not provided
-        #     #     hdus = fits.open(str(file))
-        #     #     if wavefile is not None:
-        #     #         if os.path.exists(wavefile): #Check if user provided path to wavefile exists
-        #     #             wave_hdus = fits.open(wavefile)
-        #     #         else: #If not, check file name inside directory from file
-        #     #             base_path = os.path.dirname(file)
-        #     #             full_path = base_path + '/' + os.path.basename(wavefile)
-        #     #             wave_hdus = fits.open(full_path)
-        #     #     if "rtell" not in file and "spec_a0v" not in file:  
-        #     #         uncertainty_filepath = getUncertaintyFilepath(file)
-        #     #         uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)   
-        #     #         if '.sn.fits' in uncertainty_filepath:
-        #     #             sn_used = True
-        #     #     elif "rtell" in file: #If rtell file is used, grab SNR stored in extension
-        #     #         sn = hdus["SNR"].data[order]
-        #     #         sn_used = True
-        #     hdr = hdus[0].header
-        #     if ("spec_a0v.fits" in file) and (wavefile is not None):
-        #         log.warn(
-        #             "You have passed in a wavefile and a spec_a0v format file, which has its own wavelength solution.  Ignoring the wavefile."
-        #         )
-        #         lamb = hdus["WAVELENGTH"].data[order].astype(np.float64) * u.micron
-        #         flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(np.float64) * u.ct
-        #         try:
-        #             uncertainty_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
-        #             sn_used = False
-        #         except:
-        #             print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
-        #     elif ".spec_a0v.fits" in file:
-        #         lamb = hdus["WAVELENGTH"].data[order].astype(float) * u.micron
-        #         flux = hdus["SPEC_DIVIDE_A0V"].data[order].astype(float) * u.ct
-        #         try:
-        #             uncertainty_hdus = [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]
-        #             sn_used = False
-        #         except:
-        #             print("Warning: Using older PLP versions of .spec_a0v.fits files which have no variance saved.  Will grab .variance.fits file.")
-        #     elif (("spec.fits" in file) or ("spec_flattened.fits" in file) or ('.spec2d.fits' in file)) and (wavefile is not None):
-        #         lamb = (
-        #             wave_hdus[0].data[order].astype(float) * u.micron
-        #         )  # Note .wave.fits and .wavesol_v1.fts files store their wavelenghts in nm so they need to be converted to microns
-        #         flux = hdus[0].data[order].astype(float) * u.ct
-        #     elif (("spec.fits" in file) or ("spec_flattened.fits" in file)) and (wavefile is None):
-        #         raise Exception(
-        #             "wavefile must be specified when passing in spec.fits files, which do not come with an in-built wavelength solution."
-        #         )
-        #     else:
-        #         raise Exception(
-        #             "File "
-        #             + file
-        #             + " is the wrong file type.  It must be either .spec_a0v.fits or .spec.fits."
-        #         )
-        #     meta_dict = {
-        #         "x_values": np.arange(0, 2048, 1, dtype=int),
-        #         "m": grating_order,
-        #         "header": hdr,
-        #     }
-        #     if uncertainty_hdus is not None or ("rtell" in file):
-        #         if not sn_used: #If .variance.fits used
-        #             variance = uncertainty_hdus[0].data[order].astype(np.float64)
-        #             stddev = np.sqrt(variance)
-        #             if ("rtell" in file): #If using a rtell or spec_a0v file with a variance file, scale the stddev to preserve signal-to-noise
-        #                 unprocessed_flux = hdus["TGT_SPEC"].data[order].astype(np.float64)
-        #                 stddev *= (flux.value / unprocessed_flux)
-        #         else: #Else if .sn.fits (or SNR HDU in rtell file) used
-        #             if not "rtell" in file:
-        #                 sn = uncertainty_hdus[0].data[order].astype(np.float64)
-        #             dw = np.gradient(lamb) #Divide out stuff the IGRINS PLP did to calculate the uncertainty per resolution element to get the uncertainty per pixel
-        #             pixel_per_res_element = (lamb/40000.)/dw
-        #             sn_per_pixel =  sn / np.sqrt(pixel_per_res_element)
-        #             stddev = flux.value / sn_per_pixel.value
-        #         uncertainty = StdDevUncertainty(np.abs(stddev))
-        #         mask = np.isnan(flux) | np.isnan(uncertainty.array)
-        #     else:
-        #         mask = np.isnan(flux)
-
-        #     super().__init__(
-        #         spectral_axis=lamb.to(u.Angstrom),
-        #         flux=flux,
-        #         mask=mask,
-        #         wcs=None,
-        #         uncertainty=uncertainty,
-        #         meta=meta_dict,
-        #         **kwargs,
-        #     )
-        # else:
-        #     super().__init__(*args, **kwargs)
-        #     # if not ("header" in self.meta.keys()):
-        #     #     log.warn(
-        #     #         "The spectrum metadata appears to be missing.  "
-        #     #         "The functionality of muler may be impaired without metadata.  "
-        #     #         "See discussion at https://github.com/OttoStruve/muler/issues/79."
-        #     #     )
 
     @property
     def site_name(self):
@@ -609,29 +365,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             wave_hdus = fits.open(wavefile)
             wave_hdu = wave_hdus[0]
         cached_hdus = [flux_hdu, variance_hdu, wave_hdu] #Set up hdus in the cached_hdus list
-        # sn_used = False #Default
-        # hdus = fits.open(file, memmap=False)
-
-        # #hdus["SPEC_DIVIDE_A0V_VARIANCE"] 
-        # if "SPEC_DIVIDE_A0V_VARIANCE" in hdus:
-        #     cached_hdus = [hdus, [hdus["SPEC_DIVIDE_A0V_VARIANCE"]]] 
-        # elif "rtell" not in file: #Default, if no rtell file is used
-        #     uncertainty_filepath = getUncertaintyFilepath(file)
-        #     uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)    
-        #     cached_hdus = [hdus, uncertainty_hdus]   
-        #     if '.sn.fits' in uncertainty_filepath:
-        #         sn_used = True     
-        # else: #If rtell file is used
-        #     cached_hdus = [hdus]
-        #     sn_used = True
-        # if wavefile is not None:
-        #     if os.path.exists(wavefile): #Check if user provided path to wavefile exists
-        #         wave_hdus = fits.open(wavefile, memmap=False)
-        #     else: #If not, check file name inside directory from file
-        #         base_path = os.path.dirname(file)
-        #         full_path = base_path + '/' + os.path.basename(wavefile)
-        #         wave_hdus = fits.open(full_path, memmap=False)
-        #     cached_hdus.append(wave_hdus)
         hdus0_shape = cached_hdus[0].data.shape #Normally we read from the 0th extension
         if len(hdus0_shape) == 2: #1D spectrum
             n_orders, n_pix = hdus0_shape
@@ -669,18 +402,19 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             Estimate of the guiding error in arcsec.  This smears out the PSF fits in the East-West direction.
             This should be used carefully and only for telescopes on equitorial mounts.
         col1: int
-            [[STUFF GOES HERE]]
+            Left limit of detector column to collapse to estimate PSF along slit.
         col2: int
-            [[STUFF GOES HERE]]
+            Right limit of detector column to collapse to estimate PSF along slit.
         wave_min: float
-            [[STUFF GOES HERE]]
+            Lower limit on wavelength range for orders for the estimate.
         wave_max: float
-            [[STUFF GOES HERE]]
+            Upper limit on wavelnegth range for orders used for the estimate.
         plot: bool
             Visualize slit throughput calculations.
         plot_order: int
-            ppSTUFF GOES HERE]]
-
+            Make diagnostic plot of this order specific order showing the fit.
+        pdfobj: 
+            PdfPages object can be provided for saving diagnostic plots.
         Returns
         -------
         m, b:
@@ -688,15 +422,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             wavelength units in microns.
 
         """
-        # if ".spec_a0v.fits" in self.file: #Grab base file name for the uncertainty file
-        #     path_base = self.file[:-14]
-        # elif ".spec_flattened.fits" in self.file:
-        #     path_base = self.file[:-20]
-        # elif ".spec.fits" in self.file:
-        #     path_base = self.file[:-10]
-        # elif ".spec2d.fits" in self.file:
-        #     path_base = self.file[:-12]
-        path_base = filepath.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','')
+        path_base = filepath.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
         path_H = path_base.replace('SDCK', 'SDCH') + '.spec2d.fits'
         path_K = path_base.replace('SDCH', 'SDCK') + '.spec2d.fits'
 
@@ -781,6 +507,29 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
         return f_throughput
     def fitTellurics(self, verbose=True, plot=False):
+        """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
+        This is meant to be carried out on standard stars to remove tellurics before fitting
+        stellar atmosphere models.  The molecule CO2, H2O, CH4, and NO2 abundances are iteratively
+        fit to the spectrum over the center of the K-band.  This fit provides enough correction to the
+        telluric lines so the star's spectrum can later be easily smoothed.
+
+        Parameters
+        ----------
+        verbose: bool
+            If True, print various diagnostic information about the fitting in the terminal.
+        plot: bool
+            If True, make diagnostic plots.
+
+        Returns
+        -------
+        final_trans: numpy array
+            Stores the estimated transmission from the atmosphere based on the best fit parameters.
+            Dividing a spectrum by final_trans will apply a crude telluric correction.
+            Rows the corrispond to orders and columns that corrispond to the detector x position
+            
+
+        """
+
 
         #Read in model tellurics from the Planetary Spectrum Generator
         psg_tellurics_file = files(templates).joinpath("psg_trn_r100000_1.4_2.5_um.txt")
