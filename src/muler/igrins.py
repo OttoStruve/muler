@@ -182,14 +182,6 @@ def getUncertaintyFilepath(filepath):
         Returns the file path to the uncertianity (.variance.fits or .sn.fits) file.
 
     """
-    # if ".spec_a0v.fits" in filepath: #Grab base file name for the uncertainty file
-    #     path_base = filepath[:-14]
-    # elif ".spec_flattened.fits" in filepath:
-    #     path_base = filepath[:-20]
-    # elif ".spec.fits" in filepath:
-    #     path_base = filepath[:-10]
-    # elif ".spec2d.fits" in filepath:
-    #     path_base = filepath[:-12]
     path_base = filepath.replace('".spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
     if ".spec2d.fits" in filepath:
         if os.path.exists(path_base + '.var2d.fits'):
@@ -420,7 +412,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             wavelength units in microns.
 
         """
-        path_base = filepath.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
+        path_base = self.file.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
         path_H = path_base.replace('SDCK', 'SDCH') + '.spec2d.fits'
         path_K = path_base.replace('SDCH', 'SDCK') + '.spec2d.fits'
 
