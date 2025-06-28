@@ -729,7 +729,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # color_best_fit_teff =  teff[min_chisq][0]
         # color_best_fit_logg = logg[min_chisq][0]
         print('min Teff =', teff[min_chisq][0])
-        # print('min log(g) =', logg[min_chisq][0])        br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
+        # print('min log(g) =', logg[min_chisq][0])        
+        br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br10_spec = isolate_and_normalize_hi_order(i=br10_order, x1=br10_x1, x2=br10_x2, specobj=copy.deepcopy(self)/total_trans, mask=True)
         br10_mask =  binary_dilation((br10_spec.flux.value / convolve(br10_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
