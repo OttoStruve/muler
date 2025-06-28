@@ -3,11 +3,11 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.13
   - numpy
   - scipy
   - matplotlib
-  - astropy=5.2
+  - astropy
   - astroquery
   - tqdm
   - gwcs
@@ -35,6 +35,7 @@ dependencies:
   - pip:
       - sphinx-material
       - celerite2
-      - specutils==1.9.1
+      - specutils
       - tynt
+      - gollum
 

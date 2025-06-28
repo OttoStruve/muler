@@ -24,7 +24,6 @@ from astropy.stats import sigma_clip
 from astropy.modeling import models, fitting
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
-from astropy.nddata.nduncertainty import MissingDataAssociationException
 from astroquery.simbad import Simbad
 #Simbad.add_votable_fields('flux(V)', 'flux(B)', 'flux(J)', 'flux(H)', 'flux(K)', 'parallax')
 Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
@@ -52,7 +51,6 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", category=FITSFixedWarning)
 # See Issue: https://github.com/astropy/specutils/issues/800
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-#warnings.filterwarnings("ignore", category=MissingDataAssociationException) #Get rid of those pesky warnings that serve no purpose
 
 
 # Convert PLP index number to echelle order m
@@ -706,9 +704,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         #RUN TELLURIC CORRECTOIN
 
         total_trans = self.fitTellurics(verbose=verbose, plot=plot)
-
-        print('uno')
-
         #Fit standard star spectrum
         #Get initial guess
         best_fit_z = -0.5
@@ -728,9 +723,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         target_H = query_result['H'][0]
         target_K = query_result['K'][0]
 
-
-        print('dos')
-
         #Initial attempt to use colors to constrain stellar parameters
         n = len(teff)
         chisq = np.zeros(n)
@@ -745,18 +737,15 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # color_best_fit_teff =  teff[min_chisq][0]
         # color_best_fit_logg = logg[min_chisq][0]
         print('min Teff =', teff[min_chisq][0])
-        # print('min log(g) =', logg[min_chisq][0])
-        br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=self/total_trans, mask=True) 
+        # print('min log(g) =', logg[min_chisq][0])        br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
-        br10_spec = isolate_and_normalize_hi_order(i=br10_order, x1=br10_x1, x2=br10_x2, specobj=self/total_trans, mask=True)
+        br10_spec = isolate_and_normalize_hi_order(i=br10_order, x1=br10_x1, x2=br10_x2, specobj=copy.deepcopy(self)/total_trans, mask=True)
         br10_mask =  binary_dilation((br10_spec.flux.value / convolve(br10_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
-        print('premid')
-        brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=self/total_trans, mask=True) 
+        brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         brgamma_mask =  binary_dilation((brgamma_spec.flux.value / convolve(brgamma_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
         br10_window = (br10_spec.spectral_axis.value > br10_x1) & (br10_spec.spectral_axis.value <= br10_x2)
         brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1) & (brgamma_spec.spectral_axis.value <= brgamma_x2))
-        print('mid')
         g = Gaussian1DKernel(stddev=7.0) #Do a little bit of smoothing of the blaze functions
         br14_spec_smoothed_flux =  convolve(br14_spec.flux.value, g, mask=br14_mask)
         br10_spec_smoothed_flux =  convolve(br10_spec.flux.value, g, mask=br10_mask)
@@ -773,13 +762,10 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         last_best_fit_radial_velocity = 0
         last_best_fit_alpha = 0
 
-        print('tres')
-
-
         #Full grid from gollum
         nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
         grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=logg_range, 
-                           Z_range=z_range, wl_lo=3300, wl_hi= 26000, download=True)
+                           Z_range=z_range, wl_lo=3450, wl_hi= 25500, download=True)
         #Now create a subgrid by averaging between points on the , AKA new_grid
         new_grid = []
         new_grid_logg = []
@@ -816,10 +802,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     new_grid_z.append(z) 
         new_grid_logg = np.array(new_grid_logg)
         new_grid_z = np.array(new_grid_z)
-
-
-        print('cuatro')
-
 
         #Iterate until convergence
         while ((best_fit_teff != last_best_fit_teff) or (best_fit_logg != last_best_fit_logg) or (best_fit_z != last_best_fit_z) or \

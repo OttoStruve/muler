@@ -73,15 +73,15 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     g_large = Gaussian1DKernel(stddev=40.0)
     g = Gaussian1DKernel(stddev=20.0) #Do a little bit of smoothing of the blaze functions
     if mask:
-        left_mask = binary_dilation((specobj[i-1].flux.value / convolve(specobj[i-1], g_large)) < 0.80, iterations=5) #Order to the left
-        left_order = convolve(convolve(specobj[i-1], g_large, mask=left_mask), g, mask=left_mask)
-        right_mask = binary_dilation((specobj[i+1].flux.value / convolve(specobj[i+1], g_large)) < 0.80, iterations=5) #order to the right
-        right_order = convolve(convolve(specobj[i+1], g_large, mask=right_mask),  g, mask=right_mask)
+        left_mask = binary_dilation((specobj[i-1].flux.value / convolve(specobj[i-1].flux.value, g_large)) < 0.80, iterations=5) #Order to the left
+        left_order = convolve(convolve(specobj[i-1].flux.value, g_large, mask=left_mask), g, mask=left_mask)
+        right_mask = binary_dilation((specobj[i+1].flux.value / convolve(specobj[i+1].flux.value, g_large)) < 0.80, iterations=5) #order to the right
+        right_order = convolve(convolve(specobj[i+1].flux.value, g_large, mask=right_mask),  g, mask=right_mask)
     else:
-        left_order = convolve(specobj[i-1], g)
-        right_order = convolve(specobj[i+1], g)
+        left_order = convolve(specobj[i-1].flux.value, g)
+        right_order = convolve(specobj[i+1].flux.value, g)
     cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
-    specresult = edge_normalize(x1=x1, x2=x2, specobj= specobj[i]/cont)
+    specresult = edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
     # ix1 = find_nearest(specobj[i].spectral_axis.value, x1) #Grab points to normalize to
     # ix2 = find_nearest(specobj[i].spectral_axis.value, x2)
     # y1 = specresult.flux[ix1] #Normalize to end points using a linear fit that goes through the edges
