@@ -262,7 +262,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 meta=meta_dict,
                 **kwargs,
             )
-        else if file != '':
+        elif file != '':
             specList = IGRINSSpectrumList(file)
             spec = specList[order]
             super().__init__(
