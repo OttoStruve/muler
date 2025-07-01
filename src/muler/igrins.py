@@ -235,7 +235,7 @@ class IGRINSSpectrum(EchelleSpectrum):
     #     self, *args, file=None, order=10, sn_used = False, cached_hdus=None, wavefile=None, **kwargs
     # ):
     def __init__(
-        self, *args, order=10, band='', cached_hdus=None, **kwargs):
+        self, *args, file='', order=10, band='', cached_hdus=None, **kwargs):
      
         if cached_hdus is not None:
 
@@ -260,6 +260,18 @@ class IGRINSSpectrum(EchelleSpectrum):
                 wcs=None,
                 uncertainty=uncertainty,
                 meta=meta_dict,
+                **kwargs,
+            )
+        else if file != '':
+            specList = IGRINSSpectrumList(file)
+            spec = specList[order]
+            super().__init__(
+                spectral_axis=spec.spectral_axis,
+                flux=spec.flux,
+                mask=spec.mask,
+                wcs=None,
+                uncertainty=spec.uncertainty,
+                meta=spec.meta,
                 **kwargs,
             )
         else:
@@ -360,6 +372,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             n_orders, n_pix = hdus0_shape
         elif len(hdus0_shape) == 3: #2D spectrum
             n_orders, n_height, n_pix = hdus0_shape
+        
         list_out = []
 
         if ("SDCH" in file) or ("_H." in file):
