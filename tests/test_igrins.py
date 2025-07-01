@@ -2,7 +2,7 @@
 import astropy
 import pytest
 import time
-from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList
+from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList, readIGRINS
 from specutils import Spectrum1D
 
 # from astropy.nddata.nduncertainty import StdDevUncertainty
