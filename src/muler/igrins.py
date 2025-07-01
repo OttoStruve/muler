@@ -235,7 +235,7 @@ class IGRINSSpectrum(EchelleSpectrum):
     #     self, *args, file=None, order=10, sn_used = False, cached_hdus=None, wavefile=None, **kwargs
     # ):
     def __init__(
-        self, *args, file='', order=10, band='', cached_hdus=None, **kwargs):
+        self, *args, file='', wavefile=None, order=10, band='', cached_hdus=None, **kwargs):
      
         if cached_hdus is not None:
 
@@ -263,7 +263,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 **kwargs,
             )
         elif file != '':
-            specList = IGRINSSpectrumList.read(file)
+            specList = IGRINSSpectrumList.read(file, wavefile=wavefile)
             spec = specList[order]
             super().__init__(
                 spectral_axis=spec.spectral_axis,
