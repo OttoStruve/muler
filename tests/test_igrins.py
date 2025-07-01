@@ -20,7 +20,8 @@ file_2 = local_files_2[0]
 def test_basic():
     """Do the basic methods work?"""
 
-    spec = IGRINSSpectrum(file=file, order=10)
+    #spec = IGRINSSpectrum(file=file, order=10)
+    spec = readIGRINS(file)[10]
 
     assert spec is not None
     assert isinstance(spec, Spectrum1D)
@@ -76,7 +77,8 @@ def test_basic():
 def test_normalize():
     """Do the basic methods work?"""
 
-    spec = IGRINSSpectrum(file=file, order=10)
+    #spec = IGRINSSpectrum(file=file, order=10)
+    spec = readIGRINS(file)[10]
 
     new = spec.normalize(normalize_by="median")
 
@@ -123,7 +125,8 @@ def test_normalize():
 def test_uncertainty_spec_a0v():
     """Does uncertainty propagation work?"""
 
-    spec = IGRINSSpectrum(file=file, order=10)
+    #spec = IGRINSSpectrum(file=file, order=10)
+    spec = readIGRINS(file)[10]
 
     assert spec.uncertainty is not None
     assert hasattr(spec.uncertainty, "array")
@@ -157,13 +160,15 @@ def test_uncertainty_spec_a0v():
 def test_uncertainty_spec_fits():
     """Does uncertainty propagation work?"""
 
-spec = IGRINSSpectrum(file=file, order=10)
+#spec = IGRINSSpectrum(file=file, order=10)
+spec = readIGRINS(file)[10]
 
 
 def test_equivalent_width():
     """Can we measure equivalent widths?"""
 
-    spec = IGRINSSpectrum(file=file)
+    #spec = IGRINSSpectrum(file=file)
+    spec = readIGRINS(file)[10]
     mu = np.median(spec.wavelength.value)
     equivalent_width = spec.measure_ew(mu)
 
@@ -176,7 +181,8 @@ def test_equivalent_width():
 
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
-    spec = IGRINSSpectrum(file=file)
+    #spec = IGRINSSpectrum(file=file)
+    spec = readIGRINS(file)[10]
     new_spec = spec.remove_nans().remove_outliers(threshold=3)
 
     assert len(new_spec.flux) > 0
@@ -201,7 +207,8 @@ def test_sorting():
 def test_RV():
     """Does RV shifting work"""
 
-    spec = IGRINSSpectrum(file=file)
+    #spec = IGRINSSpectrum(file=file)
+    spec = readIGRINS(file)[10]
 
     assert spec.uncertainty is not None
     assert hasattr(spec, "barycentric_correct")
@@ -221,7 +228,8 @@ def test_RV():
 def test_deblaze():
     """Does uncertainty propagation work?"""
 
-    spec = IGRINSSpectrum(file=file)
+    #spec = IGRINSSpectrum(file=file)
+    spec = readIGRINS(file)[10]
 
     new_spec = spec.remove_nans().deblaze()
 
