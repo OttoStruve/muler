@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
+      #matrix:
         #python-version: [3.9]
         #specutils-version: [1.5, 1.9.1]
         #astropy-version: [5.2]
