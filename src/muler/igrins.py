@@ -263,7 +263,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 **kwargs,
             )
         elif file != '':
-            specList = IGRINSSpectrumList(file)
+            specList = IGRINSSpectrumList.read(file)
             spec = specList[order]
             super().__init__(
                 spectral_axis=spec.spectral_axis,
