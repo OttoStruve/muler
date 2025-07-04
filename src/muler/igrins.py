@@ -72,7 +72,7 @@ def readIGRINS(spec_filepath, wave_filepath=''):
         Path to a single spec.fits or spec2d.fits file
         (e.g. "/Path/to/IGRINS/data/SDCH_20220521_0064.spec.fits")
     wave_filepath: string (optional)
-         Path to a single wavelength solution file (.wvlsol_v1.fits)
+        Path to a single wavelength solution file (.wvlsol_v1.fits)
         (e.g. "/Path/to/IGRINS/data/SKY_SDCH_20220521_0055.wvlsol_v1.fits")
         The default behavior is to use the wavelength solution stored in the .spec.fits .spec2d.fits or .spec_a0v.fits
         but the user can provide their own wavelength solution here
@@ -682,6 +682,48 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         return final_trans
     def fitStandardStar(self, name, plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
             alpha_range=(0.8,1.5), rotational_broadening_range=(10, 150), radial_velocity_range=(-100, 100)):
+        """
+        Automated routine to fit a Phoenix model synthetic spectrum (Husser et al. 2013) to an A0V or similar standard star. 
+        A grid of Phoenix models is constructed using the software gollum, and a subgrid is created to further refine fitting
+        the stellar parameters.
+        Temperature is fit from photometry queried from Simbad.  Log(g), Z, rotational velocity, and radial velocity fit to
+        H I Br-14 and Br-gamma line profiles which are smoothed after a crude telluric correction using  is applied.
+
+        Parameters
+        ----------        
+        name: string
+            Simbad searchable name of the standard star. Used to query Simbad for the star's photometry to fit Teff.
+        plot: bool
+            Generate diagnostic plots.  Default is False.
+        verbose: bool
+            Print diagnostic information of the fitting process to the terminal.  Default is True.
+        max_iterations: int
+            Maximum number of iterations done to fit logg, Z, roational velocity, and radial velocity to the HI Br-14 and Br-gamma
+            line profiles.  If two iterations gives the same result, the code will know the fits have converged and stop.  This is
+            the upper-limit on the number of iterations in the chance the fits bounce between two intermediate values.  Default is 10.
+        logg_range: tuple of floats
+            Minimum and maximum values of logg parameter space to search for in the Phoenix models.  Needs to be multiples of 0.5.
+        z_range: tuple of flaots
+            Minimum and maximum values of Z (metallicity) parameter space to search for in the Phoenix models.  Needs to be multiples of 0.5.
+        alpha_range: tuple of floats
+            Minimum and maximum values for alpha, a fudge factor for depth of the H I lines.  Modify only if you know what you are doing.
+        rotational_broadening_range: tuple of floats
+            Minimum and maximum values for the star's rotational broadening of the H I lines in km/s to search parameter space for.  
+            Should be in multiple of 5 km/s.
+        radial_velocity_range: tuple of floats
+            Minimum and maximum values for star's radial velocity in km/s to search parameter space for.
+            Should be in multiple of 5 km/s.
+
+        Returns
+        -------
+        model_spec:
+            Gollum object storing best fit Phoenix model.  This model can be converted to the same wavelength grid as an IGRINS spectrum
+            using muler.utilities.resample_list(igrins_spectrum, model_spec).
+        resampled_model_spec:
+            IGRINSSpectrumList object resampled to match the pixels and wavelengths of this spectrum.
+
+        """
+
         g_large = Gaussian1DKernel(stddev=40.0)
         br14_x1 = 15838
         br14_x2 = 15950
@@ -1033,7 +1075,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             #plt.xlim([22000,24000])
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
-        return model_spec
-        #return resample_list(model_spec, self)
+        return model_spec, resample_list(model_spec, self)
 
 
