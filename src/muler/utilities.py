@@ -55,7 +55,11 @@ def find_nearest(array, value): #
 
 
 
-def edge_normalize(x1, x2, specobj, window=20):  #Draw a line between the fluxes at points x1 and x2 and normalize to that line 
+def edge_normalize(x1, x2, specobj, window=20): 
+    """
+    Draw a line between the fluxes at points x1 and x2 and normalize to that line.
+    Used for crude continuum normalization to isolate H I line profiles in a standard star spectrum.
+    """
     half_window = round(window / 2)
     x = specobj.spectral_axis.value
     ix1 = find_nearest(x, x1) #Grab points to normalize to
@@ -70,6 +74,9 @@ def edge_normalize(x1, x2, specobj, window=20):  #Draw a line between the fluxes
     
 
 def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
+    """
+    Function to aid in isolating and continuum normalizing H I line profiles in a standard star spectrum.
+    """
     g_large = Gaussian1DKernel(stddev=40.0)
     g = Gaussian1DKernel(stddev=20.0) #Do a little bit of smoothing of the blaze functions
     if mask:
@@ -408,7 +415,7 @@ def is_list(check_this):
     return isinstance(check_this, list) or ((type(check_this) is np.ndarray) and (len(np.shape(check_this)) > 1))
 
 class Slit:
-    def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000):
+    def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000, name=''):
         """
         A  class to handle information about a spectrometer's slit, used for calculating things like slit losses
 
@@ -425,6 +432,8 @@ class Slit:
             This should be used carefully and only for telescopes on equitorial mounts.
         n_axis: float
             Size of axis for a 2D square array storing estimated profiles along the slit in 2D for later masking
+        name: str
+            Name of target.  Used in plots.
 
         """
         self.length = length
@@ -444,7 +453,8 @@ class Slit:
         half_length = 0.5 * self.length
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
-    def ABBA(self, y, x=None, print_info=True, plot=False, pdfobj=None):
+        self.name = name #For plot titles to differentiate targets
+    def ABBA(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
         ABBA along the slit, generate an estimate of A and B nods' 2D PSFs.
@@ -483,13 +493,16 @@ class Slit:
         gg_fit = fitter(gg_init, x, y)
         if plot:
             plt.figure()
-            plt.plot(x, y, '.', label='Std Star Data')
+            plt.plot(x, y, '.', label='Star Data')
             plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
             plt.plot(x, y-gg_fit(x), label='Residuals')
             plt.xlabel('Distance along slit (arcsec)')
             plt.ylabel('Flux')
             plt.legend()
-            plt.show()
+            if plot_title != '':
+                plt.suptitle(plot_title)
+            if self.name != '':
+                plt.title(self.name)
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
         if print_info:
@@ -569,8 +582,8 @@ class Slit:
         # plt.plot(slit_ouline_x, slit_ouline_y, color='White', linewidth=3.0)
         numerical_mask = np.ones(np.shape(self.mask))
         plt.contour(self.mask, levels=[0.0,0.5, 1.0], colors='white', linewidths=2)
-        plt.show()
-
+        if self.name != '':
+            plt.title(self.name)
 
 class absoluteFluxCalibration:
     def __init__(self, std_spec, synth_spec):

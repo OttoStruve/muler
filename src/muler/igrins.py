@@ -13,7 +13,7 @@ import warnings
 import json
 from matplotlib import pyplot as plt
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
-from muler.utilities import Slit, concatenate_orders, resample_list, roll_along_axis, edge_normalize, isolate_and_normalize_hi_order, round_to_multiple
+from muler.utilities import Slit, concatenate_orders, resample_list, roll_along_axis, edge_normalize, isolate_and_normalize_hi_order, round_to_multiple, Photometry
 from astropy.time import Time
 import numpy as np
 import astropy
@@ -391,7 +391,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
 
     def getSlitThroughput(self, slit_length=14.8, PA=90, guiding_error=1.5, col1=1200, col2=1300, wave_min=1.4, wave_max = 2.6,
-        plot=False, plot_order=10, pdfobj=None):
+        plot=False, plot_order=10, pdfobj=None, name='', name_prefix=''):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit and return the 
         coefficients of a linear fit.
 
@@ -425,10 +425,18 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             wavelength units in microns.
 
         """
+        if name != '':
+            if name_prefix != '':
+                title_name = name_prefix + ' ' + name
+            else:
+                title_name = name
+        else:
+            title_name = ''
         path_base = self.file.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
-        path_H = path_base.replace('SDCK', 'SDCH') + '.spec2d.fits'
-        path_K = path_base.replace('SDCH', 'SDCK') + '.spec2d.fits'
-
+        filename = path_base.split('/')[-1] #To handle only changing the band in the filename, not any paths
+        filepath = path_base.split(filename)[0]
+        path_H = filepath+filename.replace('SDCK_', 'SDCH_').replace('_K', '_H') + '.spec2d.fits'
+        path_K = filepath+filename.replace('SDCH_', 'SDCK_').replace('_H', '_K') + '.spec2d.fits'
         if os.path.exists(path_H): #Check if 2D spectrum in a .spec2d.fits file exists
             spec2d_H = fits.getdata(path_H)[::-1,:] #Read in spec2d.fits file if it exists
         else: #If file does not exist, raise exception
@@ -451,7 +459,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             spec2d_list.append(spec2d_H[order])
         for order in range(len(spec2d_K)):    #Combine both bands into a python list
             spec2d_list.append(spec2d_K[order])
-        igrins_slit = Slit(length=slit_length, width=slit_length*(1/14.8), PA=PA, guiding_error=guiding_error, n_axis=2500) #Initialize Slit object    
+        igrins_slit = Slit(length=slit_length, width=slit_length*(1/14.8), PA=PA, guiding_error=guiding_error, n_axis=2500, name=title_name) #Initialize Slit object    
         n_orders = len(spec2d_list) #Count number of orders in the combined bands
         f_through_slit = np.zeros(n_orders)   #Store the slit throughput and associated wavelengths in arrays, where each entry is each order
         wave = np.zeros(n_orders)
@@ -462,9 +470,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             y[np.isnan(y)] = 0. #Zero out nans
             igrins_slit.clear()
             if plot and order==plot_order:
-                igrins_slit.ABBA(y, x=x, print_info=True, plot=True, pdfobj=pdfobj)
-                print('2D plot')
+                igrins_slit.ABBA(y, x=x, print_info=True, plot=True, pdfobj=pdfobj, plot_title='Order '+str(plot_order))
                 igrins_slit.plot2d()
+                plt.suptitle('Order '+str(plot_order))
                 if pdfobj is not None: #Save figure to file if PdfPages object is provided
                     pdfobj.savefig()
                 #breakpoint()
@@ -491,6 +499,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.ylim([-0.2, 1.2])
             plt.xlabel('Wavelength (micron)')
             plt.ylabel('Estimated Slit Throughput')
+            if title_name != '':
+                plt.title(title_name)
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
             plt.figure()
@@ -499,6 +509,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.ylim([-0.2, 1.2])
             plt.xlabel('Inverse Wavelength (1/micron)')
             plt.ylabel('Estimated Slit Throughput')
+            if title_name != '':
+                plt.title(title_name)
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
             print('m: ', m)
@@ -509,7 +521,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         for i in range(len(self)):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
         return f_throughput
-    def fitTellurics(self, verbose=True, plot=False):
+    def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
         This is meant to be carried out on standard stars to remove tellurics before fitting
         stellar atmosphere models.  The molecule CO2, H2O, CH4, and NO2 abundances are iteratively
@@ -672,16 +684,74 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 #corrected_flux[order] = flux1d[order] / total_trans[order]
                 corrected_flux[order] = flux1d[order] / final_trans[order]
                 smoothed_corrected_flux[order] = convolve(corrected_flux[order],g, normalize_kernel=False)
-                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], label='A0V spec file', color='silver')
-                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
+                if order == 0:
+                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Telluric Corrected Orders')
+                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Uncorrected Orders')
+                else:
+                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
+                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
                 #plt.plot(wave1d[order][100:1950], smoothed_corrected_flux[order][100:1950], label='Estimated Blaze', color='black')
             max_y = np.nanmax(flux1d)
             plt.ylim([-0.2*max_y, 1.2*max_y])
-            plt.show()
+            plt.xlabel('Wavelength (micron)')
+            plt.ylabel('Counts')
+            plt.legend()
+            if name != '':
+                plt.title(name)
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
+            br14_x1 = 15838 * 1e-4
+            br14_x2 = 15950 * 1e-4
+            br10_x1 = 17300 * 1e-4
+            br10_x2 = 17435 * 1e-4
+            brgamma_x1 = 21605 * 1e-4
+            brgamma_x2 = 21722 * 1e-4
+            plt.figure()
+            for order in range(len(wave1d)):
+                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
+                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
+            plt.ylim([-0.2*max_y, 1.2*max_y])
+            plt.xlim([br14_x1-0.0050, br14_x2+0.0050])
+            plt.xlabel('Wavelength (micron)')
+            plt.ylabel('Counts')
+            if name != '':
+                plt.title(name+'    Telluric Correction Br-14')
+            else:
+                plt.title('Telluric Correction Br-14')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
+            plt.figure()
+            for order in range(len(wave1d)):
+                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
+                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
+            plt.ylim([-0.2*max_y, 1.2*max_y])
+            plt.xlim([br10_x1-0.0050, br10_x2+0.0050])
+            plt.xlabel('Wavelength (micron)')
+            plt.ylabel('Counts')
+            if name != '':
+                plt.title(name+'    Telluric Correction Br-10')
+            else:
+                plt.title('Telluric Correction Br-10')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
+            plt.figure()
+            for order in range(len(wave1d)):
+                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
+                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
+            plt.ylim([-0.2*max_y, 1.2*max_y])
+            plt.xlim([brgamma_x1-0.0050, brgamma_x2+0.0050])
+            plt.xlabel('Wavelength (micron)')
+            plt.ylabel('Counts')
+            if name != '':
+                plt.title(name+'    Telluric Correction Br-gamma')
+            else:
+                plt.title('Telluric Correction Br-gamma')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             #flattened_std_flux_divided_by_synthetic_model = flux1d / smoothed_corrected_flux   
         return final_trans
     def fitStandardStar(self, name, plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
-            alpha_range=(0.8,1.5), rotational_broadening_range=(10, 150), radial_velocity_range=(-100, 100)):
+            alpha_range=(0.8,1.5), rotational_broadening_range=(10, 150), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix=''):
         """
         Automated routine to fit a Phoenix model synthetic spectrum (Husser et al. 2013) to an A0V or similar standard star. 
         A grid of Phoenix models is constructed using the software gollum, and a subgrid is created to further refine fitting
@@ -693,6 +763,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         ----------        
         name: string
             Simbad searchable name of the standard star. Used to query Simbad for the star's photometry to fit Teff.
+        name_prefix: string
+            Text to put in front of name when making plots.  For examle, to differnetiate between science targets and standard stars.
         plot: bool
             Generate diagnostic plots.  Default is False.
         verbose: bool
@@ -749,8 +821,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
 
         #RUN TELLURIC CORRECTOIN
-
-        total_trans = self.fitTellurics(verbose=verbose, plot=plot)
+        if name_prefix != '':
+            plot_title = name_prefix+' '+name
+        else:
+            plot_title = name
+        total_trans = self.fitTellurics(verbose=verbose, plot=plot, name=plot_title, pdfobj=pdfobj)
         #Fit standard star spectrum
         #Get initial guess
         best_fit_z = -0.5
@@ -769,6 +844,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         target_J = query_result['J'][0]
         target_H = query_result['H'][0]
         target_K = query_result['K'][0]
+
 
         #Initial attempt to use colors to constrain stellar parameters
         n = len(teff)
@@ -1006,7 +1082,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.legend()
             plt.xlabel('Wavelength (Ang.)')
             plt.ylabel('Normalized Flux')
-            plt.title('Br-14')
+            plt.title(plot_title + '       Continuum normalized Br-14')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             #Br-gamma
             #Br-10
             br10_synth = edge_normalize(x1=br10_x1, x2=br10_x2, specobj=model_spec.resample(br10_spec))
@@ -1019,7 +1097,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.legend()
             plt.xlabel('Wavelength (Ang.)')
             plt.ylabel('Normalized Flux')
-            plt.title('Br-10')
+            plt.title(plot_title + '       Continuum normalized Br-10')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             #Br-gamma
             brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=model_spec.resample(brgamma_spec))
             plt.figure()
@@ -1031,23 +1111,40 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.legend()
             plt.xlabel('Wavelength (Ang.)')
             plt.ylabel('Normalized Flux')
-            plt.title('Br-gamma')
+            plt.title(plot_title + '       Continuum normalized Br-gamma')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             #Plot the non-blaze corrected or normalized spectrum
             plt.figure()
             resampled_model_spec = (model_spec.resample(self[br14_order])).normalize()
             plt.plot(self[br14_order].spectral_axis, self[br14_order].flux, label = 'Uncorrected spectrum')
             plt.plot(self[br14_order].spectral_axis, self[br14_order].flux.value/(resampled_model_spec.flux.value**best_fit_alpha), label = 'Corrected spectrum')
             plt.xlim([br14_x1-50, br14_x2+50])
+            plt.xlabel('Wavelength (Ang.)')
+            plt.ylabel('Counts')
+            plt.title(plot_title + '       Unnormalized Br-gamma')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             resampled_model_spec = model_spec.resample(self[br10_order]).normalize()
             plt.figure()
             plt.plot(self[br10_order].spectral_axis, self[br10_order].flux, label = 'Uncorrected spectrum')
             plt.plot(self[br10_order].spectral_axis, self[br10_order].flux.value/(resampled_model_spec.flux.value**best_fit_alpha), label = 'Corrected spectrum')
             plt.xlim([br10_x1-50, br10_x2+50])
+            plt.xlabel('Wavelength (Ang.)')
+            plt.ylabel('Counts')
+            plt.title(plot_title + '       Unnormalized Br-10')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             resampled_model_spec = model_spec.resample(self[brgamma_order]).normalize()
             plt.figure()
             plt.plot(self[brgamma_order].spectral_axis, self[brgamma_order].flux, label = 'Uncorrected spectrum')
             plt.plot(self[brgamma_order].spectral_axis, self[brgamma_order].flux.value/(resampled_model_spec.flux.value**best_fit_alpha), label = 'Corrected spectrum')
+            plt.xlabel('Wavelength (Ang.)')
+            plt.ylabel('Counts')
             plt.xlim([brgamma_x1-50, brgamma_x2+50])
+            plt.title(plot_title + '       Unnormalized Br-14')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
             #Plot model fit
             # x = np.array([1.52, 1.6, 1.62487, 1.66142, 1.7, 1.9, 2.0, 2.1, 2.2, 2.25])*1e4 #Coordinates tracing continuum of Vega, taken between H I lines in the model spectrum vegallpr25.50000resam5
             # #y = array([2493670., 1950210., 1584670., 1512410., 1406170. , 1293900., 854857., 706839., 589023., 494054., 417965., 356822., 306391.]) * scale_vega_flux * 1e3
@@ -1073,6 +1170,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             scaled_model_flux = ((model_spec.flux.value / cont)**(best_fit_alpha))*cont
             plt.plot(x, scaled_model_flux, color='red')
             #plt.xlim([22000,24000])
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
         return model_spec, resample_list(model_spec, self)
