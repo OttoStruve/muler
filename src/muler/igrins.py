@@ -13,7 +13,7 @@ import warnings
 import json
 from matplotlib import pyplot as plt
 from muler.echelle import EchelleSpectrum, EchelleSpectrumList
-from muler.utilities import Slit, concatenate_orders, resample_list, roll_along_axis, edge_normalize, isolate_and_normalize_hi_order, round_to_multiple, Photometry
+from muler.utilities import Slit, concatenate_orders, resample_list, roll_along_axis, edge_normalize, isolate_and_normalize_hi_order, round_to_multiple, photometry
 from astropy.time import Time
 import numpy as np
 import astropy
