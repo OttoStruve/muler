@@ -353,9 +353,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)
                 variance_hdu = uncertainty_hdus[0]
             elif (".spec_a0v.fits" in file): #For .spec_a0v.fits files
-                flux_hdu = hdus[0]
-                variance_hdu = hdus[1]
-                wave_hdu = hdus[2]
+                flux_hdu = hdus[1]
+                variance_hdu = hdus[2]
+                wave_hdu = hdus[3]
             if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
                 wave_hdus = fits.open(wavefile)
                 wave_hdu = wave_hdus[0]
@@ -838,22 +838,28 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         teff, logg, z, B_minus_V, J_minus_V, H_minus_V, K_minus_V = np.loadtxt(color_grid_file, delimiter=',')
         #subgrid_teff, subgrid_logg, subgrid_z, subgrid_B_minus_V, subgrid_J_minus_V, subgrid_H_minus_V, subgrid_K_minus_V =  np.loadtxt('color_grid_sub.csv', delimiter=',')
         # Grab colors of a target from simbad
-        query_result = Simbad.query_object(name)
-        target_B = query_result['B'][0] 
-        target_V = query_result['V'][0]
-        target_J = query_result['J'][0]
-        target_H = query_result['H'][0]
-        target_K = query_result['K'][0]
+        std_phot = photometry()
+        std_phot.get_simbad_photometry(name)
+        # query_result = Simbad.query_object(name)
+        # target_B = query_result['B'][0] 
+        # target_V = query_result['V'][0]
+        # target_J = query_result['J'][0]
+        # target_H = query_result['H'][0]
+        # target_K = query_result['K'][0]
 
 
         #Initial attempt to use colors to constrain stellar parameters
         n = len(teff)
         chisq = np.zeros(n)
         for i in range(n):
-            chisq[i] = (target_B - (B_minus_V[i]+target_V))**2 + \
-                        (target_J - (J_minus_V[i]+target_V))**2 + \
-                        (target_H - (H_minus_V[i]+target_V))**2 +  \
-                        (target_K - (K_minus_V[i]+target_V))**2
+            chisq[i] = (std_phot.B - (B_minus_V[i]+std_phot.V))**2 + \
+                        (std_phot.J - (J_minus_V[i]+std_phot.V))**2 + \
+                        (std_phot.H - (H_minus_V[i]+std_phot.V))**2 +  \
+                        (std_phot.K - (K_minus_V[i]+std_phot.V))**2            
+            # chisq[i] = (target_B - (B_minus_V[i]+target_V))**2 + \
+            #             (target_J - (J_minus_V[i]+target_V))**2 + \
+            #             (target_H - (H_minus_V[i]+target_V))**2 +  \
+            #             (target_K - (K_minus_V[i]+target_V))**2
         # min_chisq = chisq == np.nanmin(chisq[logg==4.5])
         min_chisq = chisq == np.nanmin(chisq[(logg==best_fit_logg) & (z==best_fit_z)])
         best_fit_teff = teff[min_chisq][0]
@@ -1174,6 +1180,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 pdfobj.savefig()
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
-        return model_spec, resample_list(model_spec, self)
+        model_spec = std_phot.scale_to_v(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
+        return model_spec, resample_list(model_spec, self), std_phot
 
 
