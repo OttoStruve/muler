@@ -1085,9 +1085,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(spec_out)):
             if other_is_list:
-                spec_out[i] = spec_out[i] + other[i]
+                spec_out[i] = self[i].__class__(spec_out[i] + other[i])
             else:
-                spec_out[i] = spec_out[i] + other
+                spec_out[i] = self[i].__class__(spec_out[i] + other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1098,9 +1098,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] - other[i]
+                spec_out[i] = self[i].__class__(self[i] - other[i])
             else:
-                spec_out[i] = self[i] - other
+                spec_out[i] = self[i].__class__(self[i] - other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1111,9 +1111,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] * other[i]
+                spec_out[i] = self[i].__class__(self[i] * other[i])
             else:
-                spec_out[i] = self[i] * other
+                spec_out[i] = self[i].__class__(self[i] * other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1124,9 +1124,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] / other[i]
+                spec_out[i] = self[i].__class__(self[i] / other[i])
             else:
-                spec_out[i] = self[i] / other
+                spec_out[i] = self[i].__class__(self[i] / other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1145,7 +1145,7 @@ class EchelleSpectrumList(SpectrumList):
         """
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
-            spec_out[i] = self[i]**power
+            spec_out[i] = self[i].__class__(self[i]**power)
         return spec_out
 
     def sort(self):
