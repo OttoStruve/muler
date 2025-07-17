@@ -391,7 +391,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
 
     def getSlitThroughput(self, slit_length=14.8, PA=90, guiding_error=1.5, col1=1200, col2=1300, wave_min=1.4, wave_max = 2.6,
-        plot=False, plot_order=10, pdfobj=None, name='', name_prefix=''):
+        plot=False, plot_order=10, pdfobj=None, name='', name_prefix='', nod_off_slit=False):
         """Estimate the wavelength dependent fractional slit throughput for a point source nodded ABBA on the IGRINS slit and return the 
         coefficients of a linear fit.
 
@@ -418,6 +418,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             Make diagnostic plot of this order specific order showing the fit.
         pdfobj: 
             PdfPages object can be provided for saving diagnostic plots.
+        nod_off_slit: bool
+            True if target was nodded off slit (nod to sky).  Default is False for on-slit nodding (e.g., ABBA).
+            This is important to set for off-slit nodding because the code will fit one PSF instead of two.
         Returns
         -------
         m, b:
@@ -470,14 +473,20 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             y[np.isnan(y)] = 0. #Zero out nans
             igrins_slit.clear()
             if plot and order==plot_order:
-                igrins_slit.ABBA(y, x=x, print_info=True, plot=True, pdfobj=pdfobj, plot_title='Order '+str(plot_order))
+                if nod_off_slit:
+                    igrins_slit.ONOFF(y, x=x, print_info=True, plot=True, pdfobj=pdfobj, plot_title='Order '+str(plot_order))
+                else: #nod-on-slit
+                    igrins_slit.ABBA(y, x=x, print_info=True, plot=True, pdfobj=pdfobj, plot_title='Order '+str(plot_order))
                 igrins_slit.plot2d()
                 plt.suptitle('Order '+str(plot_order))
                 if pdfobj is not None: #Save figure to file if PdfPages object is provided
                     pdfobj.savefig()
                 #breakpoint()
             else:
-                igrins_slit.ABBA(y, x=x, print_info=False, plot=False)
+                if nod_off_slit:
+                    igrins_slit.ONOFF(y, x=x, print_info=False, plot=False)
+                else: #nod-on-slit
+                    igrins_slit.ABBA(y, x=x, print_info=False, plot=False)
             f_through_slit[order] = igrins_slit.estimate_slit_throughput()
             wave[order] = np.nanmedian(self[order].wavelength.um[col1:col2])
         good_orders = np.isfinite(f_through_slit)  #mask out nans
@@ -520,6 +529,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         f_throughput = [] #Calculate and return throughput as a function of all wavelengths (columns) based on the fit above
         for i in range(len(self)):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
+
+
         return f_throughput
     def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
@@ -1181,6 +1192,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
         model_spec = std_phot.scale_to_v(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
+        #model_spec = std_phot.scale_to_k(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
         return model_spec, resample_list(model_spec, self), std_phot
 
 

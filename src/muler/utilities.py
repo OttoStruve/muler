@@ -12,6 +12,8 @@ from specutils.manipulation import LinearInterpolatedResampler
 from matplotlib import pyplot as plt
 from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.ndimage import binary_dilation
+from astroquery.simbad import Simbad
+Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 
@@ -530,6 +532,57 @@ class Slit:
         #     g1_fit.y_0 -= (1/(n-1))*diff_y0
         #     g2_fit.y_0 -= (1/(n-1))*diff_y0
         self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+    def ONOFF(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
+        """
+        Given a collapsed spatial profile long slit for a point (stellar) source nodded off slit
+        (ONOFF), generate an estimate of the single 2D PSF.
+        The ON nod is fit with Moffat functions which is then projected from 1D to 2D and then
+        a mask is applied representing the slit and the the fraction of light in the PSF inside the mask
+        are integrated to estimate the fraction of light that passes through the slit.
+
+        Parameters 
+        ----------
+        y: numpy array of floats
+            Array representing the spatial profile of the source on the slit.  It should be the PSF for
+            a point source nodded ABBA on the slit.
+        x: numpy array of floats (optional)
+            Array representing the spatial position along the slit in pixel space corrisponding to y.
+        print_info: bool
+            Print information about the fit.
+        plot: bool
+            Set to True to plot the 1D profile along the slit, Moffat fits, and residuals
+        """
+        slit_width_to_length_ratio = self.width / self.length
+        if x is None: #Generate equally spaced x array if it is not provided
+            ny = len(y)
+            x = (np.arange(ny) / ny) * self.length
+        #Find maximum 
+        i_max = np.where(y == np.nanmax(y))[0][0]
+        if np.size(i_max) > 1: #Error catch for the rare event when two or more pixels match the max or min y values
+            i_max = i_max[0]
+        #Fit Moffat distribution to the psf
+        g1 = models.Moffat1D(amplitude=y[i_max], x_0=x[i_max], alpha=1.0, gamma=1.0)
+        fitter = fitting.TRFLSQFitter()
+        gg_fit = fitter(g1, x, y)
+        if plot:
+            plt.figure()
+            plt.plot(x, y, '.', label='Star Data')
+            plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
+            plt.plot(x, y-gg_fit(x), label='Residuals')
+            plt.xlabel('Distance along slit (arcsec)')
+            plt.ylabel('Flux')
+            plt.legend()
+            if plot_title != '':
+                plt.suptitle(plot_title)
+            if self.name != '':
+                plt.title(self.name)
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
+        if print_info:
+            print('FWHM A beam:', gg_fit.fwhm)
+        #Numerically estimate light through slit
+        g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit.amplitude), x_0=gg_fit.x_0 - 0.5*self.length, alpha=gg_fit.alpha, gamma=gg_fit.gamma)
+        self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
     def estimate_slit_throughput(self, normalize=True):
         """
         a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
@@ -645,6 +698,11 @@ class photometry:
         # self.tcurve_interp = interp1d(filt.wavelength.to('um'), filt.transmittance, kind='cubic', fill_value=0.0, bounds_error=False) #Create interp obj for the transmission curve
         # self.tcurve_resampled = self.tcurve_interp(self.x)
         #self.vega_V_flambdla_zero_point = 363.1e-7 #Vega flux zero point for V band from Bessell et al. (1998) in erg cm^2 s^-1 um^-1
+        self.B = 0. #Store magnitudes, Johnson B and V bands
+        self.V = 0.
+        self.J = 0. #2NASS J, H, and K bands
+        self.H = 0.
+        self.K = 0.
     def scale(self, synth_spec, band='V', mag=0.0):
         i = self.grab_band_index(band)
         resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
@@ -653,7 +711,9 @@ class photometry:
         # print('self.f0_lambda', self.f0_lambda[i])
         # print('f_lambda', f_lambda)
         # print('magnitude_scale', magnitude_scale)
-        return synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
+        scaled_synth_spec = synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
+        scaled_synth_spec = synth_spec.__class__(scaled_synth_spec) #Force class after band math to be the same as original class
+        return scaled_synth_spec
     def get(self, synth_spec, band='V', resample=True):
         i = self.grab_band_index(band)
         if resample:
@@ -670,9 +730,28 @@ class photometry:
             #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
             print(np.nansum(resampled_tcurve * x * delta_lambda))
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
-        return magnitude
+        return magnitude 
     def grab_band_index(self, band):
         if band == 'K':
             band = 'Ks' #Catch to set K band band name to 'Ks' 
         i = np.where(band == self.bands)[0][0]   
         return i    
+    def get_simbad_photometry(self, name=''): #Grab B, V, J, H, K mags from Simbad
+        query_result = Simbad.query_object(name)
+        self.B = query_result['B'][0] 
+        self.V = query_result['V'][0]
+        self.J = query_result['J'][0]
+        self.H = query_result['H'][0]
+        self.K = query_result['K'][0]       
+    def set_photometry(self, synth_spec): #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
+        self.B = self.get(synth_spec, band='B')
+        self.V = self.get(synth_spec, band='V')
+        self.J = self.get(synth_spec, band='J')
+        self.H = self.get(synth_spec, band='H')
+        self.K = self.get(synth_spec, band='K')
+    def scale_to_v(self, synth_spec): #Convenience function to scale to stored V band (e.g. from simbad)
+        return self.scale(synth_spec, band='V', mag=self.V)
+    def scale_to_k(self, synth_spec):  #Convenience function to scale to stored K band (e.g. from simbad)
+        return self.scale(synth_spec, band='K', mag=self.K)
+        
+
