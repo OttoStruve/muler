@@ -582,7 +582,7 @@ class Slit:
             print('FWHM A beam:', gg_fit.fwhm)
         #Numerically estimate light through slit
         g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit.amplitude), x_0=gg_fit.x_0 - 0.5*self.length, alpha=gg_fit.alpha, gamma=gg_fit.gamma)
-        self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+        self.f2d = np.abs(g1_fit(self.y2d, self.x2d))
     def estimate_slit_throughput(self, normalize=True):
         """
         a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
