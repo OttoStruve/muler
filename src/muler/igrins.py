@@ -1232,9 +1232,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 elif kind.lower == 'var':
                     data_list.append(self[i].uncertainty.array**2)    
         #Reverse the list (to match PLP format), convert to numpy array, and return the result
-        if kind.lower == 'wave':
+        if kind.lower() == 'wave':
             wave_list.reverse()
-            wave_array = np.array(wave_lsit)
+            wave_array = np.array(wave_list)
             return wave_array
         else:
             data_list.reverse()
