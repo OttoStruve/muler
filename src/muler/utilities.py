@@ -730,7 +730,7 @@ class photometry:
             #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
             print(np.nansum(resampled_tcurve * x * delta_lambda))
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
-        if nan_catch and np.isnan(magnitude): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans
+        if nan_catch and np.isnan(magnitude): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans, if a nan is found, return -999 to indicate the result was indefinite
             return -999
         return magnitude 
     def grab_band_index(self, band):
