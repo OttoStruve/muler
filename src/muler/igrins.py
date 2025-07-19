@@ -531,7 +531,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
 
 
-        return f_throughput
+        return f_throughput, m, b
     def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
         This is meant to be carried out on standard stars to remove tellurics before fitting
@@ -1069,6 +1069,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             print('rotational broadening = ', best_fit_rotational_broadening)
             print('radial velocity = ', best_fit_radial_velocity)
             print('alpha = ', best_fit_alpha)
+        result_dict = {} #Store best fit model parameters for passing around
+        result_dict['TEFF'] = best_fit_teff
+        result_dict['LOGG'] = best_fit_logg
+        result_dict['Z'] = best_fit_z
+        result_dict['ROTV'] = best_fit_rotational_broadening
+        result_dict['RADV'] = best_fit_radial_velocity
+        result_dict['ALPHA'] = best_fit_alpha
         #Grab best fit model from grid
         #model_spec = grid[grid.get_index(grid.find_nearest_grid_point(teff=best_fit_teff, logg=best_fit_logg, metallicity=best_fit_z))] \
         #        .rotationally_broaden(best_fit_rotational_broadening)
@@ -1193,6 +1200,49 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
         model_spec = std_phot.scale_to_v(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
         #model_spec = std_phot.scale_to_k(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
-        return model_spec, resample_list(model_spec, self), std_phot
+        return model_spec, resample_list(model_spec, self), std_phot, result_dict
+    def get_plp_array(self, band='H', kind='flux'):
+        """
+        Generate an array  of flux, variance, or wavelength in the format used by the IGRINS and IGRINS-2 PLP.
+        Useful for outputting results to be saved back to a fits file.
+
+        Parameters
+        ----------            
+        band: string
+            Which band to output: 'H' or 'K'.
+        kind: string
+            Output flux, variance, or wavelength: `flux`, `var`, `wave`.
+        
+        Returns
+        ---------
+        data: 2D numpy array
+            2D array representing what would be in an extension of an IGRINS or IGRINS-2 .spec.fits,
+            .variance.fits or .spec_a0v.fits file.
+        """
+        #First put everything only in the specified band into lists
+        wave_list = []
+        data_list = []
+        n_orders = len(self)
+        for i in range(n_orders):
+            wave = self[i].spectral_axis.micron
+            if  (band == 'H') and (wave[0] < 1.84) or (band == 'K' and (wave[0] > 1.84)):
+                wave_list.append(wave)
+                if kind.lower() == 'flux':
+                    data_list.append(self[i].flux.value)
+                elif kind.lower == 'var':
+                    data_list.append(self[i].uncertainty.array**2)    
+        #Reverse the list (to match PLP format), convert to numpy array, and return the result
+        if kind.lower == 'wave':
+            wave_list.reverse()
+            wave_array = np.array(wave_lsit)
+            return wave_array
+        else:
+            data_list.reverse()
+            data_array = np.array(data_list)
+            return data_array
+
+
+
+
 
 
