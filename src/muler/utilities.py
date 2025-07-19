@@ -714,7 +714,7 @@ class photometry:
         scaled_synth_spec = synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
         scaled_synth_spec = synth_spec.__class__(scaled_synth_spec) #Force class after band math to be the same as original class
         return scaled_synth_spec
-    def get(self, synth_spec, band='V', resample=True):
+    def get(self, synth_spec, band='V', resample=True, nan_catch=True):
         i = self.grab_band_index(band)
         if resample:
             resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
@@ -730,6 +730,8 @@ class photometry:
             #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
             print(np.nansum(resampled_tcurve * x * delta_lambda))
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
+        if nan_catch and np.isnan(magnitude): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans
+            return -999
         return magnitude 
     def grab_band_index(self, band):
         if band == 'K':
@@ -743,12 +745,12 @@ class photometry:
         self.J = query_result['J'][0]
         self.H = query_result['H'][0]
         self.K = query_result['K'][0]       
-    def set_photometry(self, synth_spec): #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
-        self.B = self.get(synth_spec, band='B')
-        self.V = self.get(synth_spec, band='V')
-        self.J = self.get(synth_spec, band='J')
-        self.H = self.get(synth_spec, band='H')
-        self.K = self.get(synth_spec, band='K')
+    def set_photometry(self, synth_spec, nan_catch=True): #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
+        self.B = self.get(synth_spec, band='B', nan_catch=nan_catch)
+        self.V = self.get(synth_spec, band='V', nan_catch=nan_catch)
+        self.J = self.get(synth_spec, band='J', nan_catch=nan_catch)
+        self.H = self.get(synth_spec, band='H', nan_catch=nan_catch)
+        self.K = self.get(synth_spec, band='K', nan_catch=nan_catch)
     def scale_to_v(self, synth_spec): #Convenience function to scale to stored V band (e.g. from simbad)
         return self.scale(synth_spec, band='V', mag=self.V)
     def scale_to_k(self, synth_spec):  #Convenience function to scale to stored K band (e.g. from simbad)
