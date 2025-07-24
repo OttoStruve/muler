@@ -761,7 +761,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 pdfobj.savefig()
             #flattened_std_flux_divided_by_synthetic_model = flux1d / smoothed_corrected_flux   
         return final_trans
-    def fitStandardStar(self, name, plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
+    def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
             alpha_range=(0.8,1.5), rotational_broadening_range=(10, 150), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix=''):
         """
         Automated routine to fit a Phoenix model synthetic spectrum (Husser et al. 2013) to an A0V or similar standard star. 
@@ -774,6 +774,10 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         ----------        
         name: string
             Simbad searchable name of the standard star. Used to query Simbad for the star's photometry to fit Teff.
+        coors: string
+            Coordinates of the standard star (usually lifed from the fits header) in RA and Dec as a string. 
+            Usually in decimal degrees but other simbad searchable formats are possible.
+            This is used as a backup for querying simbad for the standard star photometry if the star name doesn't work.
         name_prefix: string
             Text to put in front of name when making plots.  For examle, to differnetiate between science targets and standard stars.
         plot: bool
@@ -850,7 +854,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         #subgrid_teff, subgrid_logg, subgrid_z, subgrid_B_minus_V, subgrid_J_minus_V, subgrid_H_minus_V, subgrid_K_minus_V =  np.loadtxt('color_grid_sub.csv', delimiter=',')
         # Grab colors of a target from simbad
         std_phot = photometry()
-        std_phot.get_simbad_photometry(name)
+        std_phot.get_simbad_photometry(name, coords=coords)
         # query_result = Simbad.query_object(name)
         # target_B = query_result['B'][0] 
         # target_V = query_result['V'][0]
