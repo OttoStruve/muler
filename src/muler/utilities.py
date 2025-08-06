@@ -352,7 +352,7 @@ def apply_numpy_mask(spec, mask):
                 wcs=None,
                 meta=meta_out,
             )
-    else #If nothing is bieng done, just return spec unaltered
+    else: #If nothing is bieng done, just return spec unaltered
         return spec
 
 
