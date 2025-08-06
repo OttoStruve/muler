@@ -457,7 +457,7 @@ class Slit:
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
         self.name = name #For plot titles to differentiate targets
-        
+
     def ABBA(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
@@ -754,7 +754,8 @@ class photometry:
         query_result = Simbad.query_object(name)
         #if the name is not simbad searchable search by coordinates instead
         if len(query_result) == 0: 
-            print(name+' is not Simbad searchable.  Searching using coords: '+coords)
+            #this prints in light pink color to terminal; see: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{13}m{name}'+' is not Simbad searchable.  Searching using coords: '+coords+'\033[0m')
 
             #query_region doesnt work well when the string has coords in HMS format, but making the string into a SkyCoord object seems to fix things
             if ':' in coords:
@@ -765,8 +766,9 @@ class photometry:
             #coordinates at McDonald can be far off, this is the same radius we use to query for RRISA cross-matching
             query_result = Simbad.query_region(sky_coord, radius='20 arcsec')
 
-            #print the name of the standard found so the users can check to make sure it is the correct one
-            print('Simbad searchable standard name is '+ query_result['main_id'][0], '\n')
+        #print the name of the standard found so the users can check to make sure it is the correct one
+        #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+        print(f'\n\033[38;5;{196}mSIMBAD searchable standard name is '+ query_result['main_id'][0], '\n' + '\033[0m')
 
         self.B = query_result['B'][0] 
         self.V = query_result['V'][0]
