@@ -157,7 +157,9 @@ def test_uncertainty_spec_a0v():
 def test_uncertainty_spec_fits():
     """Does uncertainty propagation work?"""
 
-    spec = IGRINSSpectrum(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits", order=10)
+    #spec = IGRINSSpectrum(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits", order=10)
+    spec = IGRINSSpectrum(file=file_2, order=10)
+
 
     assert spec.uncertainty is not None
     assert hasattr(spec.uncertainty, "array")
@@ -259,7 +261,8 @@ def test_deblaze():
 def test_bandmath():
     """Does band math work?"""
     spec1 = IGRINSSpectrumList.read(file=file)
-    spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
+    #spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
+    spec2 = IGRINSSpectrumList.read(file=file_2)
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
