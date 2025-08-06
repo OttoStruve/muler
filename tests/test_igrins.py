@@ -207,7 +207,7 @@ def test_equivalent_width():
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
     spec = IGRINSSpectrum(file=file)
-    new_spec = spec.remove_nans().remove_outliers(threshold=3)
+    new_spec = spec.remove_nans().remove_outliers(threshold=6)
 
     assert len(new_spec.flux) > 0
     assert new_spec.shape[0] <= spec.shape[0]

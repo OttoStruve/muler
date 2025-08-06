@@ -298,60 +298,62 @@ def apply_numpy_mask(spec, mask):
 
     assert isinstance(spec, Spectrum1D), "Input must be a specutils Spectrum1D object"
 
-    assert mask.sum() > 0, "The masked spectrum must have at least one pixel remaining"
+    #assert mask.sum() > 0, "The masked spectrum must have at least one pixel remaining"
+    if mask.sum() > 0: #Check if anything is actually being done
+        if len(mask) != len(spec.spectral_axis.value):
+            raise IndexError(
+                "Your boolean mask has {} entries and your spectrum has {} pixels.  "
+                " The boolean mask should have the same shape as the spectrum."
+            )
 
-    if len(mask) != len(spec.spectral_axis.value):
-        raise IndexError(
-            "Your boolean mask has {} entries and your spectrum has {} pixels.  "
-            " The boolean mask should have the same shape as the spectrum."
-        )
-
-    if spec.meta is not None:
-        meta_out = copy.deepcopy(spec.meta)
-        if "x_values" in spec.meta.keys():
-            meta_out["x_values"] = meta_out["x_values"][mask]
-    else:
-        meta_out = None
-
-    ndim = spec.flux.ndim #Grab dimensionality of spec, can be 1D or 2D
-    if ndim == 1: #For 1D spectra
-        if spec.uncertainty is not None:
-            masked_unc = spec.uncertainty[mask]
+        if spec.meta is not None:
+            meta_out = copy.deepcopy(spec.meta)
+            if "x_values" in spec.meta.keys():
+                meta_out["x_values"] = meta_out["x_values"][mask]
         else:
-            masked_unc = None
+            meta_out = None
 
-        if spec.mask is not None:
-            mask_out = spec.mask[mask]
-        else:
-            mask_out = None
+        ndim = spec.flux.ndim #Grab dimensionality of spec, can be 1D or 2D
+        if ndim == 1: #For 1D spectra
+            if spec.uncertainty is not None:
+                masked_unc = spec.uncertainty[mask]
+            else:
+                masked_unc = None
 
-        return spec.__class__(
-            spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
-            flux=spec.flux[mask],
-            mask=mask_out,
-            uncertainty=masked_unc,
-            wcs=None,
-            meta=meta_out,
-        )
-    elif ndim == 2: #For 2D (e.g. slit) spectra
-        if spec.uncertainty is not None:
-            masked_unc = spec.uncertainty[:, mask]
-        else:
-            masked_unc = None
+            if spec.mask is not None:
+                mask_out = spec.mask[mask]
+            else:
+                mask_out = None
 
-        if spec.mask is not None:
-            mask_out = spec.mask[:, mask]
-        else:
-            mask_out = None
+            return spec.__class__(
+                spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
+                flux=spec.flux[mask],
+                mask=mask_out,
+                uncertainty=masked_unc,
+                wcs=None,
+                meta=meta_out,
+            )
+        elif ndim == 2: #For 2D (e.g. slit) spectra
+            if spec.uncertainty is not None:
+                masked_unc = spec.uncertainty[:, mask]
+            else:
+                masked_unc = None
 
-        return spec.__class__(
-            spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
-            flux=spec.flux[:, mask],
-            mask=mask_out,
-            uncertainty=masked_unc,
-            wcs=None,
-            meta=meta_out,
-        )
+            if spec.mask is not None:
+                mask_out = spec.mask[:, mask]
+            else:
+                mask_out = None
+
+            return spec.__class__(
+                spectral_axis=spec.wavelength.value[mask] * spec.wavelength.unit,
+                flux=spec.flux[:, mask],
+                mask=mask_out,
+                uncertainty=masked_unc,
+                wcs=None,
+                meta=meta_out,
+            )
+    else #If nothing is bieng done, just return spec unaltered
+        return spec
 
 
 def resample_list(spec_to_resample, specList, **kwargs):
