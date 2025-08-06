@@ -236,6 +236,9 @@ class IGRINSSpectrum(EchelleSpectrum):
     # ):
     def __init__(
         self, *args, file='', wavefile=None, order=10, band='', cached_hdus=None, **kwargs):
+
+        self.noisy_edges = (450, 1950)
+        self.instrumental_resolution = 45_000.0
      
         if cached_hdus is not None:
 
