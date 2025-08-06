@@ -1150,7 +1150,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.xlim([br14_x1-50, br14_x2+50])
             plt.xlabel('Wavelength (Ang.)')
             plt.ylabel('Counts')
-            plt.title(plot_title + '       Unnormalized Br-gamma')
+            plt.title(plot_title + '       Unnormalized Br-14')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
             resampled_model_spec = model_spec.resample(self[br10_order]).normalize()
@@ -1170,7 +1170,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.xlabel('Wavelength (Ang.)')
             plt.ylabel('Counts')
             plt.xlim([brgamma_x1-50, brgamma_x2+50])
-            plt.title(plot_title + '       Unnormalized Br-14')
+            plt.title(plot_title + '       Unnormalized Br-gamma')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
             #Plot model fit
