@@ -741,7 +741,9 @@ class photometry:
     def get_simbad_photometry(self, name='', coords=''): #Grab B, V, J, H, K mags from Simbad
         query_result = Simbad.query_object(name)
         if len(query_result) == 0: #Redundancy error catch, uf unable to find object via name, attempt to query Simbad using the coordinates instead, coords should be stoared as a string
-            query_result = Simbad.query_region(coords, radius='1 arcsec')
+            print(name+' is not Simbad searchable.  Falling back to coordinate search using coordinates '+coords)
+            query_result = Simbad.query_region(coords, radius='20 arcsec')
+            print('Simbad searchable name is '+ query_result['main_id'][0])
         self.B = query_result['B'][0] 
         self.V = query_result['V'][0]
         self.J = query_result['J'][0]
