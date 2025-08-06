@@ -532,6 +532,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
 
         return f_throughput, m, b
+
     def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
         This is meant to be carried out on standard stars to remove tellurics before fitting
@@ -669,7 +670,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 if verbose:
                     print('Best fit R = ', best_fit_resolution)
                     print('Best fit pixel shift = ', best_fit_x_shift)
-                    print('Best fit streatch = ', best_fit_streatch)
+                    print('Best fit streatch = ', best_fit_streatch, '\n')
                 R = best_fit_resolution
                 rolled_wave1d = roll_along_axis(wave1d, best_fit_x_shift, axis=1) #Apply an overall pixel shift
                 streatch = best_fit_streatch
@@ -761,6 +762,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 pdfobj.savefig()
             #flattened_std_flux_divided_by_synthetic_model = flux1d / smoothed_corrected_flux   
         return final_trans
+
     def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
             alpha_range=(0.8,1.5), rotational_broadening_range=(10, 150), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix=''):
         """
@@ -880,7 +882,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         best_fit_teff = teff[min_chisq][0]
         # color_best_fit_teff =  teff[min_chisq][0]
         # color_best_fit_logg = logg[min_chisq][0]
-        print('min Teff =', teff[min_chisq][0])
+        #print('min Teff =', teff[min_chisq][0])
         # print('min log(g) =', logg[min_chisq][0])        
         br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
@@ -911,6 +913,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
         grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=logg_range, 
                            Z_range=z_range, wl_lo=3450, wl_hi= 25500, download=True)
+        print('\n')
         #Now create a subgrid by averaging between points on the , AKA new_grid
         new_grid = []
         new_grid_logg = []
@@ -965,7 +968,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 print('z = ', best_fit_z)
                 print('rotational broadening = ', best_fit_rotational_broadening)
                 print('radial velocity = ', best_fit_radial_velocity)
-                print('alpha = ', best_fit_alpha)
+                print('alpha = ', best_fit_alpha, '\n')
             #FIND RV AND ROTATIONAL VELOCITY
             nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
             grid_index = np.where((new_grid_logg == best_fit_logg) & (new_grid_z == best_fit_z))[0][0]
@@ -1072,7 +1075,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             print('z = ', best_fit_z)
             print('rotational broadening = ', best_fit_rotational_broadening)
             print('radial velocity = ', best_fit_radial_velocity)
-            print('alpha = ', best_fit_alpha)
+            print('alpha = ', best_fit_alpha, '\n')
         result_dict = {} #Store best fit model parameters for passing around
         result_dict['TEFF'] = best_fit_teff
         result_dict['LOGG'] = best_fit_logg
@@ -1205,6 +1208,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         model_spec = std_phot.scale_to_v(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
         #model_spec = std_phot.scale_to_k(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
         return model_spec, resample_list(model_spec, self), std_phot, result_dict
+        
     def get_plp_array(self, band='H', kind='flux'):
         """
         Generate an array  of flux, variance, or wavelength in the format used by the IGRINS and IGRINS-2 PLP.

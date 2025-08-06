@@ -16,6 +16,7 @@ from astroquery.simbad import Simbad
 Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
+from astropy.coordinates import SkyCoord
 
 log = logging.getLogger(__name__)
 
@@ -456,6 +457,7 @@ class Slit:
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
         self.name = name #For plot titles to differentiate targets
+        
     def ABBA(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
@@ -532,6 +534,7 @@ class Slit:
         #     g1_fit.y_0 -= (1/(n-1))*diff_y0
         #     g2_fit.y_0 -= (1/(n-1))*diff_y0
         self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+
     def ONOFF(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded off slit
@@ -583,6 +586,7 @@ class Slit:
         #Numerically estimate light through slit
         g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit.amplitude), x_0=gg_fit.x_0 - 0.5*self.length, alpha=gg_fit.alpha, gamma=gg_fit.gamma)
         self.f2d = np.abs(g1_fit(self.y2d, self.x2d))
+
     def estimate_slit_throughput(self, normalize=True):
         """
         a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
@@ -611,16 +615,19 @@ class Slit:
                 return np.nan
         else:
             return np.nan
+
     def clear(self):
         """
         Clear 2D flux array
         """
         self.f2d[:] = 0.0
+
     def normalize(self):
         """
         #Normalize each pixel by fraction of starlight
         """
         self.f2d = self.f2d / np.nansum(self.f2d)
+
     def plot2d(self, **kwarg):
         """
         Visualize the 2D distribution with slit overplotted
@@ -703,6 +710,7 @@ class photometry:
         self.J = 0. #2NASS J, H, and K bands
         self.H = 0.
         self.K = 0.
+
     def scale(self, synth_spec, band='V', mag=0.0):
         i = self.grab_band_index(band)
         resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
@@ -714,6 +722,7 @@ class photometry:
         scaled_synth_spec = synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
         scaled_synth_spec = synth_spec.__class__(scaled_synth_spec) #Force class after band math to be the same as original class
         return scaled_synth_spec
+
     def get(self, synth_spec, band='V', resample=True, nan_catch=True):
         i = self.grab_band_index(band)
         if resample:
@@ -732,31 +741,49 @@ class photometry:
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
         if nan_catch and (np.isnan(magnitude) or ~np.isfinite(magnitude)): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans, if a nan is found, return -999 to indicate the result was indefinite
             return -999
-        return magnitude 
+        return magnitude
+
     def grab_band_index(self, band):
         if band == 'K':
             band = 'Ks' #Catch to set K band band name to 'Ks' 
         i = np.where(band == self.bands)[0][0]   
-        return i    
+        return i
+
     def get_simbad_photometry(self, name='', coords=''): #Grab B, V, J, H, K mags from Simbad
+        #try querying the object by name
         query_result = Simbad.query_object(name)
-        if len(query_result) == 0: #Redundancy error catch, uf unable to find object via name, attempt to query Simbad using the coordinates instead, coords should be stoared as a string
-            print(name+' is not Simbad searchable.  Falling back to coordinate search using coordinates '+coords)
-            query_result = Simbad.query_region(coords, radius='20 arcsec')
-            print('Simbad searchable name is '+ query_result['main_id'][0])
+        #if the name is not simbad searchable search by coordinates instead
+        if len(query_result) == 0: 
+            print(name+' is not Simbad searchable.  Searching using coords: '+coords)
+
+            #query_region doesnt work well when the string has coords in HMS format, but making the string into a SkyCoord object seems to fix things
+            if ':' in coords:
+                sky_coord = SkyCoord(coords, unit = (u.hourangle, u.deg), frame = 'icrs')
+            else:
+                sky_coord = SkyCoord(coords, unit = (u.deg, u.deg), frame = 'icrs')
+
+            #coordinates at McDonald can be far off, this is the same radius we use to query for RRISA cross-matching
+            query_result = Simbad.query_region(sky_coord, radius='20 arcsec')
+
+            #print the name of the standard found so the users can check to make sure it is the correct one
+            print('Simbad searchable standard name is '+ query_result['main_id'][0], '\n')
+
         self.B = query_result['B'][0] 
         self.V = query_result['V'][0]
         self.J = query_result['J'][0]
         self.H = query_result['H'][0]
-        self.K = query_result['K'][0]       
+        self.K = query_result['K'][0]  
+
     def set_photometry(self, synth_spec, nan_catch=True): #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
         self.B = self.get(synth_spec, band='B', nan_catch=nan_catch)
         self.V = self.get(synth_spec, band='V', nan_catch=nan_catch)
         self.J = self.get(synth_spec, band='J', nan_catch=nan_catch)
         self.H = self.get(synth_spec, band='H', nan_catch=nan_catch)
         self.K = self.get(synth_spec, band='K', nan_catch=nan_catch)
+
     def scale_to_v(self, synth_spec): #Convenience function to scale to stored V band (e.g. from simbad)
         return self.scale(synth_spec, band='V', mag=self.V)
+
     def scale_to_k(self, synth_spec):  #Convenience function to scale to stored K band (e.g. from simbad)
         return self.scale(synth_spec, band='K', mag=self.K)
         
