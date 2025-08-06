@@ -649,7 +649,7 @@ class EchelleSpectrum(Spectrum1D):
         trimmed_spec : (EchelleSpectrum)
             Trimmed version of input Spectrum
         """
-        if limits is None:
+        if limits is None and hasattr(self, 'noisy_edges'):
             limits = self.noisy_edges
         lo, hi = limits
         if self.meta is not None:

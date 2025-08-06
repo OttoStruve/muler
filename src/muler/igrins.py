@@ -359,6 +359,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 flux_hdu = hdus[1]
                 variance_hdu = hdus[2]
                 wave_hdu = hdus[3]
+                flux_hdu.header += hdus[0]header #Fix for passing header information from a .spec_a0v file
             if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
                 wave_hdus = fits.open(wavefile)
                 wave_hdu = wave_hdus[0]
