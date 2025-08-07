@@ -515,10 +515,12 @@ class EchelleSpectrum(Spectrum1D):
             Smooth version of input Spectrum
         """
         if size%2 == 0: size = size + 1 #Get rid of even sizes and replace with an odd version
-        half_sizes = array([-(size-1)/2, ((size-1)/2)+1], dtype='int')      
+        half_sizes = np.array([-(size-1)/2, ((size-1)/2)+1], dtype='int')      
         unmodified_flux = self.flux.value
         unmodified_variance = self.uncertainty.array**2
         smoothed_flux = np.zeros(np.shape(unmodified_flux))
+        smoothed_variance = np.zeros(np.shape(unmodified_flux))
+        nx = len(unmodified_flux)
         for i in range(nx): #Do the running median smoothing
             x_left, x_right = i + half_sizes
             if x_left < 0:

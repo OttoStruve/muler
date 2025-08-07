@@ -728,6 +728,8 @@ class photometry:
         if resample:
             resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
             f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+            if np.isinf(f_lambda):
+                breakpoint()
         else:
             x = synth_spec.wavelength.to('um').value
             delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
