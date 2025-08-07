@@ -218,7 +218,7 @@ def test_smoothing():
 def test_sorting():
     """Does Sorting method work?"""
     spec_list = IGRINSSpectrumList.read(file=file)
-    full_spec = spec_list.remove_nans().trim_overlap().stitch()
+    full_spec = spec_list.trim_overlap().stitch().remove_nans()
 
     new_spec = full_spec.sort()
 
