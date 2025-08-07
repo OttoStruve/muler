@@ -501,7 +501,59 @@ class EchelleSpectrum(Spectrum1D):
         keep_indices = (self.mask == False) & (self.flux == self.flux)
         return self.apply_boolean_mask(keep_indices)
 
-    def smooth_spectrum(
+    def smooth_spectrum(self, size=50):
+        """Smooth the spectrum using a running median filter
+
+        Parameters
+        -------
+        size : (int)
+            Size of window used for calculating the median of a pixel/column.
+
+        Returns
+        -------
+        smoothed_spec : (EchelleSpectrum)
+            Smooth version of input Spectrum
+        """
+        if size%2 == 0: size = size + 1 #Get rid of even sizes and replace with an odd version
+        half_sizes = array([-(size-1)/2, ((size-1)/2)+1], dtype='int')      
+        unmodified_flux = self.flux.value
+        unmodified_variance = self.uncertainty.array**2
+        smoothed_flux = np.zeros(np.shape(unmodified_flux))
+        for i in range(nx): #Do the running median smoothing
+            x_left, x_right = i + half_sizes
+            if x_left < 0:
+                x_left = 0
+            elif x_right > nx:
+                x_right = nx
+            if unmodified_flux.ndim == 2: #2D spectra
+                smoothed_flux[:,i] = np.nanmedian(unmodified_flux[:,x_left:x_right], axis=1)
+                smoothed_variance[:,i] = np.nanmedian(unmodified_variance[:,x_left:x_right], axis=1)
+            else:  #1D spectra
+                smoothed_flux[i] = np.nanmedian(unmodified_flux[x_left:x_right])
+                smoothed_variance[i] = np.nanmedian(unmodified_variance[x_left:x_right])
+        bad_pixels = np.isnan(smoothed_flux) & ~np.isfinite(smoothed_flux)
+        if np.any(bad_pixels): #Fill in bad pixels
+            if unmodified_flux.ndim == 2: #2D spectra
+                filtered_smoothed_flux = median_filter(smoothed_flux, size=[1,size], mode='reflect')
+                fitlered_smoothed_variance = median_filter(smoothed_variance, size=[1,size], mode='reflect')
+            else:  #1D spectra
+                filtered_smoothed_flux = median_filter(smoothed_flux, size=size, mode='reflect')
+                filtered_smoothed_variance = median_filter(smoothed_variance, size=size, mode='reflect')
+            smoothed_flux[bad_pixels] = filtered_smoothed_flux[bad_pixels]
+            smoothed_variance[bad_pixels] = filtered_smoothed_variance[bad_pixels]
+        smoothed_spectrum = self.__class__(
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
+            flux=smoothed_flux * self.flux.unit,
+            uncertainty=StdDevUncertainty(smoothed_variance**0.5 * self.flux.unit),
+            meta=copy.deepcopy(self.meta),
+            wcs=None,
+        )
+        return smoothed_spectrum
+
+
+
+
+    def gaussian_process_smooth_spectrum(
         self, return_model=False, optimize_kernel=False, bandwidth=150.0
     ):
         """Smooth the spectrum using Gaussian Process regression
