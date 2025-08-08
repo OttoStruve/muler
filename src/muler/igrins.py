@@ -602,7 +602,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         central_wavelength = np.nanmedian(rolled_wave1d)
         n_iterations = 4
         for iteration in range(n_iterations):
-            print('Iteration ', iteration)
+            print('ITERATION ', iteration)
             convolution_resolution = (R**(-2) - trans_resolution**(-2))**-0.5
             convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
             g = Gaussian1DKernel(stddev= convolution_std)
@@ -1073,13 +1073,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 print('Maximum number of iterations reached.')
             else:
                 print('Fit has converged.')
-            print('FINAL RESULTS FOR '+name)
+            print(f'\033[38;5;{12}m\nFINAL RESULTS FOR '+name)
             print('teff = ', best_fit_teff)
             print('logg = ', best_fit_logg)
             print('z = ', best_fit_z)
             print('rotational broadening = ', best_fit_rotational_broadening)
             print('radial velocity = ', best_fit_radial_velocity)
-            print('alpha = ', best_fit_alpha, '\n')
+            print('alpha = ', best_fit_alpha, '\n\033[0m')
         result_dict = {} #Store best fit model parameters for passing around
         result_dict['TEFF'] = best_fit_teff
         result_dict['LOGG'] = best_fit_logg
