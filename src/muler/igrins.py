@@ -469,6 +469,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         igrins_slit = Slit(length=slit_length, width=slit_length*(1/14.8), PA=PA, guiding_error=guiding_error, n_axis=2500, name=title_name) #Initialize Slit object    
         n_orders = len(spec2d_list) #Count number of orders in the combined bands
         f_through_slit = np.zeros(n_orders)   #Store the slit throughput and associated wavelengths in arrays, where each entry is each order
+        flux_corrections = np.zeros(n_orders) #Flux correction comparing moffat functions to each nod for each order
         wave = np.zeros(n_orders)
         for order in range(n_orders):  #Estimate throughput for each order using the median between columns col1 and col2 and save the result and median wavelength in arrays
             normed_spec2d_order = spec2d_list[order] / np.nansum(np.abs(spec2d_list[order]), axis=0)  #normalize continuum
@@ -491,11 +492,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     igrins_slit.ONOFF(y, x=x, print_info=False, plot=False)
                 else: #nod-on-slit
                     igrins_slit.ABBA(y, x=x, print_info=False, plot=False)
+            flux_corrections[order] = igrins_slit.flux_correction
             f_through_slit[order] = igrins_slit.estimate_slit_throughput()
             wave[order] = np.nanmedian(self[order].wavelength.um[col1:col2])
         good_orders = np.isfinite(f_through_slit)  #mask out nans
         f_through_slit = f_through_slit[good_orders]
         wave = wave[good_orders]
+        flux_corrections = flux_corrections[good_orders]
         init_line = models.Linear1D() #Fit throughput across orders with a linear fit with x = 1/wavelength (1/microns)
         fitter = fitting.LinearLSQFitter()
         outlier_fitter = fitting.FittingWithOutlierRemoval(fitter, sigma_clip, niter=3, sigma=3.0) #Sigma
@@ -528,7 +531,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 pdfobj.savefig()
             print('m: ', m)
             print('b: ', b)
-
+            plt.figure()
+            plt.plot(wave, flux_corrections, '.')
+            plt.ylim([1.0, 1.6])
+            plt.xlabel('Wavelength (micron)')
+            plt.ylabel('Flux correction')
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
 
         f_throughput = [] #Calculate and return throughput as a function of all wavelengths (columns) based on the fit above
         for i in range(len(self)):
