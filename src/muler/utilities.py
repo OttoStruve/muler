@@ -707,7 +707,7 @@ class photometry:
         #self.vega_V_flambdla_zero_point = 363.1e-7 #Vega flux zero point for V band from Bessell et al. (1998) in erg cm^2 s^-1 um^-1
         self.B = 0. #Store magnitudes, Johnson B and V bands
         self.V = 0.
-        self.J = 0. #2NASS J, H, and K bands
+        self.J = 0. #2MASS J, H, and K bands
         self.H = 0.
         self.K = 0.
 
@@ -751,11 +751,23 @@ class photometry:
         i = np.where(band == self.bands)[0][0]   
         return i
 
-    def get_simbad_photometry(self, name='', coords=''): #Grab B, V, J, H, K mags from Simbad
+    def get_simbad_photometry(self, name='', coords=''):
+        """
+        A function that grabs the B, V, J, H, and K magnitudes from SIMBAD for an object.
+
+        Parameters 
+        ----------
+        name: str
+            The SIMBAD searchable name for the object.
+        synth_spec: str
+            The the RA and DEC coordinates of the object to search formated as f'{RA} {DEC}'. Decimal degrees or H:M:S/D:A:A format accepted.
+        """ 
+
         #try querying the object by name
         query_result = Simbad.query_object(name)
-        #if the name is not simbad searchable search by coordinates instead
-        if len(query_result) == 0: 
+
+        #if the name is not simbad searchable search by coordinates instead (if there are coordinates)
+        if len(query_result) == 0 and coords != '': 
             #this prints in light pink color to terminal; see: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
             print(f'\n\033[38;5;{196}m{name}'+' IS NOT SIMBAD SEARCHABLE.  SEARCHING USING COORDS: '+coords+'\033[0m')
 
@@ -765,20 +777,51 @@ class photometry:
             else:
                 sky_coord = SkyCoord(coords, unit = (u.deg, u.deg), frame = 'icrs')
 
-            #coordinates at McDonald can be far off, this is the same radius we use to query for RRISA cross-matching
+            #coordinates at McDonald can be far off for IGRINS, this is the same radius we use to query objects for RRISA cross-matching
             query_result = Simbad.query_region(sky_coord, radius='20 arcsec')
 
-        #print the name of the standard found so the users can check to make sure it is the correct one
-        #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-        print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE STANDARD NAME IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
+            #print the name of the standard found so the users can check to make sure it is the correct one
+            #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
-        self.B = query_result['B'][0] 
-        self.V = query_result['V'][0]
-        self.J = query_result['J'][0]
-        self.H = query_result['H'][0]
-        self.K = query_result['K'][0]  
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
 
-    def set_photometry(self, synth_spec, nan_catch=True): #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
+        #if the given object name returns a SIMBAD result
+        elif len(query_result) > 0:
+            #print the name of the standard found so the users can check to make sure it is the correct one
+            #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
+
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
+
+        #the object name is not SIMBAD searchable and the coords are not given
+        else:
+            #print an error
+            print(f'\n\033[38;5;{196}m{name} IS NOT SIMBAD SEARCHABLE AND NO OBJECT COORDINATES WERE GIVEN.\033[0m')
+
+
+    def set_photometry(self, synth_spec, nan_catch=True):
+        """
+        A function that calculates the B, V, J, H, and K magnitudes from a model spectrum. 
+
+        Parameters 
+        ----------
+        name: str
+            The SIMBAD searchable name for the object.
+        synth_spec: str
+            The the RA and DEC coordinates of the object to search formated as f'{RA} {DEC}'. Decimal degrees or H:M:S/D:A:A format accepted.
+        """ 
+        #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
         self.B = self.get(synth_spec, band='B', nan_catch=nan_catch)
         self.V = self.get(synth_spec, band='V', nan_catch=nan_catch)
         self.J = self.get(synth_spec, band='J', nan_catch=nan_catch)
