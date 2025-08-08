@@ -1073,7 +1073,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 print('Maximum number of iterations reached.')
             else:
                 print('Fit has converged.')
-            print(f'\033[38;5;{63}m\nFINAL RESULTS FOR \033[0m'+f'\033[38;5;{196}m{name}\033[0m')
+            print(f'\033[38;5;{63}m\nFINAL RESULTS FOR \033[0m'+f'\033[38;5;{196}m{name}\033[0m\033[38;5;{63}m')
             print('teff = ', best_fit_teff)
             print('logg = ', best_fit_logg)
             print('z = ', best_fit_z)
