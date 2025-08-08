@@ -580,7 +580,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         rolled_wave1d = roll_along_axis(wave1d, 0.0, axis=1) #Apply an overall pixel shift
         R = 45000
         fwhm_to_std = 1/2.355
-        streatch=1.0
+        stretch=1.0
         #Adjust the following limits and parameters
         order_range = (54-16, 54-7)
         # order_range = (30,49)
@@ -588,7 +588,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         #x_shifts = np.arange(-2.0,2.0,0.01)
         x_shifts = np.arange(0,0.1,0.1)
         resolutions = np.arange(45000.0, 45200.0, 200.0)
-        streatches = np.arange(1.000, 1.001, 0.001)
+        stretches = np.arange(1.000, 1.001, 0.001)
         g1 = Gaussian1DKernel(stddev=5) #For correction
         rolled_wave1ds = []
         for l, x_shift in enumerate(x_shifts):
@@ -617,7 +617,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             corrected_flux = np.zeros(np.shape(wave1d))
             smoothed_corrected_flux = np.zeros(np.shape(wave1d))
             lambda2 = rolled_wave1d[:,-1]
-            streached_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(streatch-1)
+            streached_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(stretch-1)
             for i, molecule in enumerate(molecules):
                 trans_other_molecules_best_fit = np.ones(np.shape(wave1d))
                 for j in range(len(molecules)):
@@ -649,8 +649,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             if iteration < n_iterations - 1:
                 order1, order2 = order_range[0], order_range[1]
                 x1, x2 = x_range[0], x_range[1]
-                n_x_shifts, n_resolutions, n_streatches = len(x_shifts), len(resolutions), len(streatches)
-                chisq = np.zeros([n_resolutions, n_x_shifts, n_streatches])
+                n_x_shifts, n_resolutions, n_stretches = len(x_shifts), len(resolutions), len(stretches)
+                chisq = np.zeros([n_resolutions, n_x_shifts, n_stretches])
         
                 chunk_flattened_std = (flux1d[order,x1:x2] / smoothed_corrected_flux[order1:order2,x1:x2])
                 for i in range(n_resolutions):
@@ -663,21 +663,21 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                         rolled_wave1d = rolled_wave1ds[j][order1:order2,x1:x2]
                         #lambda1 = rolled_wave1d[:,0]
                         lambda2 = rolled_wave1d[:,-1]
-                        for k in range(n_streatches):
-                            streatched_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(streatches[k]-1)
-                            chunk_interpolated_total_trans = interp_obj(streatched_rolled_wave1d)
+                        for k in range(n_stretches):
+                            stretched_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(stretches[k]-1)
+                            chunk_interpolated_total_trans = interp_obj(stretched_rolled_wave1d)
                             chisq[i,j,k] = np.nansum(np.abs(chunk_flattened_std - chunk_interpolated_total_trans)**2)
                 ii, jj, kk = np.where(chisq == np.nanmin(chisq))
                 best_fit_resolution = resolutions[ii][0]
                 best_fit_x_shift = x_shifts[jj][0]
-                best_fit_streatch = streatches[kk][0]
+                best_fit_stretch = stretches[kk][0]
                 if verbose:
                     print('Best fit R = ', best_fit_resolution)
                     print('Best fit pixel shift = ', best_fit_x_shift)
-                    print('Best fit streatch = ', best_fit_streatch, '\n')
+                    print('Best fit stretch = ', best_fit_stretch, '\n')
                 R = best_fit_resolution
                 rolled_wave1d = roll_along_axis(wave1d, best_fit_x_shift, axis=1) #Apply an overall pixel shift
-                streatch = best_fit_streatch
+                stretch = best_fit_stretch
         convolution_resolution = (R**(-2) - trans_resolution**(-2))**-0.5
         convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
         g = Gaussian1DKernel(stddev= convolution_std)
@@ -687,8 +687,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         best_fit_rolled_wave1d = roll_along_axis(wave1d, best_fit_x_shift, axis=1) #Apply an overall pixel shift
         lambda2 = lambda2 = best_fit_rolled_wave1d[:,-1]
-        best_fit_streatched_rolled_wave1d = best_fit_rolled_wave1d - (best_fit_rolled_wave1d - lambda2[:,np.newaxis])*(best_fit_streatch-1)
-        final_trans = interp_obj_total_original_grid_trans(best_fit_streatched_rolled_wave1d)
+        best_fit_stretched_rolled_wave1d = best_fit_rolled_wave1d - (best_fit_rolled_wave1d - lambda2[:,np.newaxis])*(best_fit_stretch-1)
+        final_trans = interp_obj_total_original_grid_trans(best_fit_stretched_rolled_wave1d)
 
         #final_trans = interp_obj_total_original_grid_trans(wave1d)
         if plot:
@@ -1073,7 +1073,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 print('Maximum number of iterations reached.')
             else:
                 print('Fit has converged.')
-            print(f'\033[38;5;{12}m\nFINAL RESULTS FOR '+name)
+            print(f'\033[38;5;{63}m\nFINAL RESULTS FOR \033[0m'+f'\033[38;5;{196}m{name}\033[0m')
             print('teff = ', best_fit_teff)
             print('logg = ', best_fit_logg)
             print('z = ', best_fit_z)
