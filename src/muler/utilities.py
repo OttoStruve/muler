@@ -757,7 +757,7 @@ class photometry:
         #if the name is not simbad searchable search by coordinates instead
         if len(query_result) == 0: 
             #this prints in light pink color to terminal; see: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-            print(f'\n\033[38;5;{13}m{name}'+' is not Simbad searchable.  Searching using coords: '+coords+'\033[0m')
+            print(f'\n\033[38;5;{196}m{name}'+' IS NOT SIMBAD SEARCHABLE.  SEARCHING USING COORDS: '+coords+'\033[0m')
 
             #query_region doesnt work well when the string has coords in HMS format, but making the string into a SkyCoord object seems to fix things
             if ':' in coords:
@@ -770,7 +770,7 @@ class photometry:
 
         #print the name of the standard found so the users can check to make sure it is the correct one
         #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-        print(f'\n\033[38;5;{196}mSIMBAD searchable standard name is '+ query_result['main_id'][0], '\n' + '\033[0m')
+        print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE STANDARD NAME IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
         self.B = query_result['B'][0] 
         self.V = query_result['V'][0]
