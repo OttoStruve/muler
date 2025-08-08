@@ -963,9 +963,20 @@ class EchelleSpectrumList(SpectrumList):
     def remove_nans(self):
         """Remove all the NaNs"""
         spec_out = copy.deepcopy(self)
+        #Remove all orders that are just completely nans before doing anything else
+        all_orders_good = False
+        while not all_orders_good:
+            for i in range(len(spec_out)): #Check each order if it is all nans
+                if np.all(np.isnan(spec_out[i].flux.value)): #If an order is entirely nans
+                    spec_out.pop(i) #remove all nans order
+                    all_orders_good = False
+                    break #Break for loop and restart checking all orders
+                else: #If order is 
+                    all_orders_good = True
+        #Now trim the remaining nans
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i].remove_nans()
-
+                spec_out[i] = spec_out[i].remove_nans()
+                    
         return spec_out
 
     def remove_outliers(self, threshold=5):
@@ -1012,7 +1023,6 @@ class EchelleSpectrumList(SpectrumList):
             else:
                 mid_wave = self[i].spectral_axis[-1]*(pivot) + self[i+1].spectral_axis[0]*(1-pivot)
                 right_limit = np.where(self[i].spectral_axis > mid_wave)[0][0] - 1
-
             if left_limit > 0 or right_limit < len(self[i].spectral_axis):
                 spec_out[i] = spec_out[i].trim_edges((left_limit, right_limit))
 
