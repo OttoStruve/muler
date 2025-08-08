@@ -508,6 +508,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         m = fitted_line[0].slope.value
         b = fitted_line[0].intercept.value
 
+
+
+        #Fit flux corrections
+        flux_corrections_fitted_line = outlier_fitter(init_line, 1/wave[i], flux_corrections[i])
+        flux_corrections_m = flux_corrections_fitted_line[0].slope.value
+        flux_corrections_b = flux_corrections_fitted_line[0].intercept.value
+
         if plot:
             plt.figure()
             plt.plot(wave, f_through_slit, '.')
@@ -533,7 +540,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             print('b: ', b)
             plt.figure()
             plt.plot(wave, flux_corrections, '.')
-            plt.ylim([1.0, 1.6])
+            plt.plot(wave, f_through_slit, '.')
+            plt.plot(wave, flux_corrections_fitted_line[0](1/wave))
+            plt.ylim([1.0, 1.5])
             plt.xlabel('Wavelength (micron)')
             plt.ylabel('Flux correction')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
@@ -543,8 +552,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         for i in range(len(self)):
             f_throughput.append(m*(1/self[i].wavelength.um) + b)
 
+        flux_correction = [] #Calculate and return flux correction as a function of all wavelengths (columns) based on the fit above
+        for i in range(len(self)):
+            flux_correction.append(flux_corrections_m*(1/self[i].wavelength.um) + flux_corrections_b)
 
-        return f_throughput, m, b
+
+
+
+        return f_throughput, m, b, flux_correction, flux_corrections_m, flux_corrections_b
 
     def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
