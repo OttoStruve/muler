@@ -3,9 +3,9 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.13
+  - python=3.11
   - setuptools
-  - numpy
+  - numpy=1.26.4 #There are numerous incompatibilities introduced by numpy>2.0.0 so we are going to stick to this version for now
   - scipy
   - matplotlib
   - astropy
@@ -36,7 +36,7 @@ dependencies:
   - pip:
       - sphinx-material
       - celerite2
-      - specutils
+      - specutils>=2.1
       - tynt
-      - gollum
+      - gollum=git+https://github.com/BrownDwarf/gollum.git#egg=gollum
 
