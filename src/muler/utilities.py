@@ -10,10 +10,96 @@ from scipy.stats import binned_statistic
 from scipy.interpolate import interp1d
 from specutils.manipulation import LinearInterpolatedResampler
 from matplotlib import pyplot as plt
+from astropy.convolution import convolve, Gaussian1DKernel
+from scipy.ndimage import binary_dilation
+from astroquery.simbad import Simbad
+Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
+from astropy.coordinates import SkyCoord
 
 log = logging.getLogger(__name__)
+
+
+
+def roll_along_axis(array_to_correct, correction, axis=0): #Apply flexure correction by numpy rolling along an axis and averaging between two rolled arrays to account for sub-pixel shifts
+    axis = int(axis)
+    integer_correction = np.round(correction) #grab whole number component of correction
+    fractional_correction = correction - float(integer_correction) #Grab fractional component of correction (remainder after grabbing whole number out)
+    rolled_array =  np.roll(array_to_correct, int(integer_correction), axis=axis) #role array the number of pixels matching the integer correction
+    if fractional_correction > 0.: #For a positive correction
+        rolled_array_plus_one = np.roll(array_to_correct, int(integer_correction+1), axis=axis) #Roll array an extra one pixel to the right
+    else: #For a negative correction
+        rolled_array_plus_one = np.roll(array_to_correct, int(integer_correction-1), axis=axis) #Roll array an extra one pixel to the left
+    corrected_array = rolled_array*(1.0-np.abs(fractional_correction)) + rolled_array_plus_one*np.abs(fractional_correction) #interpolate over the fraction of a pixel
+    return corrected_array
+
+def round_to_multiple(number, multiple):
+    return multiple * round(number / multiple)
+
+def find_nearest(array, value): #
+    """Return index of entry in sorted array closest to provided value.
+    Modified slightly from: https://stackoverflow.com/a/2566508
+
+    Parameters
+    -------
+    array:
+        Sorted array to search.
+    value:
+        Value to search for in array.
+
+    Returns
+        Index for entry in array closest to value
+    -------
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+
+
+def edge_normalize(x1, x2, specobj, window=20): 
+    """
+    Draw a line between the fluxes at points x1 and x2 and normalize to that line.
+    Used for crude continuum normalization to isolate H I line profiles in a standard star spectrum.
+    """
+    half_window = round(window / 2)
+    x = specobj.spectral_axis.value
+    ix1 = find_nearest(x, x1) #Grab points to normalize to
+    ix2 = find_nearest(x, x2)
+    y1 = np.nanmedian(specobj.flux.value[ix1-half_window:ix1+half_window]) #Normalize to end points using a linear fit that goes through the edges
+    y2 = np.nanmedian(specobj.flux.value[ix2-half_window:ix2+half_window])
+    m = (y2 - y1) / (x[ix2] - x[ix1]) #Fit for a line through two points
+    b = y2 - m * x[ix2]
+    specresult = specobj / (m*x+b)
+    #specresult = specobj / ((y1+y2)/2)
+    return specresult
+    
+
+def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
+    """
+    Function to aid in isolating and continuum normalizing H I line profiles in a standard star spectrum.
+    """
+    g_large = Gaussian1DKernel(stddev=40.0)
+    g = Gaussian1DKernel(stddev=20.0) #Do a little bit of smoothing of the blaze functions
+    if mask:
+        left_mask = binary_dilation((specobj[i-1].flux.value / convolve(specobj[i-1].flux.value, g_large)) < 0.80, iterations=5) #Order to the left
+        left_order = convolve(convolve(specobj[i-1].flux.value, g_large, mask=left_mask), g, mask=left_mask)
+        right_mask = binary_dilation((specobj[i+1].flux.value / convolve(specobj[i+1].flux.value, g_large)) < 0.80, iterations=5) #order to the right
+        right_order = convolve(convolve(specobj[i+1].flux.value, g_large, mask=right_mask),  g, mask=right_mask)
+    else:
+        left_order = convolve(specobj[i-1].flux.value, g)
+        right_order = convolve(specobj[i+1].flux.value, g)
+    cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
+    specresult = edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
+    # ix1 = find_nearest(specobj[i].spectral_axis.value, x1) #Grab points to normalize to
+    # ix2 = find_nearest(specobj[i].spectral_axis.value, x2)
+    # y1 = specresult.flux[ix1] #Normalize to end points using a linear fit that goes through the edges
+    # y2 = specresult.flux[ix2]
+    # m = (y2 - y1) / (ix2 - ix1)
+    # b = y2 - m * ix2
+    # specresult = specresult / (m*x+b)
+    return specresult
 
 
 def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
@@ -297,6 +383,9 @@ def resample_list(spec_to_resample, specList, **kwargs):
     return spec_out
 
 
+
+
+
 def concatenate_orders(spec_list1, spec_list2):
     """
     Combine two EchelleSpectrumList objects into one.
@@ -326,10 +415,10 @@ def is_list(check_this):
     True: Object has more than one element (e.g. is a list or array)
     False: Object has a single element (e.g. a single variable like 10.0)
     """
-    return isinstance(check_this, list)
+    return isinstance(check_this, list) or ((type(check_this) is np.ndarray) and (len(np.shape(check_this)) > 1))
 
 class Slit:
-    def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000):
+    def __init__(self, length=14.8, width=1.0, PA=90.0, guiding_error=1.5, n_axis=5000, name=''):
         """
         A  class to handle information about a spectrometer's slit, used for calculating things like slit losses
 
@@ -346,12 +435,15 @@ class Slit:
             This should be used carefully and only for telescopes on equitorial mounts.
         n_axis: float
             Size of axis for a 2D square array storing estimated profiles along the slit in 2D for later masking
+        name: str
+            Name of target.  Used in plots.
 
         """
         self.length = length
         self.width = width
         self.PA = PA
         self.guiding_error = guiding_error
+        #self.flux_correction = 1.0 #Store flux correction for later reuse
 
         half_n_axis = n_axis / 2
         dx = 1.2 * (length / n_axis)
@@ -365,7 +457,9 @@ class Slit:
         half_length = 0.5 * self.length
         half_width = 0.5 * self.width        
         self.mask = (x2d <= -half_width) | (x2d >= half_width) | (y2d <= -half_length) | (y2d >= half_length) #Create mask where every pixel inside slit is True and outside is False
-    def ABBA(self, y, x=None, print_info=True, plot=False):
+        self.name = name #For plot titles to differentiate targets
+
+    def ABBA(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
         Given a collapsed spatial profile long slit for a point (stellar) source nodded
         ABBA along the slit, generate an estimate of A and B nods' 2D PSFs.
@@ -399,18 +493,39 @@ class Slit:
         #Fit 2 Moffat distributions to the psfs from A and B positions (see https://docs.astropy.org/en/stable/modeling/compound-models.html)
         g1 = models.Moffat1D(amplitude=y[i_max], x_0=x[i_max], alpha=1.0, gamma=1.0)
         g2 = models.Moffat1D(amplitude=y[i_min], x_0=x[i_min], alpha=1.0, gamma=1.0)
+
+
+        fine_x = np.arange(0, 20, 0.001)
+        integrated_g1 = np.nansum(g1(fine_x))
+        integrated_g2 = np.nansum(g2(fine_x))
+
         gg_init = g1 + g2
         fitter = fitting.TRFLSQFitter()
         gg_fit = fitter(gg_init, x, y)
+
+        # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
+        # fine_x = np.arange(-20, 20, 0.00001)
+        # integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
+        # integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
+        # if integrated_g1 > integrated_g2:
+        #     self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
+        # else: #integrated_g1 <= integrated_g2
+        #     self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
+
         if plot:
             plt.figure()
-            plt.plot(x, y, '.', label='Std Star Data')
+            plt.plot(x, y, '.', label='Star Data')
             plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
             plt.plot(x, y-gg_fit(x), label='Residuals')
             plt.xlabel('Distance along slit (arcsec)')
             plt.ylabel('Flux')
             plt.legend()
-            plt.show()
+            if plot_title != '':
+                plt.suptitle(plot_title)
+            if self.name != '':
+                plt.title(self.name)
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
         if print_info:
             #log.info('FWHM A beam:', gg_fit[0].fwhm)
             #log.info('FWHM B beam:', gg_fit[1].fwhm)
@@ -419,22 +534,77 @@ class Slit:
         #Numerically estimate light through slit
         g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*self.length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
         g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
+
         #simulate  guiding error by "smearing out" PSF
-        position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
-        fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        diff_x0 = fraction_guiding_error * np.cos(position_angle_in_radians)
-        diff_y0 = fraction_guiding_error * np.sin(position_angle_in_radians)
-        g1_fit.x_0 += 0.5*diff_x0
-        g2_fit.x_0 += 0.5*diff_x0
-        g1_fit.y_0 += 0.5*diff_y0
-        g2_fit.y_0 += 0.5*diff_y0
-        n = 5
-        for i in range(n):
-            self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
-            g1_fit.x_0 -= (1/(n-1))*diff_x0
-            g2_fit.x_0 -= (1/(n-1))*diff_x0
-            g1_fit.y_0 -= (1/(n-1))*diff_y0
-            g2_fit.y_0 -= (1/(n-1))*diff_y0
+        # position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
+        # fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+        # diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+        # diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
+        # g1_fit.x_0 += 0.5*diff_x0
+        # g2_fit.x_0 += 0.5*diff_x0
+        # g1_fit.y_0 += 0.5*diff_y0
+        # g2_fit.y_0 += 0.5*diff_y0
+        # n = 5
+        # for i in range(n):
+        #     self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+        #     g1_fit.x_0 -= (1/(n-1))*diff_x0
+        #     g2_fit.x_0 -= (1/(n-1))*diff_x0
+        #     g1_fit.y_0 -= (1/(n-1))*diff_y0
+        #     g2_fit.y_0 -= (1/(n-1))*diff_y0
+        self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+
+    def ONOFF(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
+        """
+        Given a collapsed spatial profile long slit for a point (stellar) source nodded off slit
+        (ONOFF), generate an estimate of the single 2D PSF.
+        The ON nod is fit with Moffat functions which is then projected from 1D to 2D and then
+        a mask is applied representing the slit and the the fraction of light in the PSF inside the mask
+        are integrated to estimate the fraction of light that passes through the slit.
+
+        Parameters 
+        ----------
+        y: numpy array of floats
+            Array representing the spatial profile of the source on the slit.  It should be the PSF for
+            a point source nodded ABBA on the slit.
+        x: numpy array of floats (optional)
+            Array representing the spatial position along the slit in pixel space corrisponding to y.
+        print_info: bool
+            Print information about the fit.
+        plot: bool
+            Set to True to plot the 1D profile along the slit, Moffat fits, and residuals
+        """
+        slit_width_to_length_ratio = self.width / self.length
+        if x is None: #Generate equally spaced x array if it is not provided
+            ny = len(y)
+            x = (np.arange(ny) / ny) * self.length
+        #Find maximum 
+        i_max = np.where(y == np.nanmax(y))[0][0]
+        if np.size(i_max) > 1: #Error catch for the rare event when two or more pixels match the max or min y values
+            i_max = i_max[0]
+        #Fit Moffat distribution to the psf
+        g1 = models.Moffat1D(amplitude=y[i_max], x_0=x[i_max], alpha=1.0, gamma=1.0)
+        fitter = fitting.TRFLSQFitter()
+        gg_fit = fitter(g1, x, y)
+        if plot:
+            plt.figure()
+            plt.plot(x, y, '.', label='Star Data')
+            plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
+            plt.plot(x, y-gg_fit(x), label='Residuals')
+            plt.xlabel('Distance along slit (arcsec)')
+            plt.ylabel('Flux')
+            plt.legend()
+            if plot_title != '':
+                plt.suptitle(plot_title)
+            if self.name != '':
+                plt.title(self.name)
+            if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                pdfobj.savefig()
+        if print_info:
+            print('FWHM A beam:', gg_fit.fwhm)
+        #Numerically estimate light through slit
+        g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit.amplitude), x_0=gg_fit.x_0 - 0.5*self.length, alpha=gg_fit.alpha, gamma=gg_fit.gamma)
+        self.f2d = np.abs(g1_fit(self.y2d, self.x2d))
+
     def estimate_slit_throughput(self, normalize=True):
         """
         a mask is applied representing the slit and the the fraction of light in the PSFs inside the mask
@@ -442,18 +612,40 @@ class Slit:
         """
         if normalize: #You almost always want to normalize
             self.normalize()
-        fraction_through_slit = np.nansum(self.f2d[~self.mask]) #Get fraction of light inside the slit mask
-        return fraction_through_slit
+        initial_estimated_fraction_through_slit = np.nansum(self.f2d[~self.mask]) / np.nansum(self.f2d) #Get fraction of light inside the slit mask
+        #throughput correction calculated from monte carlo simualtions to convert the estimate to actual throughput, NOTE this is IGRINS specific
+        throughput_correction_pointing_error_perpendicular_to_slit = models.Chebyshev2D(3, 3, c0_0=0.48615791, c1_0=0.32114591, c2_0=-0.0349109, c3_0=0.01192229, c0_1=-0.14611241, c1_1=-0.16490571, c2_1=-0.01045679, c3_1=0.01671257, c0_2=-0.02158197, c1_2=-0.02213463, c2_2=-0.00031099, c3_2=0.00002206, c0_3=0.01958147, c1_3=0.0302361, c2_3=0.01197411, c3_3=0.00266858, x_domain=(0.16251566201706763, 0.9999351856781427), y_domain=(0.000660434260749021, 1.999411871833546))
+        throughput_correction_pointing_error_parallel_to_slit = models.Chebyshev2D(3, 3, c0_0=1.38140979, c1_0=1.54595726, c2_0=0.41060813, c3_0=-0.08619041, c0_1=1.26930674, c1_1=1.63718611, c2_1=0.60197849, c3_1=-0.16875158, c0_2=0.58352811, c1_2=0.65415013, c2_2=0.19616202, c3_2=-0.16319632, c0_3=0.09309019, c1_3=0.09296075, c2_3=-0.04573633, c3_3=-0.05109788, x_domain=(0.11128901778216015, 0.9999999946981601), y_domain=(0.0001453326995801696, 1.999326121378704))
+        position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
+        fraction_guiding_error_perpendicular = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+        fraction_guiding_error_parallel = np.sin(position_angle_in_radians)*self.guiding_error
+        if np.any(self.f2d > 0.): #Error catch
+            if initial_estimated_fraction_through_slit > 0:
+                f_through_slit_perpendicular = throughput_correction_pointing_error_perpendicular_to_slit(initial_estimated_fraction_through_slit, fraction_guiding_error_perpendicular*(14.8/self.length)) #Apply a throughput correction to go from estimate to "actual" as determined from a monte carlo simualtion
+                f_through_slit_parallel = throughput_correction_pointing_error_parallel_to_slit(initial_estimated_fraction_through_slit, fraction_guiding_error_parallel*(14.8/self.length)) #Apply a throughput correction to go from estimate to "actual" as determined from a monte carlo simualtion
+                fraction_through_slit =  np.sqrt((f_through_slit_perpendicular*np.cos(position_angle_in_radians))**2 + (f_through_slit_parallel*np.sin(position_angle_in_radians))**2)
+                if fraction_through_slit < 0.:
+                    fraction_through_slit = 0.
+                elif fraction_through_slit > 1.0:
+                    fraction_through_slit = 1.0        
+                return fraction_through_slit
+            else:
+                return np.nan
+        else:
+            return np.nan
+
     def clear(self):
         """
         Clear 2D flux array
         """
         self.f2d[:] = 0.0
+
     def normalize(self):
         """
         #Normalize each pixel by fraction of starlight
         """
         self.f2d = self.f2d / np.nansum(self.f2d)
+
     def plot2d(self, **kwarg):
         """
         Visualize the 2D distribution with slit overplotted
@@ -468,8 +660,8 @@ class Slit:
         # plt.plot(slit_ouline_x, slit_ouline_y, color='White', linewidth=3.0)
         numerical_mask = np.ones(np.shape(self.mask))
         plt.contour(self.mask, levels=[0.0,0.5, 1.0], colors='white', linewidths=2)
-        plt.show()
-
+        if self.name != '':
+            plt.title(self.name)
 
 class absoluteFluxCalibration:
     def __init__(self, std_spec, synth_spec):
@@ -531,6 +723,12 @@ class photometry:
         # self.tcurve_interp = interp1d(filt.wavelength.to('um'), filt.transmittance, kind='cubic', fill_value=0.0, bounds_error=False) #Create interp obj for the transmission curve
         # self.tcurve_resampled = self.tcurve_interp(self.x)
         #self.vega_V_flambdla_zero_point = 363.1e-7 #Vega flux zero point for V band from Bessell et al. (1998) in erg cm^2 s^-1 um^-1
+        self.B = 0. #Store magnitudes, Johnson B and V bands
+        self.V = 0.
+        self.J = 0. #2MASS J, H, and K bands
+        self.H = 0.
+        self.K = 0.
+
     def scale(self, synth_spec, band='V', mag=0.0):
         i = self.grab_band_index(band)
         resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
@@ -539,12 +737,17 @@ class photometry:
         # print('self.f0_lambda', self.f0_lambda[i])
         # print('f_lambda', f_lambda)
         # print('magnitude_scale', magnitude_scale)
-        return synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
-    def get(self, synth_spec, band='V', resample=True):
+        scaled_synth_spec = synth_spec * (self.f0_lambda[i] / f_lambda) * magnitude_scale
+        scaled_synth_spec = synth_spec.__class__(scaled_synth_spec) #Force class after band math to be the same as original class
+        return scaled_synth_spec
+
+    def get(self, synth_spec, band='V', resample=True, nan_catch=True):
         i = self.grab_band_index(band)
         if resample:
             resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
             f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+            if np.isinf(f_lambda):
+                breakpoint()
         else:
             x = synth_spec.wavelength.to('um').value
             delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
@@ -556,9 +759,97 @@ class photometry:
             #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
             print(np.nansum(resampled_tcurve * x * delta_lambda))
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
+        if nan_catch and (np.isnan(magnitude) or ~np.isfinite(magnitude)): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans, if a nan is found, return -999 to indicate the result was indefinite
+            return -999
         return magnitude
+
     def grab_band_index(self, band):
         if band == 'K':
             band = 'Ks' #Catch to set K band band name to 'Ks' 
         i = np.where(band == self.bands)[0][0]   
-        return i    
+        return i
+
+    def get_simbad_photometry(self, name='', coords=''):
+        """
+        A function that grabs the B, V, J, H, and K magnitudes from SIMBAD for an object.
+
+        Parameters 
+        ----------
+        name: str
+            The SIMBAD searchable name for the object.
+        synth_spec: str
+            The the RA and DEC coordinates of the object to search formated as f'{RA} {DEC}'. Decimal degrees or H:M:S/D:A:A format accepted.
+        """ 
+
+        #try querying the object by name
+        query_result = Simbad.query_object(name)
+
+        #if the name is not simbad searchable search by coordinates instead (if there are coordinates)
+        if len(query_result) == 0 and coords != '': 
+            #this prints in light pink color to terminal; see: https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{196}m{name}'+' IS NOT SIMBAD SEARCHABLE.  SEARCHING USING COORDS: '+coords+'\033[0m')
+
+            #query_region doesnt work well when the string has coords in HMS format, but making the string into a SkyCoord object seems to fix things
+            if ':' in coords:
+                sky_coord = SkyCoord(coords, unit = (u.hourangle, u.deg), frame = 'icrs')
+            else:
+                sky_coord = SkyCoord(coords, unit = (u.deg, u.deg), frame = 'icrs')
+
+            #coordinates at McDonald can be far off for IGRINS, this is the same radius we use to query objects for RRISA cross-matching
+            query_result = Simbad.query_region(sky_coord, radius='20 arcsec')
+
+            #print the name of the standard found so the users can check to make sure it is the correct one
+            #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
+
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
+
+        #if the given object name returns a SIMBAD result
+        elif len(query_result) > 0:
+            #print the name of the standard found so the users can check to make sure it is the correct one
+            #this prints in bright red to terminal; see:https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+            print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
+
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
+
+        #the object name is not SIMBAD searchable and the coords are not given
+        else:
+            #print an error
+            print(f'\n\033[38;5;{196}m{name} IS NOT SIMBAD SEARCHABLE AND NO OBJECT COORDINATES WERE GIVEN.\033[0m')
+
+
+    def set_photometry(self, synth_spec, nan_catch=True):
+        """
+        A function that calculates the B, V, J, H, and K magnitudes from a model spectrum. 
+
+        Parameters 
+        ----------
+        name: str
+            The SIMBAD searchable name for the object.
+        synth_spec: str
+            The the RA and DEC coordinates of the object to search formated as f'{RA} {DEC}'. Decimal degrees or H:M:S/D:A:A format accepted.
+        """ 
+        #Calculate  B, V, J, H, K mags from properly scaled synethetic spectrum
+        self.B = self.get(synth_spec, band='B', nan_catch=nan_catch)
+        self.V = self.get(synth_spec, band='V', nan_catch=nan_catch)
+        self.J = self.get(synth_spec, band='J', nan_catch=nan_catch)
+        self.H = self.get(synth_spec, band='H', nan_catch=nan_catch)
+        self.K = self.get(synth_spec, band='K', nan_catch=nan_catch)
+
+    def scale_to_v(self, synth_spec): #Convenience function to scale to stored V band (e.g. from simbad)
+        return self.scale(synth_spec, band='V', mag=self.V)
+
+    def scale_to_k(self, synth_spec):  #Convenience function to scale to stored K band (e.g. from simbad)
+        return self.scale(synth_spec, band='K', mag=self.K)
+        
+

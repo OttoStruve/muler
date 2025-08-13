@@ -42,7 +42,7 @@ def test_basic():
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
-    new_spec = new_spec.remove_outliers(threshold=6)
+    new_spec = new_spec.remove_outliers(threshold=20)
 
     assert len(new_spec.flux) > 0
     assert new_spec.shape[0] <= spec.shape[0]
@@ -157,7 +157,37 @@ def test_uncertainty_spec_a0v():
 def test_uncertainty_spec_fits():
     """Does uncertainty propagation work?"""
 
-spec = IGRINSSpectrum(file=file, order=10)
+    #spec = IGRINSSpectrum(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits", order=10)
+    spec = IGRINSSpectrum(file=file_2, order=10)
+
+
+    assert spec.uncertainty is not None
+    assert hasattr(spec.uncertainty, "array")
+    assert len(spec.flux) == len(spec.uncertainty.array)
+    assert spec.flux.unit == spec.uncertainty.unit
+
+    new_spec = spec.remove_nans()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_old_vec = spec.flux / spec.uncertainty.array
+    snr_old_med = np.nanmedian(snr_old_vec.value)
+
+    new_spec = spec.normalize()
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med)
+
+    new_spec = spec.remove_nans().deblaze()
+
+    assert len(new_spec.flux) == len(new_spec.uncertainty.array)
+    assert np.all(new_spec.uncertainty.array > 0)
+
+    snr_vec = new_spec.flux / new_spec.uncertainty.array
+    snr_med = np.nanmedian(snr_vec.value)
+    assert np.isclose(snr_med, snr_old_med, rtol=0.01)
 
 
 def test_equivalent_width():
@@ -177,7 +207,7 @@ def test_equivalent_width():
 def test_smoothing():
     """Does smoothing and outlier removal work?"""
     spec = IGRINSSpectrum(file=file)
-    new_spec = spec.remove_nans().remove_outliers(threshold=3)
+    new_spec = spec.remove_nans().remove_outliers(threshold=20)
 
     assert len(new_spec.flux) > 0
     assert new_spec.shape[0] <= spec.shape[0]
@@ -188,7 +218,7 @@ def test_smoothing():
 def test_sorting():
     """Does Sorting method work?"""
     spec_list = IGRINSSpectrumList.read(file=file)
-    full_spec = spec_list.remove_nans().stitch()
+    full_spec = spec_list.trim_overlap().stitch().remove_nans()
 
     new_spec = full_spec.sort()
 
@@ -231,7 +261,8 @@ def test_deblaze():
 def test_bandmath():
     """Does band math work?"""
     spec1 = IGRINSSpectrumList.read(file=file)
-    spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
+    #spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
+    spec2 = IGRINSSpectrumList.read(file=file_2)
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]

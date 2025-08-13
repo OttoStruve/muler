@@ -227,27 +227,44 @@ class EchelleSpectrum(Spectrum1D):
 
         # Sort the wavelength indices
         sorted_indexes = np.argsort(spec.wavelength.value)
-        new_spec = spec._copy(
-            spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
-            flux=spec.flux[sorted_indexes],
-            uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
-            wcs=None,
-        )
-
-        # Each ancillary spectrum (e.g. sky) should also be normalized
         meta_out = copy.deepcopy(spec.meta)
-        for ancillary_spectrum in self.available_ancillary_spectra:
-            meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
-                spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                    sorted_indexes
-                ]
-                * meta_out[ancillary_spectrum].wavelength.unit,
-                flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
-                uncertainty=StdDevUncertainty(
-                    meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
-                ),
+
+        if spec.uncertainty is None:
+            new_spec = spec._copy(
+                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                flux=spec.flux[sorted_indexes],
                 wcs=None,
             )
+            # Each ancillary spectrum (e.g. sky) should also be normalized
+            for ancillary_spectrum in self.available_ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                        sorted_indexes
+                    ]
+                    * meta_out[ancillary_spectrum].wavelength.unit,
+                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                    wcs=None,
+                )
+        else:
+            new_spec = spec._copy(
+                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                flux=spec.flux[sorted_indexes],
+                uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
+                wcs=None,
+            )
+            # Each ancillary spectrum (e.g. sky) should also be normalized
+            for ancillary_spectrum in self.available_ancillary_spectra:
+                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                        sorted_indexes
+                    ]
+                    * meta_out[ancillary_spectrum].wavelength.unit,
+                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                    uncertainty=StdDevUncertainty(
+                        meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
+                    ),
+                    wcs=None,
+                )
 
         meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
@@ -454,12 +471,14 @@ class EchelleSpectrum(Spectrum1D):
             velocity = velocity * (u.km / u.s)
         try:
             new_spec = copy.deepcopy(self)
-            new_spec.radial_velocity = velocity
-            return new_spec._copy(
-                spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
-                wcs=None,
-                radial_velocity=None,
-            )
+            new_spec.shift_spectrum_to(radial_velocity=velocity)
+            return new_spec
+            #new_spec.radial_velocity = velocity
+            # return new_spec._copy(
+            #     spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
+            #     wcs=None,
+            #     radial_velocity=None,
+            # )
 
         except:
             log.error(
@@ -482,7 +501,61 @@ class EchelleSpectrum(Spectrum1D):
         keep_indices = (self.mask == False) & (self.flux == self.flux)
         return self.apply_boolean_mask(keep_indices)
 
-    def smooth_spectrum(
+    def smooth_spectrum(self, size=50):
+        """Smooth the spectrum using a running median filter
+
+        Parameters
+        -------
+        size : (int)
+            Size of window used for calculating the median of a pixel/column.
+
+        Returns
+        -------
+        smoothed_spec : (EchelleSpectrum)
+            Smooth version of input Spectrum
+        """
+        if size%2 == 0: size = size + 1 #Get rid of even sizes and replace with an odd version
+        half_sizes = np.array([-(size-1)/2, ((size-1)/2)+1], dtype='int')      
+        unmodified_flux = self.flux.value
+        unmodified_variance = self.uncertainty.array**2
+        smoothed_flux = np.zeros(np.shape(unmodified_flux))
+        smoothed_variance = np.zeros(np.shape(unmodified_flux))
+        nx = len(unmodified_flux)
+        for i in range(nx): #Do the running median smoothing
+            x_left, x_right = i + half_sizes
+            if x_left < 0:
+                x_left = 0
+            elif x_right > nx:
+                x_right = nx
+            if unmodified_flux.ndim == 2: #2D spectra
+                smoothed_flux[:,i] = np.nanmedian(unmodified_flux[:,x_left:x_right], axis=1)
+                smoothed_variance[:,i] = np.nanmedian(unmodified_variance[:,x_left:x_right], axis=1)
+            else:  #1D spectra
+                smoothed_flux[i] = np.nanmedian(unmodified_flux[x_left:x_right])
+                smoothed_variance[i] = np.nanmedian(unmodified_variance[x_left:x_right])
+        bad_pixels = np.isnan(smoothed_flux) & ~np.isfinite(smoothed_flux)
+        if np.any(bad_pixels): #Fill in bad pixels
+            if unmodified_flux.ndim == 2: #2D spectra
+                filtered_smoothed_flux = median_filter(smoothed_flux, size=[1,size], mode='reflect')
+                fitlered_smoothed_variance = median_filter(smoothed_variance, size=[1,size], mode='reflect')
+            else:  #1D spectra
+                filtered_smoothed_flux = median_filter(smoothed_flux, size=size, mode='reflect')
+                filtered_smoothed_variance = median_filter(smoothed_variance, size=size, mode='reflect')
+            smoothed_flux[bad_pixels] = filtered_smoothed_flux[bad_pixels]
+            smoothed_variance[bad_pixels] = filtered_smoothed_variance[bad_pixels]
+        smoothed_spectrum = self.__class__(
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
+            flux=smoothed_flux * self.flux.unit,
+            uncertainty=StdDevUncertainty(smoothed_variance**0.5 * self.flux.unit),
+            meta=copy.deepcopy(self.meta),
+            wcs=None,
+        )
+        return smoothed_spectrum
+
+
+
+
+    def gaussian_process_smooth_spectrum(
         self, return_model=False, optimize_kernel=False, bandwidth=150.0
     ):
         """Smooth the spectrum using Gaussian Process regression
@@ -583,7 +656,7 @@ class EchelleSpectrum(Spectrum1D):
         if ax is None:
             fig, ax = plt.subplots(1, figsize=figsize)
             ax.set_ylim(ylo, yhi)
-            ax.set_xlabel("$\lambda \;(\AA)$")
+            ax.set_xlabel(r"$\lambda \;(\AA)$")
             ax.set_ylabel("Flux")
             if hasattr(self, "spectrographname"):
                 ax.set_title(self.spectrographname + " Spectrum")
@@ -630,7 +703,7 @@ class EchelleSpectrum(Spectrum1D):
         trimmed_spec : (EchelleSpectrum)
             Trimmed version of input Spectrum
         """
-        if limits is None:
+        if limits is None and hasattr(self, 'noisy_edges'):
             limits = self.noisy_edges
         lo, hi = limits
         if self.meta is not None:
@@ -890,9 +963,20 @@ class EchelleSpectrumList(SpectrumList):
     def remove_nans(self):
         """Remove all the NaNs"""
         spec_out = copy.deepcopy(self)
+        #Remove all orders that are just completely nans before doing anything else
+        all_orders_good = False
+        while not all_orders_good:
+            for i in range(len(spec_out)): #Check each order if it is all nans
+                if np.all(np.isnan(spec_out[i].flux.value)): #If an order is entirely nans
+                    spec_out.pop(i) #remove all nans order
+                    all_orders_good = False
+                    break #Break for loop and restart checking all orders
+                else: #If order is 
+                    all_orders_good = True
+        #Now trim the remaining nans
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i].remove_nans()
-
+                spec_out[i] = spec_out[i].remove_nans()
+                    
         return spec_out
 
     def remove_outliers(self, threshold=5):
@@ -939,7 +1023,6 @@ class EchelleSpectrumList(SpectrumList):
             else:
                 mid_wave = self[i].spectral_axis[-1]*(pivot) + self[i+1].spectral_axis[0]*(1-pivot)
                 right_limit = np.where(self[i].spectral_axis > mid_wave)[0][0] - 1
-
             if left_limit > 0 or right_limit < len(self[i].spectral_axis):
                 spec_out[i] = spec_out[i].trim_edges((left_limit, right_limit))
 
@@ -1052,7 +1135,7 @@ class EchelleSpectrumList(SpectrumList):
     def plot(self, ylo=0.0, yhi=None, **kwargs):
         """Plot the entire spectrum list"""
         if yhi is None:  # Automatically loop through each order to find yhi
-            yhi = np.nanpercentile(self.stitch().flux.value, 90.0) * 1.8
+            yhi = np.nanpercentile(self.sort().trim_overlap().stitch().flux.value, 90.0) * 1.8
         if not "ax" in kwargs:
             ax = self[0].plot(figsize=(25, 4), ylo=ylo, yhi=yhi, **kwargs)
             for i in range(1, len(self)):
@@ -1068,9 +1151,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(spec_out)):
             if other_is_list:
-                spec_out[i] = spec_out[i] + other[i]
+                spec_out[i] = self[i].__class__(spec_out[i] + other[i])
             else:
-                spec_out[i] = spec_out[i] + other
+                spec_out[i] = self[i].__class__(spec_out[i] + other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1081,9 +1164,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] - other[i]
+                spec_out[i] = self[i].__class__(self[i] - other[i])
             else:
-                spec_out[i] = self[i] - other
+                spec_out[i] = self[i].__class__(self[i] - other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1094,9 +1177,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] * other[i]
+                spec_out[i] = self[i].__class__(self[i] * other[i])
             else:
-                spec_out[i] = self[i] * other
+                spec_out[i] = self[i].__class__(self[i] * other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1107,9 +1190,9 @@ class EchelleSpectrumList(SpectrumList):
         other_is_list = is_list(other)
         for i in range(len(self)):
             if other_is_list:
-                spec_out[i] = self[i] / other[i]
+                spec_out[i] = self[i].__class__(self[i] / other[i])
             else:
-                spec_out[i] = self[i] / other
+                spec_out[i] = self[i].__class__(self[i] / other)
             if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
@@ -1128,7 +1211,22 @@ class EchelleSpectrumList(SpectrumList):
         """
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
-            spec_out[i] = self[i]**power
+            spec_out[i] = self[i].__class__(self[i]**power)
+        return spec_out
+
+    def sort(self):
+        """Sort each order in a spectrum list by acending wavelength
+
+        Returns
+        -------
+        sorted_spec : (EchelleSpectrumList)
+            Sorted orders in EchelleSpectrumList
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(self)):
+            spec_out[i] = self[i].sort()
+            if "x_values" not in spec_out[i].meta:
+                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
