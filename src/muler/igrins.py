@@ -32,7 +32,6 @@ from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.interpolate import interp1d
 from scipy.ndimage import median_filter
 LinInterpResampler = LinearInterpolatedResampler()
-from gollum.phoenix import PHOENIXGrid, PHOENIXSpectrum
 from importlib_resources import files
 from . import templates
 
@@ -837,6 +836,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             IGRINSSpectrumList object resampled to match the pixels and wavelengths of this spectrum.
 
         """
+
+        from gollum.phoenix import PHOENIXGrid
+
 
         g_large = Gaussian1DKernel(stddev=40.0)
         br14_x1 = 15838
