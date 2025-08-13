@@ -8,9 +8,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9]
-        specutils-version: [1.5, 1.9.1]
-        astropy-version: [5.2]
+        setuptools-version: [80.9]
+        python-version: [3.13]
+        specutils-version: [1.20.3]
+        astropy-version: [7.1]
+        astroquery-version: [0.4.10]
         #numpy-version: [1.18, 1.24]
         
     steps:
@@ -37,6 +39,8 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
+          pip install -U pip setuptools 
+          pip install -U astroquery
           python setup.py develop
           python -c "import sys; print('Python version: ', sys.version)"
           python -c "import specutils; print('specutils version: ', specutils.__version__)"
