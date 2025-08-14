@@ -507,7 +507,6 @@ class Slit:
         fine_x = np.arange(-20, 20, 0.00001)
         integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
         integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
-        self.
         if integrated_g1 > integrated_g2:
             self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
         else: #integrated_g1 <= integrated_g2
