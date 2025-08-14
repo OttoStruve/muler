@@ -443,7 +443,7 @@ class Slit:
         self.width = width
         self.PA = PA
         self.guiding_error = guiding_error
-        #self.flux_correction = 1.0 #Store flux correction for later reuse
+        self.flux_correction = 1.0 #Store flux correction for later reuse
 
         half_n_axis = n_axis / 2
         dx = 1.2 * (length / n_axis)
@@ -504,13 +504,14 @@ class Slit:
         gg_fit = fitter(gg_init, x, y)
 
         # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
-        # fine_x = np.arange(-20, 20, 0.00001)
-        # integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
-        # integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
-        # if integrated_g1 > integrated_g2:
-        #     self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
-        # else: #integrated_g1 <= integrated_g2
-        #     self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
+        fine_x = np.arange(-20, 20, 0.00001)
+        integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
+        integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
+        self.
+        if integrated_g1 > integrated_g2:
+            self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
+        else: #integrated_g1 <= integrated_g2
+            self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
 
         if plot:
             plt.figure()
