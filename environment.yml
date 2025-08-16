@@ -38,5 +38,5 @@ dependencies:
       - celerite2
       - specutils>=2.1
       - tynt
-      - gollum=git+https://github.com/BrownDwarf/gollum.git#egg=gollum
+      - git+https://github.com/BrownDwarf/gollum.git
 
