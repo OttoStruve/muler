@@ -12,7 +12,7 @@ if os.path.exists(readme_path):
 
 setuptools.setup(
     name="muler",
-    version="0.4.1",
+    version="0.5.2",
     author="gully",
     author_email="igully@gmail.com",
     description="A Python package for working with data from various echelle spectrographs",
@@ -23,7 +23,7 @@ setuptools.setup(
         "numpy",
         "scipy",
         "astropy>=5.2",
-        "specutils>=1.9",
+        "specutils>=2.1",
         "pandas",
         "importlib_resources",
         "matplotlib",
