@@ -33,7 +33,7 @@ setuptools.setup(
     package_dir={"": "src"},
     package_data={
         # If any package contains *.txt files, include them:
-        "": ["*.csv"]
+        "": ["*.csv", "*.txt"]
     },
     classifiers=[
         "Programming Language :: Python :: 3",
