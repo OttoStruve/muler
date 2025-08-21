@@ -347,10 +347,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             
             if  (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file):  #For regular .spec.fits and .spec2d.fits files
                 flux_hdu = hdus[0]
-                wave_hdu = hdus[1]
                 if wavefile is not None:
                     wave_hdus = fits.open(wavefile)
                     wave_hdu = wave_hdus[0]
+                elif ".spec2d.fits" in file: #Grab wavelength solution from .spec.fits file if .spec2d.fits file is used
+                    wave_hdus = fits.open(file.replace('.spec2d.fits', '.spec.fits'))
+                    wave_hdu = wave_hdus[1]
+                else:
+                    wave_hdu = hdus[1]
                 uncertainty_filepath = getUncertaintyFilepath(file)
                 uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)
                 variance_hdu = uncertainty_hdus[0]
