@@ -229,42 +229,81 @@ class EchelleSpectrum(Spectrum1D):
         sorted_indexes = np.argsort(spec.wavelength.value)
         meta_out = copy.deepcopy(spec.meta)
 
-        if spec.uncertainty is None:
-            new_spec = spec._copy(
-                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
-                flux=spec.flux[sorted_indexes],
-                wcs=None,
-            )
-            # Each ancillary spectrum (e.g. sky) should also be normalized
-            for ancillary_spectrum in self.available_ancillary_spectra:
-                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
-                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                        sorted_indexes
-                    ]
-                    * meta_out[ancillary_spectrum].wavelength.unit,
-                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+
+        if spec.flux.ndim == 2: #two dimensional spectra
+            if spec.uncertainty is None:
+                new_spec = spec._copy(
+                    spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                    flux=spec.flux[:,sorted_indexes],
                     wcs=None,
                 )
-        else:
-            new_spec = spec._copy(
-                spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
-                flux=spec.flux[sorted_indexes],
-                uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
-                wcs=None,
-            )
-            # Each ancillary spectrum (e.g. sky) should also be normalized
-            for ancillary_spectrum in self.available_ancillary_spectra:
-                meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
-                    spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
-                        sorted_indexes
-                    ]
-                    * meta_out[ancillary_spectrum].wavelength.unit,
-                    flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
-                    uncertainty=StdDevUncertainty(
-                        meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
-                    ),
+                # Each ancillary spectrum (e.g. sky) should also be normalized
+                for ancillary_spectrum in self.available_ancillary_spectra:
+                    meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                        spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                            sorted_indexes
+                        ]
+                        * meta_out[ancillary_spectrum].wavelength.unit,
+                        flux=meta_out[ancillary_spectrum].flux[:,sorted_indexes],
+                        wcs=None,
+                    )
+            else:
+                new_spec = spec._copy(
+                    spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                    flux=spec.flux[:,sorted_indexes],
+                    uncertainty=StdDevUncertainty(spec.uncertainty.array[:,sorted_indexes]),
                     wcs=None,
                 )
+                # Each ancillary spectrum (e.g. sky) should also be normalized
+                for ancillary_spectrum in self.available_ancillary_spectra:
+                    meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                        spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                            sorted_indexes
+                        ]
+                        * meta_out[ancillary_spectrum].wavelength.unit,
+                        flux=meta_out[ancillary_spectrum].flux[:,sorted_indexes],
+                        uncertainty=StdDevUncertainty(
+                            meta_out[ancillary_spectrum].uncertainty.array[:,sorted_indexes]
+                        ),
+                        wcs=None,
+                    )
+        else: #one dimensional spectra
+            if spec.uncertainty is None:
+                new_spec = spec._copy(
+                    spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                    flux=spec.flux[sorted_indexes],
+                    wcs=None,
+                )
+                # Each ancillary spectrum (e.g. sky) should also be normalized
+                for ancillary_spectrum in self.available_ancillary_spectra:
+                    meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                        spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                            sorted_indexes
+                        ]
+                        * meta_out[ancillary_spectrum].wavelength.unit,
+                        flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                        wcs=None,
+                    )
+            else:
+                new_spec = spec._copy(
+                    spectral_axis=spec.wavelength.value[sorted_indexes] * spec.wavelength.unit,
+                    flux=spec.flux[sorted_indexes],
+                    uncertainty=StdDevUncertainty(spec.uncertainty.array[sorted_indexes]),
+                    wcs=None,
+                )
+                # Each ancillary spectrum (e.g. sky) should also be normalized
+                for ancillary_spectrum in self.available_ancillary_spectra:
+                    meta_out[ancillary_spectrum] = meta_out[ancillary_spectrum]._copy(
+                        spectral_axis=meta_out[ancillary_spectrum].wavelength.value[
+                            sorted_indexes
+                        ]
+                        * meta_out[ancillary_spectrum].wavelength.unit,
+                        flux=meta_out[ancillary_spectrum].flux[sorted_indexes],
+                        uncertainty=StdDevUncertainty(
+                            meta_out[ancillary_spectrum].uncertainty.array[sorted_indexes]
+                        ),
+                        wcs=None,
+                    )
 
         meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
