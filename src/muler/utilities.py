@@ -501,7 +501,7 @@ class Slit:
 
         gg_init = g1 + g2
         fitter = fitting.TRFLSQFitter()
-        gg_fit = fitter(gg_init, x, y)
+        gg_fit = fitter(gg_init, x, y, maxiter=10000)
 
         # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
         fine_x = np.arange(-20, 20, 0.00001)
@@ -584,7 +584,7 @@ class Slit:
         #Fit Moffat distribution to the psf
         g1 = models.Moffat1D(amplitude=y[i_max], x_0=x[i_max], alpha=1.0, gamma=1.0)
         fitter = fitting.TRFLSQFitter()
-        gg_fit = fitter(g1, x, y)
+        gg_fit = fitter(g1, x, y, maxiter=10000)
         if plot:
             plt.figure()
             plt.plot(x, y, '.', label='Star Data')
