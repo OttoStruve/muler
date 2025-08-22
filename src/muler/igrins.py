@@ -181,7 +181,7 @@ def getUncertaintyFilepath(filepath):
         Returns the file path to the uncertianity (.variance.fits or .sn.fits) file.
 
     """
-    path_base = filepath.replace('".spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
+    path_base = filepath.replace('.spec_a0v.fits','').replace('.flux_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
     if ".spec2d.fits" in filepath:
         if os.path.exists(path_base + '.var2d.fits'):
             return path_base + '.var2d.fits'
@@ -341,7 +341,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         """
         # still works
-        assert (".spec_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file)
+        assert (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file)
         hdus = fits.open(file, memmap=False)
         if ("SDCH_" in file) or ("SDCK_" in file): #Normal IGRINS PLP file naming convention and format
             
@@ -358,7 +358,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 uncertainty_filepath = getUncertaintyFilepath(file)
                 uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)
                 variance_hdu = uncertainty_hdus[0]
-            elif (".spec_a0v.fits" in file): #For .spec_a0v.fits files
+            elif (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file): #For .spec_a0v.fits files
                 flux_hdu = hdus[1]
                 variance_hdu = hdus[2]
                 wave_hdu = hdus[3]
@@ -442,7 +442,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 title_name = name
         else:
             title_name = ''
-        path_base = self.file.replace('.spec_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
+        path_base = self.file.replace('.spec_a0v.fits','').replace('.fux_a0v.fits','').replace('.spec.fits','').replace('.spec2d.fits','').replace('.spec_flattened.fits','')
         filename = path_base.split('/')[-1] #To handle only changing the band in the filename, not any paths
         filepath = path_base.split(filename)[0]
         path_H = filepath+filename.replace('SDCK_', 'SDCH_').replace('_K', '_H') + '.spec2d.fits'
