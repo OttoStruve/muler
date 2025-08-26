@@ -619,7 +619,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         interpolation_kind = "linear"
         molecules = ['H2O',  'CO2','CH4', 'N2O'] #Seems to be the only three molecules that matter for the H & K bands
         # molecules = [  'CO2','CH4', 'H2O'] #Seems to be the only three molecules that matter for the H & K bands
-        alphas = np.arange(-1.0,1.5,0.005) #Range of alphas to test
+        alphas = np.arange(-2.0,6,0.005) #Range of alphas to test
         best_fit_alphas = np.zeros(len(molecules))
         rolled_wave1d = wave1d
         central_wavelength = np.nanmedian(rolled_wave1d)
