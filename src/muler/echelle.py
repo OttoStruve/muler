@@ -770,13 +770,15 @@ class EchelleSpectrum(Spectrum1D):
 
         return ax
 
-    def remove_outliers(self, threshold=5):
+    def remove_outliers(self, threshold=5, size=50):
         """Remove outliers above threshold
 
         Parameters
         ----------
         threshold : float
             The sigma-clipping threshold (in units of sigma)
+        size : int
+            Size of window used for median smoothing to remove continuum when searching for outliers
 
 
         Returns
@@ -784,7 +786,7 @@ class EchelleSpectrum(Spectrum1D):
         clean_spec : (KeckNIRSPECSpectrum)
             Cleaned version of input Spectrum
         """
-        residual = self.flux - self.smooth_spectrum().flux
+        residual = self.flux - self.smooth_spectrum(size=size).flux
         mad = median_abs_deviation(residual.value, nan_policy="omit")
         keep_indices = (np.abs(residual.value) < (threshold * mad)) == True
 
@@ -1132,7 +1134,7 @@ class EchelleSpectrumList(SpectrumList):
         return spec_out
 
 
-    def remove_outliers(self, threshold=5):
+    def remove_outliers(self, threshold=5, size=50):
         """Remove all the outliers
 
         Parameters
@@ -1142,7 +1144,7 @@ class EchelleSpectrumList(SpectrumList):
         """
         spec_out = copy.deepcopy(self)
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i].remove_outliers(threshold=threshold)
+            spec_out[i] = spec_out[i].remove_outliers(threshold=threshold, size=size)
 
         return spec_out
 
