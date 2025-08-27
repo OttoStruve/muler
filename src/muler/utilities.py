@@ -381,7 +381,23 @@ def resample_list(spec_to_resample, specList, **kwargs):
             spec_out[i] = specList[i].__class__(
                 spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=meta_out, wcs=None)            
     return spec_out
+    
 
+def resample_list_to_list(input_spec, spec_to_match):
+    """Linearly resample input_spectra, which is a list of spectra, to match specrum_to_match and return an
+     EchelleSpectrumList object with the same spectral axis and naned pixels as specrum_to_match. 
+    
+    Parameters
+    -------
+    input_spec :
+        A EchelleSpectrumList, or similar to be resampled to match spec_to_match.
+    specrum_to_match :
+        An EchelleSpectrumLis tspectrum which the input_spec will be resampled to match in both wavelength and naned pixels
+    """
+    resampled_spec = resample_list(input_spec[0], spec_to_match) #Resample spectra
+    for i in range(1, len(input_spec)):
+        resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)
+    return resampled_spec
 
 
 
