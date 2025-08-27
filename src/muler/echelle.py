@@ -367,7 +367,7 @@ class EchelleSpectrum(Spectrum1D):
                         wcs=None,
                     )
 
-        meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
+        # meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
         # spec.meta = meta_out
         return new_spec._copy(meta=meta_out)
@@ -810,15 +810,16 @@ class EchelleSpectrum(Spectrum1D):
         if limits is None and hasattr(self, 'noisy_edges'):
             limits = self.noisy_edges
         lo, hi = limits
-        if self.meta is not None:
-            if "x_values" in self.meta.keys():
-                x_values = self.meta["x_values"]
-            else:
-                log.warn(
-                    "The spectrum metadata is missing its native pixel location labels. "
-                    "Proceeding by assuming contiguous pixel labels, which may not be what you want."
-                )
-                x_values = np.arange(len(self.wavelength))
+        # if self.meta is not None:
+        #     if "x_values" in self.meta.keys():
+        #         x_values = self.meta["x_values"]
+        #     else:
+        #         log.warn(
+        #             "The spectrum metadata is missing its native pixel location labels. "
+        #             "Proceeding by assuming contiguous pixel labels, which may not be what you want."
+        #         )
+        #         x_values = np.arange(len(self.wavelength))
+        x_values = np.arange(len(self.wavelength))
         keep_indices = (x_values > lo) & (x_values < hi)
 
         return self.apply_boolean_mask(keep_indices)
@@ -1238,21 +1239,21 @@ class EchelleSpectrumList(SpectrumList):
         else:
             unc_out = None
 
-        # Stack the x_values:
-        x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
+        # # Stack the x_values:
+        # x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
 
         meta_out = copy.deepcopy(spec[0].meta)
-        meta_out["x_values"] = x_values
+        # meta_out["x_values"] = x_values
         for ancillary_spectrum in spec[0].available_ancillary_spectra:
             if spec[0].meta[ancillary_spectrum].meta is not None:
                 meta_of_meta = spec[0].meta[ancillary_spectrum].meta
-                x_values = np.hstack(
-                    [
-                        spec[i].meta[ancillary_spectrum].meta["x_values"]
-                        for i in range(len(spec))
-                    ]
-                )
-                meta_of_meta["x_values"] = x_values
+                # x_values = np.hstack(
+                #     [
+                #         spec[i].meta[ancillary_spectrum].meta["x_values"]
+                #         for i in range(len(spec))
+                #     ]
+                # )
+                # meta_of_meta["x_values"] = x_values
             else:
                 meta_of_meta = None
             wls_anc = np.hstack(
@@ -1306,8 +1307,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(spec_out[i] + other[i])
             else:
                 spec_out[i] = self[i].__class__(spec_out[i] + other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-               spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #    spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
@@ -1319,8 +1320,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] - other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] - other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
@@ -1332,8 +1333,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] * other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] * other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
@@ -1345,8 +1346,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] / other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] / other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __pow__(self, power):
@@ -1377,8 +1378,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].sort()
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
@@ -1388,8 +1389,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def flatten(self, **kwargs):
@@ -1400,8 +1401,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def fill_nans(self, method=median_filter, **kwargs):
@@ -1418,8 +1419,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].fill_nans(method=method, **kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
 
@@ -1439,6 +1440,6 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].apply(method=method, **kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out

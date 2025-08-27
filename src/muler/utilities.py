@@ -308,8 +308,8 @@ def apply_numpy_mask(spec, mask):
 
     if spec.meta is not None:
         meta_out = copy.deepcopy(spec.meta)
-        if "x_values" in spec.meta.keys():
-            meta_out["x_values"] = meta_out["x_values"][mask]
+        # if "x_values" in spec.meta.keys():
+        #     meta_out["x_values"] = meta_out["x_values"][mask]
     else:
         meta_out = None
 

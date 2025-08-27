@@ -100,7 +100,7 @@ class KeckNIRSPECSpectrum(EchelleSpectrum):
                 hdr = None
 
             meta_dict = {
-                "x_values": hdu0.data["col"].astype(int),
+                # "x_values": hdu0.data["col"].astype(int),
                 "pipeline": pipeline,
                 "m": grating_order,
                 "header": hdr,
