@@ -118,6 +118,68 @@ class EchelleSpectrum(Spectrum1D):
                 ]
         return output
 
+    def extract1D(self, kind='optimal', slit_range=None, size=50, sigma=5.0, Q=1.0):
+        """
+        Collapse a 2D spectrum into 1D using either sum or optimal extraction.
+        This assumes the 2D spectrum is rectified and sky subracted.
+
+        Parameters
+        ----------
+        kind: str
+            Specify "optimal" to do a Horne et al. (1986) optimal extraction or "sum"
+            to do a simple sum extraction.
+        slit_range: tuple of ints
+            Minimum and maximum pixel range to consider for the extraction.  Pixels outside this range are ignored.
+        size: int
+            Only applies to optimal exraction.
+            Size of median filter used to smooth the spectrum in the dispersion direction for determining the slit profile.
+        sigma: float
+            Only applies to optimal extraction.
+            Uncertainty in standard deviations to mask outliers (e.g. cosmic rays)
+        Q : float
+            Only applies to optimal extraction.
+            Effective number of per data number.
+
+        Returns
+        ------
+        EchelleSpectrum object storing extracted 1D spectrum.
+        """
+        assert len(np.shape(self.flux)) == 2, "Spectrum must be 2D to extract a 1D spectrum from." #Test to make sure this is a 2D spectrum
+
+        flux2d = self.flux.value #grab 2d flux and variance
+        var2d = self.uncertainty.array**2
+        if slit_range is not None: #Do a cut along the cross-dispersion direction if range is specified
+            flux2d = flux2d[slit_range[0]:slit_range[1],:]
+            var2d = var2d[slit_range[0]:slit_range[1],:]
+        if kind == 'optimal': #Do Horne et al. (1986) optimal extraction
+            #construct spatial profile
+            slit_profile = self.__class__(self/np.nansum(self.flux.value, axis=0)).smooth_spectrum(size=size).enforce_positivity(zero=True).flux.value #normalize and median smooth the spectrum to estimate the slit profile
+            slit_profile = slit_profile / np.nansum(slit_profile, axis=0) #enforce normalization
+            #Revise variance estimate
+            var2d = var2d + (np.abs(slit_profile*flux2d) / Q)
+            #Mask cosmics (outliers)
+            mask = np.ones(np.shape(flux2d))
+            mask[(flux2d - np.nansum(flux2d, axis=0)*slit_profile)**2 > sigma**2 * var2d] = 0
+            #extract optimal spectrum and variance
+            flux1d = np.nansum(mask * slit_profile * flux2d / var2d, axis=0) / np.nansum(mask * slit_profile**2 / var2d, axis=0)
+            var1d = np.nansum(mask * slit_profile, axis=0) / np.nansum(mask * slit_profile**2 / var2d, axis=0)
+        elif kind == 'sum': #Do sum extraction
+            flux1d = np.nansum(flux2d, axis=0) 
+            var1d = np.nansum(var2d, axis=0) 
+        else:
+            raise Exception(
+                    "Argument 'kind' in extract1D must be either 'optimal' or 'sum.'"
+                )
+
+        extracted_spectrum = self.__class__(
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
+            flux=flux1d * self.flux.unit,
+            uncertainty=StdDevUncertainty(var1d**0.5 * self.flux.unit),
+            meta=copy.deepcopy(self.meta),
+            wcs=None,
+        )
+        return extracted_spectrum
+
     def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
 
@@ -559,7 +621,10 @@ class EchelleSpectrum(Spectrum1D):
         unmodified_variance = self.uncertainty.array**2
         smoothed_flux = np.zeros(np.shape(unmodified_flux))
         smoothed_variance = np.zeros(np.shape(unmodified_flux))
-        nx = len(unmodified_flux)
+        if unmodified_flux.ndim == 2: #2D spectra
+            ny, nx = unmodified_flux.shape
+        else:
+            nx = len(unmodified_flux)
         for i in range(nx): #Do the running median smoothing
             x_left, x_right = i + half_sizes
             if x_left < 0:
@@ -576,7 +641,7 @@ class EchelleSpectrum(Spectrum1D):
         if np.any(bad_pixels): #Fill in bad pixels
             if unmodified_flux.ndim == 2: #2D spectra
                 filtered_smoothed_flux = median_filter(smoothed_flux, size=[1,size], mode='reflect')
-                fitlered_smoothed_variance = median_filter(smoothed_variance, size=[1,size], mode='reflect')
+                filtered_smoothed_variance = median_filter(smoothed_variance, size=[1,size], mode='reflect')
             else:  #1D spectra
                 filtered_smoothed_flux = median_filter(smoothed_flux, size=size, mode='reflect')
                 filtered_smoothed_variance = median_filter(smoothed_variance, size=size, mode='reflect')
@@ -931,6 +996,21 @@ class EchelleSpectrum(Spectrum1D):
 
         return self.__class__(
             spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
+    def enforce_positivity(self, zero=True):
+        """Mask negative values with zeros (default) or nans.
+        """
+        flux = self.flux
+        unc = self.uncertainty.array
+        mask = self.flux < 0
+        if zero: #zero out negative pixels
+            flux[mask] = 0
+            unc[mask] = 0
+        else: #nan out negative pixels
+            flux[mask] = np.nan
+            unc[mask] = np.nan
+        return self.__class__(
+            spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
+
     def apply(self, method=np.nansum, **kwargs):
         """
         Apply any method to the spectrum.  This is very general and can be used for many
@@ -1017,6 +1097,39 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = spec_out[i].remove_nans()
                     
         return spec_out
+
+
+    def extract1D(self, kind='optimal', slit_range=None, size=50, sigma=5.0, Q=1.0):
+        """
+        Collapse a 2D spectrum into 1D using either sum or optimal extraction.
+        This assumes the 2D spectrum is rectified and sky subracted.
+
+        Parameters
+        ----------
+        kind: str
+            Specify "optimal" to do a Horne et al. (1986) optimal extraction or "sum"
+            to do a simple sum extraction.
+        range: tuple of ints
+            Minimum and maximum pixel range to consider for the extraction.  Pixels outside this range are ignored.
+        size: int
+            Only applies to optimal exraction.
+            Size of median filter used to smooth the spectrum in the dispersion direction for determining the slit profile.
+        sigma: float
+            Only applies to optimal extraction.
+            Uncertainty in standard deviations to mask outliers (e.g. cosmic rays)
+        Q : float
+            Only applies to optimal extraction.
+            Effective number of per data number.
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            if spec_out[i]  is None:
+                print('uh oh')
+                breakpoint()
+            spec_out[i] = spec_out[i].extract1D(kind=kind, slit_range=slit_range, size=size, Q=Q)
+
+        return spec_out
+
 
     def remove_outliers(self, threshold=5):
         """Remove all the outliers
@@ -1308,6 +1421,8 @@ class EchelleSpectrumList(SpectrumList):
             if "x_values" not in spec_out[i].meta:
                 spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
+
+
 
     def apply(self, method=np.nansum, **kwargs):
         """
