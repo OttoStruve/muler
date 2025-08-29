@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 grating_order_offsets = {"H": 98, "K": 71}
 
 
-def readIGRINS(spec_filepath, wave_filepath=''):
+def readIGRINS(spec_filepath, wave_filepath='', extension=None):
     """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands) given
     the path to a single .spec.fits or .spec2d.fits file and a single wavelength solution file (.wvlsol_v1.fits).
     You only need to provide the path to a file for the H or K band.  It will automatically find the files for the other band.
@@ -75,6 +75,8 @@ def readIGRINS(spec_filepath, wave_filepath=''):
         (e.g. "/Path/to/IGRINS/data/SKY_SDCH_20220521_0055.wvlsol_v1.fits")
         The default behavior is to use the wavelength solution stored in the .spec.fits .spec2d.fits or .spec_a0v.fits
         but the user can provide their own wavelength solution here
+    extension: int (optional)
+        Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
 
     """
     spec_filename = spec_filepath.split('/')[-1] #To handle only changing the band in the filename, not any paths
@@ -82,19 +84,19 @@ def readIGRINS(spec_filepath, wave_filepath=''):
     if wave_filepath != '': #Use user specified wavelength solution
         wave_filename = wave_filepath.split('/')[-1]
         wave_filepath = wave_filepath.split(wave_filename)[0]
-        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), #Read in H band
-                                wavefile=wave_filepath+wave_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'))
+        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.', ), #Read in H band
+                                wavefile=wave_filepath+wave_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension)
         spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), #Read in K band
-                                wavefile=wave_filepath+wave_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'))
+                                wavefile=wave_filepath+wave_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension)
     else: #Use wavelength solution built into each fits file (default)
-        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.')) #Read in H band
-        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.')) #Read in K band       
+        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension) #Read in H band
+        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension) #Read in K band       
     spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
     return spec_all
 
 
 
-def readPLP(plppath, date, frameno, waveframeno='', dim='1D'):
+def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None):
     """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands)
     from the IGRINS PLP output
 
@@ -114,6 +116,8 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D'):
     dim: string
         Set to "1D" to read in the 1D extracted spectrum from the .spec.fits files
         or "2D" to read in the rectified 2D spectrum from the .spec2d.fits files
+    extension: int (optional)
+        Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
 
     Returns
     -------
@@ -145,22 +149,26 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D'):
 
     if gemini:
         if waveframeno=='':
-            spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_H'+suffix) #Read in H band
-            spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_K'+suffix) #Read in K band  
+            spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_H'+suffix, extension=extension) #Read in H band
+            spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_K'+suffix, extension=extension) #Read in K band  
         else:        
             spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_H'+suffix, #Read in H bandgemini
-                                        wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_H.wvlsol_v1.fits')
+                                        wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_H.wvlsol_v1.fits',
+                                        extension=extension)
             spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_K'+suffix, #Read in K band
-                                        wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_K.wvlsol_v1.fits')
+                                        wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_K.wvlsol_v1.fits',
+                                        extension=extension)
     else:
         if waveframeno=='':
-            spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix) #Read in H band
-            spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCK_'+date+'_'+frameno+suffix) #Read in K band  
+            spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix, extension=extension) #Read in H band
+            spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCK_'+date+'_'+frameno+suffix, extension=extension) #Read in K band  
         else:        
             spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix, #Read in H band
-                                        wavefile=plppath+'calib/primary/'+date +'/SKY_SDCH_'+date+'_'+waveframeno+'.wvlsol_v1.fits')
+                                        wavefile=plppath+'calib/primary/'+date +'/SKY_SDCH_'+date+'_'+waveframeno+'.wvlsol_v1.fits',
+                                        extension=extension)
             spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCK_'+date+'_'+frameno+suffix, #Read in K band
-                                        wavefile=plppath+'calib/primary/'+date +'/SKY_SDCK_'+date+'_'+waveframeno+'.wvlsol_v1.fits')
+                                        wavefile=plppath+'calib/primary/'+date +'/SKY_SDCK_'+date+'_'+waveframeno+'.wvlsol_v1.fits',
+                                        extension=extension)
     spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
     return spec_all
 
@@ -227,6 +235,8 @@ class IGRINSSpectrum(EchelleSpectrum):
             If provided, must give both (or three) HDUs.  Optional, default is None.
         wavefile (str):  A path to a reduced IGRINS spectrum storing the wavelength solution
             of file type .wave.fits.
+        extension: int (optional)
+            Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
     """
 
 
@@ -234,7 +244,7 @@ class IGRINSSpectrum(EchelleSpectrum):
     #     self, *args, file=None, order=10, sn_used = False, cached_hdus=None, wavefile=None, **kwargs
     # ):
     def __init__(
-        self, *args, file='', wavefile=None, order=10, band='', cached_hdus=None, **kwargs):
+        self, *args, file='', wavefile=None, order=10, band='', cached_hdus=None, extension=None, **kwargs):
 
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
@@ -265,7 +275,7 @@ class IGRINSSpectrum(EchelleSpectrum):
                 **kwargs,
             )
         elif file != '':
-            specList = IGRINSSpectrumList.read(file, wavefile=wavefile)
+            specList = IGRINSSpectrumList.read(file, wavefile=wavefile, extension=extension)
             spec = specList[order]
             super().__init__(
                 spectral_axis=spec.spectral_axis,
@@ -327,7 +337,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def read(file, precache_hdus=True, wavefile=None):
+    def read(file, precache_hdus=True, wavefile=None, extension=None):
         """Read in a SpectrumList from a file
 
         Parameters
@@ -338,6 +348,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             Optional. Path to a file storing a wavelength soultion for a night from the plp.
             Wave files are found in the IGRINS PLP callib/primary/DATE/ directory with
             the extension wvlsol_v1.fits.
+        extension: int (optional)
+            Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
 
         """
         # still works
@@ -359,16 +371,24 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 uncertainty_hdus = fits.open(uncertainty_filepath, memmap=False)
                 variance_hdu = uncertainty_hdus[0]
             elif (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file): #For .spec_a0v.fits files
-                flux_hdu = hdus[1]
-                variance_hdu = hdus[2]
+                if extension == None:
+                    flux_hdu = hdus[1]
+                    variance_hdu = hdus[2]
+                else:
+                    flux_hdu = hdus[extension]
+                    variance_hdu = hdus[extension+1]
                 wave_hdu = hdus[3]
                 flux_hdu.header += hdus[0].header #Fix for passing header information from a .spec_a0v file
             if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
                 wave_hdus = fits.open(wavefile)
                 wave_hdu = wave_hdus[0]
         elif ("_H." in file) or ("_K." in file): #Gemini IGRINS 
-            flux_hdu = hdus[1]
-            variance_hdu = hdus[2]
+            if extension == None:
+                flux_hdu = hdus[1]
+                variance_hdu = hdus[2]
+            else:
+                flux_hdu = hdus[extension]
+                variance_hdu = hdus[extension+1]
             wave_hdu = hdus[3]
         if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
             wave_hdus = fits.open(wavefile)
