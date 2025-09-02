@@ -67,7 +67,7 @@ def test_basic():
         assert len(new_spec2.uncertainty.array) == len(rhs)
         assert len(new_spec1.flux) == len(rhs)
 
-    assert np.all(new_spec1.meta["x_values"] == new_spec2.meta["x_values"])
+    #assert np.all(new_spec1.meta["x_values"] == new_spec2.meta["x_values"]) #Since x_values is no longer passed around, commented out.
 
     ax = new_spec.plot(label="demo", color="r")
     assert ax is not None
