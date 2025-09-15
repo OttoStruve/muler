@@ -748,8 +748,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 #corrected_flux[order] = flux1d[order] / total_trans[order]
                 corrected_flux[order] = flux1d[order] / final_trans[order]
                 if order == 0:
-                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Telluric Corrected Orders')
-                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Uncorrected Orders')
+                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Uncorrected Orders')
+                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Telluric Corrected Orders')
                 else:
                     plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
                     plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
@@ -981,8 +981,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 corrected_flux[order] = flux1d[order] / final_trans[order]
                 smoothed_corrected_flux[order] = convolve(corrected_flux[order],g, normalize_kernel=False)
                 if order == 0:
-                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Telluric Corrected Orders')
-                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Uncorrected Orders')
+                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Uncorrected Orders')
+                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Telluric Corrected Orders')
                 else:
                     plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
                     plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')

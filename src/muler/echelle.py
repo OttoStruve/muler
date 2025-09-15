@@ -599,7 +599,8 @@ class EchelleSpectrum(Spectrum1D):
         finite_spec : (KeckNIRSPECSpectrum)
             Spectrum with NaNs removed
         """
-        keep_indices = (self.mask == False) & (self.flux == self.flux)
+        #keep_indices = (self.mask == False) & (self.flux == self.flux)
+        keep_indicies = ~np.isnan(self.flux.value) & np.isinifite(self.flux.value)
         return self.apply_boolean_mask(keep_indices)
 
     def smooth_spectrum(self, size=50):
