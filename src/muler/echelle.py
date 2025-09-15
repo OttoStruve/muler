@@ -573,18 +573,18 @@ class EchelleSpectrum(Spectrum1D):
         try:
             new_spec = copy.deepcopy(self)
             new_spec.shift_spectrum_to(radial_velocity=velocity)
-            # return new_spec
+            old_class = new_spec.__class__  #Crazy roundabout fix to remove the stored radial_velocity and redshift from the object so band math doesn't later shift the spectrum
+            new_spec.__class__ = Spectrum1D
+            new_spec.set_radial_velocity_to(0*u.km/u.s)
+            new_spec.set_redshift_to(0)
+            new_spec.__class__ = old_class
+            return new_spec
             #new_spec.radial_velocity = velocity
             # return new_spec._copy(
             #     spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
             #     wcs=None,
             #     radial_velocity=None,
             # )
-            return new_spec._copy(
-                wcs=None,
-                radial_velocity=None,
-                redshift=None,
-                )
 
         except:
             log.error(
