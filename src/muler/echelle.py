@@ -583,6 +583,7 @@ class EchelleSpectrum(Spectrum1D):
             return new_spec._copy(
                 wcs=None,
                 radial_velocity=None,
+                redshift=0,
                 )
 
         except:
