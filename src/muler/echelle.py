@@ -573,14 +573,17 @@ class EchelleSpectrum(Spectrum1D):
         try:
             new_spec = copy.deepcopy(self)
             new_spec.shift_spectrum_to(radial_velocity=velocity)
-            new_spec.radial_velocity = None
-            return new_spec
+            # return new_spec
             #new_spec.radial_velocity = velocity
             # return new_spec._copy(
             #     spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
             #     wcs=None,
             #     radial_velocity=None,
             # )
+            return new_spec._copy(
+                wcs=None,
+                radial_velocity=None,
+                )
 
         except:
             log.error(
