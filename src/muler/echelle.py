@@ -573,6 +573,7 @@ class EchelleSpectrum(Spectrum1D):
         try:
             new_spec = copy.deepcopy(self)
             new_spec.shift_spectrum_to(radial_velocity=velocity)
+            new_spec.radial_velocity = None
             return new_spec
             #new_spec.radial_velocity = velocity
             # return new_spec._copy(
@@ -600,7 +601,7 @@ class EchelleSpectrum(Spectrum1D):
             Spectrum with NaNs removed
         """
         #keep_indices = (self.mask == False) & (self.flux == self.flux)
-        keep_indicies = ~np.isnan(self.flux.value) & np.isfinite(self.flux.value)
+        keep_indices = ~np.isnan(self.flux.value) & np.isfinite(self.flux.value)
         return self.apply_boolean_mask(keep_indices)
 
     def smooth_spectrum(self, size=50):
