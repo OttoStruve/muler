@@ -52,9 +52,7 @@ def find_nearest(array, value): #
         Index for entry in array closest to value
     -------
     """
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return idx
+    return (np.abs(np.asarray(array) - value)).argmin()
 
 
 
@@ -71,9 +69,9 @@ def edge_normalize(x1, x2, specobj, window=20):
     y2 = np.nanmedian(specobj.flux.value[ix2-half_window:ix2+half_window])
     m = (y2 - y1) / (x[ix2] - x[ix1]) #Fit for a line through two points
     b = y2 - m * x[ix2]
-    specresult = specobj / (m*x+b)
+    #specresult = specobj / (m*x+b)
     #specresult = specobj / ((y1+y2)/2)
-    return specresult
+    return specobj / (m*x+b)
     
 
 def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
@@ -90,8 +88,7 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     else:
         left_order = convolve(specobj[i-1].flux.value, g)
         right_order = convolve(specobj[i+1].flux.value, g)
-    cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
-    specresult = edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
+    #cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
     # ix1 = find_nearest(specobj[i].spectral_axis.value, x1) #Grab points to normalize to
     # ix2 = find_nearest(specobj[i].spectral_axis.value, x2)
     # y1 = specresult.flux[ix1] #Normalize to end points using a linear fit that goes through the edges
@@ -99,7 +96,8 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     # m = (y2 - y1) / (ix2 - ix1)
     # b = y2 - m * ix2
     # specresult = specresult / (m*x+b)
-    return specresult
+    #return edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
+    return edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/convolve(np.nanmean([left_order, right_order], axis=0), g_large))
 
 
 def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
@@ -169,9 +167,7 @@ def combine_spectra(spec_list):
     return spec_final
 
 
-def combine_spectra_misaligned(
-    spec_list, pixel_midpoints=None, propagate_uncertainty=False
-):
+def combine_spectra_misaligned(spec_list, pixel_midpoints=None, propagate_uncertainty=False):
     """Combines spectra that might not be aligned pixel-by-pixel
 
     Misaligned spectra can arise when significant Radial Velocity shifts have been applied
