@@ -29,7 +29,7 @@ from astroquery.simbad import Simbad
 #Simbad.add_votable_fields('flux(V)', 'flux(B)', 'flux(J)', 'flux(H)', 'flux(K)', 'parallax')
 Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
 from specutils.manipulation import LinearInterpolatedResampler
-from astropy.convolution import convolve, Gaussian1DKernel
+from astropy.convolution import convolve, Gaussian1DKernel, RickerWavelet1DKernel, Box1DKernel
 from scipy.interpolate import interp1d
 from scipy.ndimage import median_filter
 LinInterpResampler = LinearInterpolatedResampler()
@@ -748,6 +748,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 previous_best_fit_x_shift = best_fit_x_shift
                 previous_best_fit_stretch = best_fit_stretch
 
+
         convolution_resolution = (R**(-2) - trans_resolution**(-2))**-0.5
         convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
         g = Gaussian1DKernel(stddev= convolution_std)
@@ -838,6 +839,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             interp_molec_original_grid_trans, corrected_flux, smoothed_corrected_flux, lambda2, streached_rolled_wave1d, \
             trans_other_molecules_best_fit, interp_obj_molec_trans, total_original_grid_trans, \
             chunk_interpolated_total_trans, interp_obj, interp_obj_total_original_grid_trans, best_fit_rolled_wave1d
+        plt.close('all')
         gc.collect()
             
         return final_trans
@@ -1208,18 +1210,19 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         #print('min Teff =', teff[min_chisq][0])
         # print('min log(g) =', logg[min_chisq][0])        
         br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
-        br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
+        #br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br10_spec = isolate_and_normalize_hi_order(i=br10_order, x1=br10_x1, x2=br10_x2, specobj=copy.deepcopy(self)/total_trans, mask=True)
-        br10_mask =  binary_dilation((br10_spec.flux.value / convolve(br10_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
+        #br10_mask =  binary_dilation((br10_spec.flux.value / convolve(br10_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
-        brgamma_mask =  binary_dilation((brgamma_spec.flux.value / convolve(brgamma_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
+        #brgamma_mask =  binary_dilation((brgamma_spec.flux.value / convolve(brgamma_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
         #br10_window = (br10_spec.spectral_axis.value > br10_x1) & (br10_spec.spectral_axis.value <= br10_x2)
         brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1) & (brgamma_spec.spectral_axis.value <= brgamma_x2))
-        g = Gaussian1DKernel(stddev=8.0) #Do a little bit of smoothing of the blaze functions
-        br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(br14_spec.flux.value, g, mask=br14_mask)) ).flux.value
-        br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(br10_spec.flux.value, g, mask=br10_mask)) ).flux.value
-        brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(brgamma_spec.flux.value, g, mask=brgamma_mask)) ).flux.value
+        g = Gaussian1DKernel(stddev=7.5) #Do a little bit of smoothing of the blaze functions
+        b = Box1DKernel(width=25)
+        br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, b), g)) ).flux.value
+        br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(convolve(br10_spec.flux.value, b), g)) ).flux.value
+        brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, b), g)) ).flux.value
         #brgamma_spec = brgamma_spec / (brgamma_spec/ convolve(brgamma_spec.flux.value, g, mask=brgamma_mask))
         #br10_spec = br10_spec / (br10_spec/ convolve(br10_spec.flux.value, g, mask=br10_mask))
         #br14_spec = br14_spec / (br14_spec/ convolve(br14_spec.flux.value, g, mask=br14_mask))
@@ -1319,8 +1322,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 for radial_velocity in radial_velocities:
                     shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
                     shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = radial_velocity*(u.km/u.s))
-                    shifted_broadened_model_spec.set_radial_velocity_to(0*u.km/u.s)
-                    shifted_broadened_model_spec.set_redshift_to(0)
+                    shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
+                    shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
+                    shifted_broadened_model_spec.__redshift__ = 0
                     # #Br-14
                     # br14_synth = shifted_broadened_model_spec.resample(br14_spec)
                     # br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_synth)
@@ -1365,12 +1369,12 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             #for model_spec in grid:
             for model_spec in new_grid:
                 count = count+1
-                shifted_broadened_model_spec = model_spec.rotationally_broaden(best_fit_rotational_broadening).instrumental_broaden(45000)
-                #shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
-                #shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = best_fit_radial_velocity*(u.km/u.s))
+                broadened_model_spec = model_spec.rotationally_broaden(best_fit_rotational_broadening).instrumental_broaden(45000)
+                shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
                 shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = best_fit_radial_velocity*(u.km/u.s))
-                shifted_broadened_model_spec.set_radial_velocity_to(0*u.km/u.s)
-                shifted_broadened_model_spec.set_redshift_to(0)
+                shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
+                shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
+                shifted_broadened_model_spec.__redshift__ = 0
                 # #Br-14
                 #br14_synth = 
                 #br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_synth)
@@ -1410,6 +1414,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             # min_chisq = chisq == np.nanmin(chisq[(logg==best_fit_logg) & (z==best_fit_z)])
 
             # best_fit_teff = round_to_multiple(teff[min_chisq][0], 200)
+            plt.close('all')
             iteration += 1
         if verbose:
             if iteration == max_iterations:
@@ -1436,6 +1441,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         grid_index = np.where((new_grid_logg == best_fit_logg) & (new_grid_z == best_fit_z))[0][0]
         model_spec = new_grid[grid_index].rotationally_broaden(best_fit_rotational_broadening)
         model_spec.shift_spectrum_to(radial_velocity=best_fit_radial_velocity*(u.km/u.s))
+        model_spec.radial_velocity.fill(0*u.km/u.s)
+        model_spec.__radial_velocity__ = 0*u.km/u.s
+        model_spec.__redshift__ = 0
 
         x = np.array([1.52, 1.6, 1.62487, 1.66142, 1.7, 1.9, 2.0, 2.1, 2.2, 2.25])*1e4 #Coordinates tracing continuum of Vega, taken between H I lines in the model spectrum vegallpr25.50000resam5
         #y = array([2493670., 1950210., 1584670., 1512410., 1406170. , 1293900., 854857., 706839., 589023., 494054., 417965., 356822., 306391.]) * scale_vega_flux * 1e3
@@ -1556,10 +1564,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         #model_spec = std_phot.scale_to_k(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
 
         #Memory cleanup when done running
-        del new_grid, chisq, br14_spec, br14_mask, br10_spec, br10_mask, brgamma_spec, brgamma_mask, br14_window, brgamma_window, \
+        del new_grid, chisq, br14_spec, br10_spec, brgamma_spec, br14_window, brgamma_window, \
             brgamma_spec_smoothed_flux, br10_spec_smoothed_flux, br14_spec_smoothed_flux, \
             result_rotational_broadening, result_velocities, result_alphas, interp1d_model, continuum_points, interp1d_cont, cont, \
             scaled_model_spec_flux
+        plt.close('all')
         gc.collect()
 
         return model_spec, resample_list(model_spec, self), std_phot, result_dict

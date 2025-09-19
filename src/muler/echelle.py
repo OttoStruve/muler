@@ -578,6 +578,7 @@ class EchelleSpectrum(Spectrum1D):
             old_class = new_spec.__class__  
             new_spec.__class__ = Spectrum1D
             #we have to set the intrinsic properties of the object /not/ call the .set_radial_velocity_to() (this shifts the wavelength axis in place when called to the new RV)
+            new_spec.radial_velocity.fill(0*u.km/u.s)
             new_spec.__radial_velocity__ = 0*u.km/u.s
             #again if you call .set_redshift_to() the wavelength axis will shift
             new_spec.__redshift__ = 0
