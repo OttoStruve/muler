@@ -585,7 +585,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         gc.collect()
 
         return f_throughput, m, b, flux_correction, flux_corrections_m, flux_corrections_b
-    def fullfitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
+    def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
         """ Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
         This is meant to be carried out on standard stars to remove tellurics before fitting
         stellar atmosphere models.  The molecule CO2, H2O, CH4, and NO2 abundances are iteratively
@@ -844,245 +844,10 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             
         return final_trans
 
-
-    def fitTellurics(self, verbose=True, plot=False, pdfobj=None, name=''):
-        """ 
-        NOTE: This is an old version kept for backwards compatibility for now.  We reccomend you use fullFitTellurics().
-
-        Do a crude telluric fit using a telluric model from the Planetary Spectrum Generator.
-        This is meant to be carried out on standard stars to remove tellurics before fitting
-        stellar atmosphere models.  The molecule CO2, H2O, CH4, and NO2 abundances are iteratively
-        fit to the spectrum over the center of the K-band.  This fit provides enough correction to the
-        telluric lines so the star's spectrum can later be easily smoothed.
-
-        Parameters
-        ----------
-        verbose: bool
-            If True, print various diagnostic information about the fitting in the terminal.
-        plot: bool
-            If True, make diagnostic plots.
-
-        Returns
-        -------
-        final_trans: numpy array
-            Stores the estimated transmission from the atmosphere based on the best fit parameters.
-            Dividing a spectrum by final_trans will apply a crude telluric correction.
-            Rows the corrispond to orders and columns that corrispond to the detector x position
-            
-
-        """
-
-
-        #Read in model tellurics from the Planetary Spectrum Generator
-        psg_tellurics_file = files(templates).joinpath("psg_trn_r100000_1.4_2.5_um.txt")
-        d = ascii.read(psg_tellurics_file, header_start=6)
-        wave_trans = d["Wave/freq"].data
-        delta_lambda_trans = np.nanmedian(wave_trans[1:] - wave_trans[:-1])
-        trans_resolution = 100000
-        wave1d = []
-        flux1d = []
-        for order in self:
-            wave1d.append(order.spectral_axis.value * 1e-4)
-            flux1d.append(order.flux.value)
-        wave1d = np.array(wave1d)
-        flux1d = np.array(flux1d)
-        #Try an automated fit
-        #Set initial guesses for pixel shift and resolution
-        rolled_wave1d = roll_along_axis(wave1d, 0.0, axis=1) #Apply an overall pixel shift
-        R = 45000
-        fwhm_to_std = 1/2.355
-        stretch=1.0
-        #Adjust the following limits and parameters
-        order_range = (54-16, 54-7)
-        # order_range = (30,49)
-        x_range = (350, 1858)
-        #x_shifts = np.arange(-2.0,2.0,0.01)
-        x_shifts = np.arange(0,0.1,0.1)
-        resolutions = np.arange(45000.0, 45200.0, 200.0)
-        stretches = np.arange(1.000, 1.001, 0.001)
-        g1 = Gaussian1DKernel(stddev=5) #For correction
-        rolled_wave1ds = []
-        for l, x_shift in enumerate(x_shifts):
-            rolled_wave1ds.append(roll_along_axis(wave1d, x_shift, axis=1))
-        interpolation_kind = "linear"
-        molecules = ['H2O',  'CO2','CH4', 'N2O'] #Seems to be the only three molecules that matter for the H & K bands
-        # molecules = [  'CO2','CH4', 'H2O'] #Seems to be the only three molecules that matter for the H & K bands
-        alphas = np.arange(-2.0,6,0.005) #Range of alphas to test
-        best_fit_alphas = np.zeros(len(molecules))
-        rolled_wave1d = wave1d
-        central_wavelength = np.nanmedian(rolled_wave1d)
-        n_iterations = 4
-        for iteration in range(n_iterations):
-            print('ITERATION ', iteration)
-            convolution_resolution = (R**(-2) - trans_resolution**(-2))**-0.5
-            convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
-            g = Gaussian1DKernel(stddev= convolution_std)
-            chisq = np.zeros([len(molecules), len(alphas)]) #Store chisq for each fit
-            chisq[:] = 1e99
-            n_orders = len(wave1d)
-            orders = np.arange(n_orders)
-            total_trans = np.ones(np.shape(wave1d))
-            molec_original_grid_trans = np.ones([len(molecules), len(d[molecules[0]].data)])
-            interp_molec_original_grid_trans = []
-            total_original_grid_trans = np.ones(len(d[molecules[0]].data))
-            corrected_flux = np.zeros(np.shape(wave1d))
-            smoothed_corrected_flux = np.zeros(np.shape(wave1d))
-            lambda2 = rolled_wave1d[:,-1]
-            streached_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(stretch-1)
-            for i, molecule in enumerate(molecules):
-                trans_other_molecules_best_fit = np.ones(np.shape(wave1d))
-                for j in range(len(molecules)):
-                    if j != i:
-                        interp_obj = interp1d(d["Wave/freq"].data,   convolve(d[molecules[j]].data**best_fit_alphas[j], g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-                        #trans_other_molecules_best_fit *= interp_obj(rolled_wave1d)
-                        trans_other_molecules_best_fit *= interp_obj(streached_rolled_wave1d)
-                for j, alpha in enumerate(alphas):
-                    if molecule == 'H2O': #Scale down alpha for water
-                        alpha = alpha * 0.05
-                    interp_obj_molec_trans = interp1d(d["Wave/freq"].data, convolve(d[molecule].data**alpha, g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-                    for order in range(order_range[0], order_range[1]):
-                        #corrected_flux[order] = convolve(std_flux_divided_by_synthetic_model[order], g1, normalize_kernel=False) / convolve(interp_obj_molec_trans(rolled_wave1d[order])*total_trans[order], g1, normalize_kernel=False)
-                        corrected_flux[order] = convolve(flux1d[order], g1, normalize_kernel=False) / convolve(interp_obj_molec_trans(streached_rolled_wave1d[order])*trans_other_molecules_best_fit[order], g1, normalize_kernel=False)
-                        smoothed_corrected_flux[order] = median_filter(corrected_flux[order], size=100)
-                    chisq[i, j] = np.nansum(  np.abs((corrected_flux[order_range[0]:order_range[1], x_range[0]:x_range[1]] - smoothed_corrected_flux[order_range[0]:order_range[1], x_range[0]:x_range[1]]))**2  )
-                chisq[chisq == 0.] = np.nan #Mask out garbage
-                best_fit_alpha = alphas[chisq[i] == np.nanmin(chisq[i])][0]
-                if molecule == 'H2O': #Scale down alpha for water
-                    best_fit_alpha = best_fit_alpha * 0.05                 
-                best_fit_alphas[i] = best_fit_alpha
-                interp_obj_molec_trans = interp1d(d["Wave/freq"].data,   convolve(d[molecule].data**best_fit_alpha, g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-                total_trans *= interp_obj_molec_trans(streached_rolled_wave1d)
-                #total_trans *= interp_obj_molec_trans(rolled_wave1d)
-                molec_original_grid_trans[i] = d[molecule].data**best_fit_alpha
-                interp_molec_original_grid_trans.append(interp1d(d["Wave/freq"].data,   convolve(molec_original_grid_trans[i], g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False))
-                total_original_grid_trans *= molec_original_grid_trans[i]
-                print('Best fit alpha for '+molecule+' = ', best_fit_alpha)
-            if iteration < n_iterations - 1:
-                order1, order2 = order_range[0], order_range[1]
-                x1, x2 = x_range[0], x_range[1]
-                n_x_shifts, n_resolutions, n_stretches = len(x_shifts), len(resolutions), len(stretches)
-                chisq = np.zeros([n_resolutions, n_x_shifts, n_stretches])
-        
-                chunk_flattened_std = (flux1d[order,x1:x2] / smoothed_corrected_flux[order1:order2,x1:x2])
-                for i in range(n_resolutions):
-                    convolution_resolution = (resolutions[i]**(-2) - trans_resolution**(-2))**-0.5
-                    convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
-                    g = Gaussian1DKernel(stddev= convolution_std)
-                    interp_obj = interp1d(d["Wave/freq"].data,   convolve(total_original_grid_trans, g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-                
-                    for j in range(n_x_shifts):
-                        rolled_wave1d = rolled_wave1ds[j][order1:order2,x1:x2]
-                        #lambda1 = rolled_wave1d[:,0]
-                        lambda2 = rolled_wave1d[:,-1]
-                        for k in range(n_stretches):
-                            stretched_rolled_wave1d = rolled_wave1d - (rolled_wave1d - lambda2[:,np.newaxis])*(stretches[k]-1)
-                            chunk_interpolated_total_trans = interp_obj(stretched_rolled_wave1d)
-                            chisq[i,j,k] = np.nansum(np.abs(chunk_flattened_std - chunk_interpolated_total_trans)**2)
-                ii, jj, kk = np.where(chisq == np.nanmin(chisq))
-                best_fit_resolution = resolutions[ii][0]
-                best_fit_x_shift = x_shifts[jj][0]
-                best_fit_stretch = stretches[kk][0]
-                if verbose:
-                    print('Best fit R = ', best_fit_resolution)
-                    print('Best fit pixel shift = ', best_fit_x_shift)
-                    print('Best fit stretch = ', best_fit_stretch, '\n')
-                R = best_fit_resolution
-                rolled_wave1d = roll_along_axis(wave1d, best_fit_x_shift, axis=1) #Apply an overall pixel shift
-                stretch = best_fit_stretch
-        convolution_resolution = (R**(-2) - trans_resolution**(-2))**-0.5
-        convolution_std = (central_wavelength / convolution_resolution) * fwhm_to_std / delta_lambda_trans
-        g = Gaussian1DKernel(stddev= convolution_std)
-        interp_obj = interp1d(d["Wave/freq"].data,   convolve(total_original_grid_trans, g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-        interp_obj_total_original_grid_trans = interp1d(d["Wave/freq"].data,   convolve(total_original_grid_trans, g, normalize_kernel=False), kind=interpolation_kind, bounds_error=False) #Create interopolation object to convert to IGRINS wavelength/pixel space
-        
-
-        best_fit_rolled_wave1d = roll_along_axis(wave1d, best_fit_x_shift, axis=1) #Apply an overall pixel shift
-        lambda2 = lambda2 = best_fit_rolled_wave1d[:,-1]
-        best_fit_stretched_rolled_wave1d = best_fit_rolled_wave1d - (best_fit_rolled_wave1d - lambda2[:,np.newaxis])*(best_fit_stretch-1)
-        final_trans = interp_obj_total_original_grid_trans(best_fit_stretched_rolled_wave1d)
-
-        #final_trans = interp_obj_total_original_grid_trans(wave1d)
-        if plot:
-            corrected_flux = np.zeros(np.shape(wave1d))
-            smoothed_corrected_flux = np.zeros(np.shape(wave1d))
-            plt.figure(figsize=[10,5])
-            #for order in range(order_range[0], order_range[1]): #range(len(wave1d)):
-            for order in range(len(wave1d)):
-                #corrected_flux[order] = flux1d[order] / total_trans[order]
-                corrected_flux[order] = flux1d[order] / final_trans[order]
-                smoothed_corrected_flux[order] = convolve(corrected_flux[order],g, normalize_kernel=False)
-                if order == 0:
-                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver', label='Uncorrected Orders')
-                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black', label='Telluric Corrected Orders')
-                else:
-                    plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
-                    plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
-                #plt.plot(wave1d[order][100:1950], smoothed_corrected_flux[order][100:1950], label='Estimated Blaze', color='black')
-            goodpix = np.isfinite(flux1d)
-            max_y = np.max(flux1d[goodpix])
-            plt.ylim([-0.2*max_y, 1.2*max_y])
-            plt.xlabel('Wavelength (micron)')
-            plt.ylabel('Counts')
-            plt.legend()
-            if name != '':
-                plt.title(name)
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-            br14_x1 = 15838 * 1e-4
-            br14_x2 = 15950 * 1e-4
-            br10_x1 = 17300 * 1e-4
-            br10_x2 = 17435 * 1e-4
-            brgamma_x1 = 21605 * 1e-4
-            brgamma_x2 = 21722 * 1e-4
-            plt.figure()
-            for order in range(len(wave1d)):
-                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
-                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
-            plt.ylim([-0.2*max_y, 1.2*max_y])
-            plt.xlim([br14_x1-0.0050, br14_x2+0.0050])
-            plt.xlabel('Wavelength (micron)')
-            plt.ylabel('Counts')
-            if name != '':
-                plt.title(name+'    Telluric Correction Br-14')
-            else:
-                plt.title('Telluric Correction Br-14')
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-            plt.figure()
-            for order in range(len(wave1d)):
-                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
-                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
-            plt.ylim([-0.2*max_y, 1.2*max_y])
-            plt.xlim([br10_x1-0.0050, br10_x2+0.0050])
-            plt.xlabel('Wavelength (micron)')
-            plt.ylabel('Counts')
-            if name != '':
-                plt.title(name+'    Telluric Correction Br-10')
-            else:
-                plt.title('Telluric Correction Br-10')
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-            plt.figure()
-            for order in range(len(wave1d)):
-                plt.plot(wave1d[order][100:1950], flux1d[order][100:1950], color='silver')
-                plt.plot(wave1d[order][100:1950], corrected_flux[order][100:1950], color='black')
-            plt.ylim([-0.2*max_y, 1.2*max_y])
-            plt.xlim([brgamma_x1-0.0050, brgamma_x2+0.0050])
-            plt.xlabel('Wavelength (micron)')
-            plt.ylabel('Counts')
-            if name != '':
-                plt.title(name+'    Telluric Correction Br-gamma')
-            else:
-                plt.title('Telluric Correction Br-gamma')
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-            #flattened_std_flux_divided_by_synthetic_model = flux1d / smoothed_corrected_flux   
-
-
-        return final_trans
-
     def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
-            alpha_range=(0.8,1.5), rotational_broadening_range=(10, 300), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix='',
+            alpha_range=(0.8,1.5),
+            #alpha_range=(1.0,1.0),
+            rotational_broadening_range=(10, 300), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix='',
             total_trans=None):
         """
         Automated routine to fit a Phoenix model synthetic spectrum (Husser et al. 2013) to an A0V or similar standard star. 
@@ -1155,11 +920,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 br10_order = order
             if (self[order].spectral_axis[0].value < br14_x1) and (self[order].spectral_axis[-1].value > br14_x2):
                 br14_order = order
-        # if plot:
-        #     self[br14_order].plot()
-        #     self[br10_order].plot()
-        #     self[brgamma_order].plot()
-
 
         #RUN TELLURIC CORRECTOIN
         if name_prefix != '':
@@ -1182,15 +942,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # Grab colors of a target from simbad
         std_phot = photometry()
         std_phot.get_simbad_photometry(name, coords=coords)
-        # query_result = Simbad.query_object(name)
-        # target_B = query_result['B'][0] 
-        # target_V = query_result['V'][0]
-        # target_J = query_result['J'][0]
-        # target_H = query_result['H'][0]
-        # target_K = query_result['K'][0]
 
-
-        #Initial attempt to use colors to constrain stellar parameters
+        #Use colors to constrain stellar Teff
         n = len(teff)
         chisq = np.zeros(n)
         for i in range(n):
@@ -1198,40 +951,23 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                         (std_phot.J - (J_minus_V[i]+std_phot.V))**2 + \
                         (std_phot.H - (H_minus_V[i]+std_phot.V))**2 +  \
                         (std_phot.K - (K_minus_V[i]+std_phot.V))**2            
-            # chisq[i] = (target_B - (B_minus_V[i]+target_V))**2 + \
-            #             (target_J - (J_minus_V[i]+target_V))**2 + \
-            #             (target_H - (H_minus_V[i]+target_V))**2 +  \
-            #             (target_K - (K_minus_V[i]+target_V))**2
-        # min_chisq = chisq == np.nanmin(chisq[logg==4.5])
+
         min_chisq = chisq == np.nanmin(chisq[(logg==best_fit_logg) & (z==best_fit_z)])
-        best_fit_teff = teff[min_chisq][0]
-        # color_best_fit_teff =  teff[min_chisq][0]
-        # color_best_fit_logg = logg[min_chisq][0]
-        #print('min Teff =', teff[min_chisq][0])
-        # print('min log(g) =', logg[min_chisq][0])        
+        best_fit_teff = teff[min_chisq][0]     
         br14_spec = isolate_and_normalize_hi_order(i=br14_order, x1=br14_x1, x2=br14_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
-        #br14_mask =  binary_dilation((br14_spec.flux.value / convolve(br14_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br10_spec = isolate_and_normalize_hi_order(i=br10_order, x1=br10_x1, x2=br10_x2, specobj=copy.deepcopy(self)/total_trans, mask=True)
-        #br10_mask =  binary_dilation((br10_spec.flux.value / convolve(br10_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
-        #brgamma_mask =  binary_dilation((brgamma_spec.flux.value / convolve(brgamma_spec, g_large)) <  0.85, iterations=5) #Try to mask tellurics
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
-        #br10_window = (br10_spec.spectral_axis.value > br10_x1) & (br10_spec.spectral_axis.value <= br10_x2)
-        brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1) & (brgamma_spec.spectral_axis.value <= brgamma_x2))
+        brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1 ) & (brgamma_spec.spectral_axis.value <= brgamma_x2 ))
         g = Gaussian1DKernel(stddev=7.5) #Do a little bit of smoothing of the blaze functions
         b = Box1DKernel(width=25)
         br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, b), g)) ).flux.value
         br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(convolve(br10_spec.flux.value, b), g)) ).flux.value
         brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, b), g)) ).flux.value
-        #brgamma_spec = brgamma_spec / (brgamma_spec/ convolve(brgamma_spec.flux.value, g, mask=brgamma_mask))
-        #br10_spec = br10_spec / (br10_spec/ convolve(br10_spec.flux.value, g, mask=br10_mask))
-        #br14_spec = br14_spec / (br14_spec/ convolve(br14_spec.flux.value, g, mask=br14_mask))
-        # brgamma_spec = convolve(brgamma_spec.flux.value, g, mask=brgamma_mask)
-        # br10_spec = convolve(br10_spec.flux.value, g, mask=br10_mask)
-        # br14_spec = convolve(br14_spec.flux.value, g, mask=br14_mask)
         br14_spec_windowed = br14_spec_smoothed_flux[br14_window]
         brgamma_spec_windowed = brgamma_spec_smoothed_flux[brgamma_window]
-        #for iteration in range(n_iterations):
+
+        #Use grid from gollum to fit stellar parameters
         iteration = 0
         last_best_fit_teff = 0
         last_best_fit_logg = 0
@@ -1245,8 +981,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=logg_range, 
                         Z_range=z_range, wl_lo=3450, wl_hi= 25500, download=True)
         print('\n')
-        #Now create a subgrid by averaging between points on the , AKA new_grid
-        new_grid = []
+        #Create a subgrid called new_grid from the course grid in gollum by averaging between points on the gollum grid,
         new_grid_logg = []
         new_grid_z = []
         logg_list = np.arange(logg_range[0], logg_range[1]+0.25, 0.25)
@@ -1275,7 +1010,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     entryAvg.meta['logg'] = logg
                     entryAvg.meta['Z'] = z
                     entryAvg.meta['teff'] = best_fit_teff      
-                    
                     new_grid.append(entryAvg)
                     new_grid_logg.append(logg)
                     new_grid_z.append(z) 
@@ -1283,7 +1017,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         new_grid_logg = np.array(new_grid_logg)
         new_grid_z = np.array(new_grid_z)
 
-        #Iterate until convergence
+        #Iterate until convergence or max_iterations
         while ((best_fit_teff != last_best_fit_teff) or (best_fit_logg != last_best_fit_logg) or (best_fit_z != last_best_fit_z) or \
                     (best_fit_rotational_broadening != last_best_fit_rotational_broadening) or (best_fit_radial_velocity != last_best_fit_radial_velocity) or \
                     (best_fit_alpha != last_best_fit_alpha)) and (iteration < max_iterations):
@@ -1307,8 +1041,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             x1 = find_nearest(new_grid[grid_index].wavelength.um, 1.4)
             x2 = find_nearest(new_grid[grid_index].wavelength.um, 2.55)
             model_spec = new_grid[grid_index][x1:x2] #Slice out the portion of the model only covering the IGRINS or IGRINS-2 spectrum
-            # grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=(best_fit_logg, best_fit_logg), 
-            #                    Z_range=(best_fit_z, best_fit_z), wl_lo= 14000, wl_hi= 25000, download=True)
             rotational_broadenings = np.arange(rotational_broadening_range[0], rotational_broadening_range[1]+5, 5)
             radial_velocities = np.arange(radial_velocity_range[0], radial_velocity_range[1]+5, 5)
             chisq = []
@@ -1317,33 +1049,20 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             result_alphas = []
 
             for rotational_broadening in rotational_broadenings:
-                broadened_model_spec = model_spec.rotationally_broaden(rotational_broadening).instrumental_broaden(45000) 
-                #shifted_model_spec = model_spec.instrumental_broaden(45000).rotationally_broaden(rotational_broadening)
+                broadened_model_spec = model_spec.rotationally_broaden(rotational_broadening).instrumental_broaden(45000) #Apply rotational and instrumental broadening
                 for radial_velocity in radial_velocities:
-                    shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
+                    shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec) #RV shift
                     shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = radial_velocity*(u.km/u.s))
                     shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
                     shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
                     shifted_broadened_model_spec.__redshift__ = 0
-                    # #Br-14
-                    # br14_synth = shifted_broadened_model_spec.resample(br14_spec)
-                    # br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_synth)
-                    # brgamma_synth = shifted_broadened_model_spec.resample(brgamma_spec)
-                    # brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_synth)
-                    br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec)).flux.value[br14_window]
+                    br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec)).flux.value[br14_window] #Isolate and continuum normalize HI br14 and brgamma lines
                     brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=shifted_broadened_model_spec.resample(brgamma_spec)).flux.value[brgamma_window]
-                    #Br-gamma
-                    #for alpha in [1.3]:
-                    for alpha in np.arange(alpha_range[0], alpha_range[1]+0.025, 0.025):
-                        diff_br14 = (br14_spec_windowed-br14_synth**alpha)
-                        diff_brgamma = (brgamma_spec_windowed-brgamma_synth**alpha)
-                        if iteration ==0:
-                            diff_br14 /= np.nanmax(diff_br14)
-                            diff_brgamma /= np.nanmax(diff_brgamma)
+                    for alpha in np.arange(alpha_range[0], alpha_range[1]+0.025, 0.025): #Iterate over HI line depth fudge factor alpha
+                        diff_br14 = br14_spec_windowed - br14_synth**alpha 
+                        diff_brgamma = brgamma_spec_windowed - brgamma_synth**alpha
                         chisq.append(np.nansum((diff_br14**2)) + 
-                                        np.nansum((diff_brgamma**2)))
-                        # chisq.append(np.nansum((diff_br14[br14_window]**2)) + 
-                        #                 np.nansum((diff_brgamma[brgamma_window]**2)))
+                                       np.nansum((diff_brgamma**2)))
                         result_rotational_broadening.append(rotational_broadening)
                         result_velocities.append(radial_velocity)
                         result_alphas.append(alpha)
@@ -1351,7 +1070,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     del shifted_broadened_model_spec, br14_synth, brgamma_synth  #Memory management
                 del broadened_model_spec #Memory management
                 gc.collect()
-            chisq = np.array(chisq)
+            chisq = np.array(chisq) #Find best fits for rotational broadening, RV, and alpha
             result_rotational_broadening = np.array(result_rotational_broadening)
             result_velocities = np.array(result_velocities)
             min_i = np.where(chisq == np.nanmin(chisq))[0][0]
@@ -1359,9 +1078,6 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             best_fit_radial_velocity = result_velocities[min_i]
             best_fit_alpha = result_alphas[min_i]
             #Now with velocities fixed, vary Z and logg
-            # nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
-            # grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=(3.0, 5.0), 
-            #                    Z_range=(-1.0, 0.0), wl_lo= 14000, wl_hi= 25000, download=True)
             chisq = []
             result_logg = []
             result_z = []
@@ -1369,52 +1085,28 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             #for model_spec in grid:
             for model_spec in new_grid:
                 count = count+1
-                broadened_model_spec = model_spec.rotationally_broaden(best_fit_rotational_broadening).instrumental_broaden(45000)
+                broadened_model_spec = model_spec.rotationally_broaden(best_fit_rotational_broadening).instrumental_broaden(45000) #Fix rotational broadening and RV to best fit from above
                 shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
                 shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = best_fit_radial_velocity*(u.km/u.s))
                 shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
                 shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
                 shifted_broadened_model_spec.__redshift__ = 0
-                # #Br-14
-                #br14_synth = 
-                #br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_synth)
-                br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec))
+                br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec)) #Normalize HI lines
                 diff_br14 = (br14_spec_smoothed_flux-br14_synth.flux.value**best_fit_alpha)
-                #brgamma_synth = shifted_broadened_model_spec.resample(brgamma_spec)
-                #brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_synth)
                 brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=shifted_broadened_model_spec.resample(brgamma_spec))
                 diff_brgamma = (brgamma_spec_smoothed_flux-brgamma_synth.flux.value**best_fit_alpha)
-
-                if iteration == 0:
-                    diff_br14 /= np.nanmax(diff_br14)
-                    diff_brgamma /= np.nanmax(diff_brgamma)
-
                 chisq.append(np.nansum((diff_br14[br14_window]**2)) + 
                                 np.nansum((diff_brgamma[brgamma_window]**2)))
                 result_logg.append(model_spec.logg)
                 result_z.append(model_spec.Z)
-
                 del shifted_broadened_model_spec, br14_synth, brgamma_synth, diff_br14, diff_brgamma  #Memory management
             gc.collect()
             chisq = np.array(chisq)
             result_logg = np.array(result_logg)
-            min_i = np.where(chisq == np.nanmin(chisq))[0][0]
+            min_i = np.where(chisq == np.nanmin(chisq))[0][0] #Find best fit for logg and Z
             best_fit_logg = result_logg[min_i]
             best_fit_z = result_z[min_i]
-
-            # #Use colors to constrain stellar parameters
-            # n = len(teff)
-            # chisq = np.zeros(n)
-            # for i in range(n):
-            #     chisq[i] = (target_B - (B_minus_V[i]+target_V))**2 + \
-            #                 (target_J - (J_minus_V[i]+target_V))**2 + \
-            #                 (target_H - (H_minus_V[i]+target_V))**2 +  \
-            #                 (target_K - (K_minus_V[i]+target_V))**2
-            # # min_chisq = chisq == np.nanmin(chisq[logg==4.5])
-            # min_chisq = chisq == np.nanmin(chisq[(logg==best_fit_logg) & (z==best_fit_z)])
-
-            # best_fit_teff = round_to_multiple(teff[min_chisq][0], 200)
-            plt.close('all')
+            plt.close('all') #Close all open plots for memory management
             iteration += 1
         if verbose:
             if iteration == max_iterations:
@@ -1435,18 +1127,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         result_dict['ROTV'] = best_fit_rotational_broadening
         result_dict['RADV'] = best_fit_radial_velocity
         result_dict['ALPHA'] = best_fit_alpha
-        #Grab best fit model from grid
-        #model_spec = grid[grid.get_index(grid.find_nearest_grid_point(teff=best_fit_teff, logg=best_fit_logg, metallicity=best_fit_z))] \
-        #        .rotationally_broaden(best_fit_rotational_broadening)
+        #Grab best fit model from grid and apply best fit paramaters
         grid_index = np.where((new_grid_logg == best_fit_logg) & (new_grid_z == best_fit_z))[0][0]
         model_spec = new_grid[grid_index].rotationally_broaden(best_fit_rotational_broadening)
         model_spec.shift_spectrum_to(radial_velocity=best_fit_radial_velocity*(u.km/u.s))
         model_spec.radial_velocity.fill(0*u.km/u.s)
         model_spec.__radial_velocity__ = 0*u.km/u.s
         model_spec.__redshift__ = 0
-
         x = np.array([1.52, 1.6, 1.62487, 1.66142, 1.7, 1.9, 2.0, 2.1, 2.2, 2.25])*1e4 #Coordinates tracing continuum of Vega, taken between H I lines in the model spectrum vegallpr25.50000resam5
-        #y = array([2493670., 1950210., 1584670., 1512410., 1406170. , 1293900., 854857., 706839., 589023., 494054., 417965., 356822., 306391.]) * scale_vega_flux * 1e3
         interp1d_model = interp1d(model_spec.spectral_axis.value, model_spec.flux.value, kind='linear', bounds_error=False)
         continuum_points = interp1d_model(x)
         interp1d_cont = interp1d(x, continuum_points, kind='cubic', bounds_error=False)
@@ -1531,31 +1219,12 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.title(plot_title + '       Unnormalized Br-gamma')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
-            #Plot model fit
-            # x = np.array([1.52, 1.6, 1.62487, 1.66142, 1.7, 1.9, 2.0, 2.1, 2.2, 2.25])*1e4 #Coordinates tracing continuum of Vega, taken between H I lines in the model spectrum vegallpr25.50000resam5
-            # #y = array([2493670., 1950210., 1584670., 1512410., 1406170. , 1293900., 854857., 706839., 589023., 494054., 417965., 356822., 306391.]) * scale_vega_flux * 1e3
-            # interp1d_model = interp1d(model_spec.spectral_axis.value, model_spec.flux.value, kind='linear', bounds_error=False)
-            # continuum_points = interp1d_model(x)
-            # interp1d_cont = interp1d(x, continuum_points, kind='cubic', bounds_error=False)
-            # cont = interp1d_cont(model_spec.spectral_axis.value) #grab interpolated continuum once so dn't have to interpolate it again
-            # blue_side = model_spec.spectral_axis.value < x[0] #Set blue most side of continuum to model spec to avoid weirdness
-            # red_side = model_spec.spectral_axis.value > x[-1]
-            # cont[blue_side] = model_spec.flux.value[blue_side]
-            # cont[red_side] = model_spec.flux.value[red_side]
-            # #Fit a polynomial to the continuum
             plt.figure()
             x = model_spec.spectral_axis.value
-            # cont = mask_hydrogen_lines(model_spec)
-            # mask = np.isfinite(cont)
-            # x1, x2 = 20, -20 #clip edges
-            # cont_pfit = np.poly1d(np.polyfit(x[mask][x1:x2], cont[mask][x1:x2], deg=5))
             plt.plot(x, model_spec.flux.value, color='black')
             plt.plot(x, cont, color='blue')
-            #plt.plot(x, cont_pfit(x), color='red')
-            #Scale spectrum by power law (best fit alpha)
             scaled_model_flux = ((model_spec.flux.value / cont)**(best_fit_alpha))*cont
             plt.plot(x, scaled_model_flux, color='red')
-            #plt.xlim([22000,24000])
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
