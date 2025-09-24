@@ -13,8 +13,10 @@ import astropy.units as u
 
 local_files = glob.glob("**/SDCH*.spec_a0v.fits", recursive=True)
 local_files_2 = glob.glob("**/SDCH*.spec.fits", recursive=True)
-file = local_files[0]
-file_2 = local_files_2[0]
+# file = local_files[0]
+# file_2 = local_files_2[0]
+file = local_files_2[0]
+file_2 = local_files_2[1]
 
 
 def test_basic():
@@ -261,7 +263,7 @@ def test_deblaze():
 def test_bandmath():
     """Does band math work?"""
     spec1 = IGRINSSpectrumList.read(file=file)
-    #spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
+    # spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
     spec2 = IGRINSSpectrumList.read(file=file_2)
 
     #Test band math for orders
