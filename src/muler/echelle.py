@@ -612,7 +612,7 @@ class EchelleSpectrum(Spectrum1D):
             Spectrum with NaNs removed
         """
         #keep_indices = (self.mask == False) & (self.flux == self.flux)
-        keep_indices = ~np.isnan(self.flux.value) & np.isfinite(self.flux.value)
+        keep_indices = ~np.isnan(self.flux.value) & np.isfinite(self.flux.value) & ~((self.flux.value == 0) & (self.uncertainty.array == 0))
         return self.apply_boolean_mask(keep_indices)
 
     def smooth_spectrum(self, size=50):
