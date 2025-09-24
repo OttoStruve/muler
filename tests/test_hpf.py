@@ -201,9 +201,9 @@ def test_sky_and_lfc(file):
     assert spec.meta["provenance"] == "Target fiber"
 
 
-@pytest.mark.parametrize(
-    "file", local_files,
-)
+# @pytest.mark.parametrize(
+#     "file", local_files,
+# )
 # def test_RV(file):
 #     """Does RV shifting work"""
 
