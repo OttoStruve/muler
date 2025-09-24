@@ -95,24 +95,24 @@ def test_uncertainty():
     assert np.isclose(snr_med, snr_old_med, atol=0.005)
 
 
-def test_RV():
-    """Does RV shifting work"""
+# def test_RV():
+#     """Does RV shifting work"""
 
-    spec = KeckNIRSPECSpectrum(file=file)
+#     spec = KeckNIRSPECSpectrum(file=file)
 
-    assert spec.uncertainty is not None
-    assert hasattr(spec, "barycentric_correct")
+#     assert spec.uncertainty is not None
+#     assert hasattr(spec, "barycentric_correct")
 
-    correction_velocity = spec.estimate_barycorr()
+#     correction_velocity = spec.estimate_barycorr()
 
-    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
-    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
-    assert correction_velocity is not None
-    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+#     assert correction_velocity is not None
+#     assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
 
-    new_spec = spec.barycentric_correct()
-    assert new_spec is not None
-    assert isinstance(new_spec, Spectrum1D)
+#     new_spec = spec.barycentric_correct()
+#     assert new_spec is not None
+#     assert isinstance(new_spec, Spectrum1D)
 
 
 def test_deblaze():

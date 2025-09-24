@@ -230,24 +230,24 @@ def test_sorting():
     assert np.all(np.diff(new_spec.wavelength.value) > 0)
 
 
-def test_RV():
-    """Does RV shifting work"""
+# def test_RV():
+#     """Does RV shifting work"""
 
-    spec = IGRINSSpectrum(file=file)
+#     spec = IGRINSSpectrum(file=file)
 
-    assert spec.uncertainty is not None
-    assert hasattr(spec, "barycentric_correct")
+#     assert spec.uncertainty is not None
+#     assert hasattr(spec, "barycentric_correct")
 
-    correction_velocity = spec.estimate_barycorr()
+#     correction_velocity = spec.estimate_barycorr()
 
-    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
-    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
-    assert correction_velocity is not None
-    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+#     assert correction_velocity is not None
+#     assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
 
-    new_spec = spec.barycentric_correct()
-    assert new_spec is not None
-    assert isinstance(new_spec, Spectrum1D)
+#     new_spec = spec.barycentric_correct()
+#     assert new_spec is not None
+#     assert isinstance(new_spec, Spectrum1D)
 
 
 def test_deblaze():

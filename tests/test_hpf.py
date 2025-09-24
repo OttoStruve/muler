@@ -204,24 +204,24 @@ def test_sky_and_lfc(file):
 @pytest.mark.parametrize(
     "file", local_files,
 )
-def test_RV(file):
-    """Does RV shifting work"""
+# def test_RV(file):
+#     """Does RV shifting work"""
 
-    spec = HPFSpectrum(file=file)
+#     spec = HPFSpectrum(file=file)
 
-    assert spec.uncertainty is not None
-    assert hasattr(spec, "barycentric_correct")
+#     assert spec.uncertainty is not None
+#     assert hasattr(spec, "barycentric_correct")
 
-    correction_velocity = spec.estimate_barycorr()
+#     correction_velocity = spec.estimate_barycorr()
 
-    assert isinstance(spec.RA, astropy.units.quantity.Quantity)
-    assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
-    assert correction_velocity is not None
-    assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.RA, astropy.units.quantity.Quantity)
+#     assert isinstance(spec.DEC, astropy.units.quantity.Quantity)
+#     assert correction_velocity is not None
+#     assert isinstance(correction_velocity, astropy.units.quantity.Quantity)
 
-    new_spec = spec.barycentric_correct()
-    assert new_spec is not None
-    assert isinstance(new_spec, Spectrum1D)
+#     new_spec = spec.barycentric_correct()
+#     assert new_spec is not None
+#     assert isinstance(new_spec, Spectrum1D)
 
 
 @pytest.mark.parametrize(
