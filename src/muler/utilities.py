@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.ndimage import binary_dilation
 from astroquery.simbad import Simbad
-Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
+Simbad.add_votable_fields('flux', 'parallax')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 from astropy.coordinates import SkyCoord
@@ -52,9 +52,7 @@ def find_nearest(array, value): #
         Index for entry in array closest to value
     -------
     """
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return idx
+    return (np.abs(np.asarray(array) - value)).argmin()
 
 
 
@@ -71,9 +69,9 @@ def edge_normalize(x1, x2, specobj, window=20):
     y2 = np.nanmedian(specobj.flux.value[ix2-half_window:ix2+half_window])
     m = (y2 - y1) / (x[ix2] - x[ix1]) #Fit for a line through two points
     b = y2 - m * x[ix2]
-    specresult = specobj / (m*x+b)
+    #specresult = specobj / (m*x+b)
     #specresult = specobj / ((y1+y2)/2)
-    return specresult
+    return specobj / (m*x+b)
     
 
 def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
@@ -90,8 +88,7 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     else:
         left_order = convolve(specobj[i-1].flux.value, g)
         right_order = convolve(specobj[i+1].flux.value, g)
-    cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
-    specresult = edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
+    #cont =  convolve(np.nanmean([left_order, right_order], axis=0), g_large) #Average both orders to get some idea of what the continuum should be
     # ix1 = find_nearest(specobj[i].spectral_axis.value, x1) #Grab points to normalize to
     # ix2 = find_nearest(specobj[i].spectral_axis.value, x2)
     # y1 = specresult.flux[ix1] #Normalize to end points using a linear fit that goes through the edges
@@ -99,7 +96,8 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     # m = (y2 - y1) / (ix2 - ix1)
     # b = y2 - m * ix2
     # specresult = specresult / (m*x+b)
-    return specresult
+    #return edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/cont)
+    return edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/convolve(np.nanmean([left_order, right_order], axis=0), g_large))
 
 
 def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
@@ -169,9 +167,7 @@ def combine_spectra(spec_list):
     return spec_final
 
 
-def combine_spectra_misaligned(
-    spec_list, pixel_midpoints=None, propagate_uncertainty=False
-):
+def combine_spectra_misaligned(spec_list, pixel_midpoints=None, propagate_uncertainty=False):
     """Combines spectra that might not be aligned pixel-by-pixel
 
     Misaligned spectra can arise when significant Radial Velocity shifts have been applied
@@ -308,8 +304,8 @@ def apply_numpy_mask(spec, mask):
 
     if spec.meta is not None:
         meta_out = copy.deepcopy(spec.meta)
-        if "x_values" in spec.meta.keys():
-            meta_out["x_values"] = meta_out["x_values"][mask]
+        # if "x_values" in spec.meta.keys():
+        #     meta_out["x_values"] = meta_out["x_values"][mask]
     else:
         meta_out = None
 
@@ -517,57 +513,61 @@ class Slit:
 
         gg_init = g1 + g2
         fitter = fitting.TRFLSQFitter()
-        gg_fit = fitter(gg_init, x, y, maxiter=10000)
+        try: #Error catch
+            gg_fit = fitter(gg_init, x, y, maxiter=10000)
 
-        # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
-        fine_x = np.arange(-20, 20, 0.00001)
-        integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
-        integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
-        if integrated_g1 > integrated_g2:
-            self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
-        else: #integrated_g1 <= integrated_g2
-            self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
+            # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
+            fine_x = np.arange(-20, 20, 0.00001)
+            integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
+            integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
+            if integrated_g1 > integrated_g2:
+                self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
+            else: #integrated_g1 <= integrated_g2
+                self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
 
-        if plot:
-            plt.figure()
-            plt.plot(x, y, '.', label='Star Data')
-            plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
-            plt.plot(x, y-gg_fit(x), label='Residuals')
-            plt.xlabel('Distance along slit (arcsec)')
-            plt.ylabel('Flux')
-            plt.legend()
-            if plot_title != '':
-                plt.suptitle(plot_title)
-            if self.name != '':
-                plt.title(self.name)
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-        if print_info:
-            #log.info('FWHM A beam:', gg_fit[0].fwhm)
-            #log.info('FWHM B beam:', gg_fit[1].fwhm)
-            print('FWHM A beam:', gg_fit[0].fwhm)
-            print('FWHM B beam:', gg_fit[1].fwhm)
-        #Numerically estimate light through slit
-        g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*self.length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
-        g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
+            if plot:
+                plt.figure()
+                plt.plot(x, y, '.', label='Star Data')
+                plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
+                plt.plot(x, y-gg_fit(x), label='Residuals')
+                plt.xlabel('Distance along slit (arcsec)')
+                plt.ylabel('Flux')
+                plt.legend()
+                if plot_title != '':
+                    plt.suptitle(plot_title)
+                if self.name != '':
+                    plt.title(self.name)
+                if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                    pdfobj.savefig()
+            if print_info:
+                #log.info('FWHM A beam:', gg_fit[0].fwhm)
+                #log.info('FWHM B beam:', gg_fit[1].fwhm)
+                print('FWHM A beam:', gg_fit[0].fwhm)
+                print('FWHM B beam:', gg_fit[1].fwhm)
+            #Numerically estimate light through slit
+            g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*self.length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
+            g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
 
-        #simulate  guiding error by "smearing out" PSF
-        # position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
-        # fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        # diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
-        # diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
-        # g1_fit.x_0 += 0.5*diff_x0
-        # g2_fit.x_0 += 0.5*diff_x0
-        # g1_fit.y_0 += 0.5*diff_y0
-        # g2_fit.y_0 += 0.5*diff_y0
-        # n = 5
-        # for i in range(n):
-        #     self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
-        #     g1_fit.x_0 -= (1/(n-1))*diff_x0
-        #     g2_fit.x_0 -= (1/(n-1))*diff_x0
-        #     g1_fit.y_0 -= (1/(n-1))*diff_y0
-        #     g2_fit.y_0 -= (1/(n-1))*diff_y0
-        self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+            #simulate  guiding error by "smearing out" PSF
+            # position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
+            # fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+            # diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+            # diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
+            # g1_fit.x_0 += 0.5*diff_x0
+            # g2_fit.x_0 += 0.5*diff_x0
+            # g1_fit.y_0 += 0.5*diff_y0
+            # g2_fit.y_0 += 0.5*diff_y0
+            # n = 5
+            # for i in range(n):
+            #     self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+            #     g1_fit.x_0 -= (1/(n-1))*diff_x0
+            #     g2_fit.x_0 -= (1/(n-1))*diff_x0
+            #     g1_fit.y_0 -= (1/(n-1))*diff_y0
+            #     g2_fit.y_0 -= (1/(n-1))*diff_y0
+            self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+        except: #if bad fit, just return a bunch of nans
+            self.f2d = np.zeros(np.shape(self.x2d))
+            self.f2d[:] = np.nan
 
     def ONOFF(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
@@ -819,11 +819,11 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['B'][0] 
-            self.V = query_result['V'][0]
-            self.J = query_result['J'][0]
-            self.H = query_result['H'][0]
-            self.K = query_result['K'][0]
+            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #if the given object name returns a SIMBAD result
         elif len(query_result) > 0:
@@ -832,11 +832,17 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['B'][0] 
-            self.V = query_result['V'][0]
-            self.J = query_result['J'][0]
-            self.H = query_result['H'][0]
-            self.K = query_result['K'][0]
+            # self.B = query_result['B'][0] 
+            # self.V = query_result['V'][0]
+            # self.J = query_result['J'][0]
+            # self.H = query_result['H'][0]
+            # self.K = query_result['K'][0]
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #the object name is not SIMBAD searchable and the coords are not given
         else:

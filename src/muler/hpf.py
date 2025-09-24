@@ -103,7 +103,7 @@ class HPFSpectrum(EchelleSpectrum):
                 unc = np.sqrt(unc.value) * u.ct
 
             meta_dict = {
-                "x_values": np.arange(0, 2048, 1, dtype=int),
+                # "x_values": np.arange(0, 2048, 1, dtype=int),
                 "pipeline": pipeline,
                 "m": grating_order,
                 "header": hdr,

@@ -56,7 +56,7 @@ class MagESpectrum(EchelleSpectrum):
             mask = np.isnan(flux) | np.isnan(unc.array)
 
             meta_dict = {
-                "x_values": np.arange(0, 2048, 1, dtype=int),
+                # "x_values": np.arange(0, 2048, 1, dtype=int),
                 "header": hdr,
             }
 

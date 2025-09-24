@@ -367,7 +367,7 @@ class EchelleSpectrum(Spectrum1D):
                         wcs=None,
                     )
 
-        meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
+        # meta_out["x_values"] = meta_out["x_values"][sorted_indexes]
 
         # spec.meta = meta_out
         return new_spec._copy(meta=meta_out)
@@ -573,6 +573,18 @@ class EchelleSpectrum(Spectrum1D):
         try:
             new_spec = copy.deepcopy(self)
             new_spec.shift_spectrum_to(radial_velocity=velocity)
+
+            #Crazy roundabout fix to remove the stored radial_velocity and redshift from the object so band math doesn't later shift the spectrum
+            old_class = new_spec.__class__  
+            new_spec.__class__ = Spectrum1D
+            #we have to set the intrinsic properties of the object /not/ call the .set_radial_velocity_to() (this shifts the wavelength axis in place when called to the new RV)
+            new_spec.radial_velocity.fill(0*u.km/u.s)
+            new_spec.__radial_velocity__ = 0*u.km/u.s
+            #again if you call .set_redshift_to() the wavelength axis will shift
+            new_spec.__redshift__ = 0
+            #return the class to an IGRINSSpectrum object
+            new_spec.__class__ = old_class
+            
             return new_spec
             #new_spec.radial_velocity = velocity
             # return new_spec._copy(
@@ -599,7 +611,8 @@ class EchelleSpectrum(Spectrum1D):
         finite_spec : (KeckNIRSPECSpectrum)
             Spectrum with NaNs removed
         """
-        keep_indices = (self.mask == False) & (self.flux == self.flux)
+        #keep_indices = (self.mask == False) & (self.flux == self.flux)
+        keep_indices = ~np.isnan(self.flux.value) & np.isfinite(self.flux.value) & ~((self.flux.value == 0) & (self.uncertainty.array == 0))
         return self.apply_boolean_mask(keep_indices)
 
     def smooth_spectrum(self, size=50):
@@ -770,13 +783,15 @@ class EchelleSpectrum(Spectrum1D):
 
         return ax
 
-    def remove_outliers(self, threshold=5):
+    def remove_outliers(self, threshold=5, size=50):
         """Remove outliers above threshold
 
         Parameters
         ----------
         threshold : float
             The sigma-clipping threshold (in units of sigma)
+        size : int
+            Size of window used for median smoothing to remove continuum when searching for outliers
 
 
         Returns
@@ -784,7 +799,7 @@ class EchelleSpectrum(Spectrum1D):
         clean_spec : (KeckNIRSPECSpectrum)
             Cleaned version of input Spectrum
         """
-        residual = self.flux - self.smooth_spectrum().flux
+        residual = self.flux - self.smooth_spectrum(size=size).flux
         mad = median_abs_deviation(residual.value, nan_policy="omit")
         keep_indices = (np.abs(residual.value) < (threshold * mad)) == True
 
@@ -810,15 +825,16 @@ class EchelleSpectrum(Spectrum1D):
         if limits is None and hasattr(self, 'noisy_edges'):
             limits = self.noisy_edges
         lo, hi = limits
-        if self.meta is not None:
-            if "x_values" in self.meta.keys():
-                x_values = self.meta["x_values"]
-            else:
-                log.warn(
-                    "The spectrum metadata is missing its native pixel location labels. "
-                    "Proceeding by assuming contiguous pixel labels, which may not be what you want."
-                )
-                x_values = np.arange(len(self.wavelength))
+        # if self.meta is not None:
+        #     if "x_values" in self.meta.keys():
+        #         x_values = self.meta["x_values"]
+        #     else:
+        #         log.warn(
+        #             "The spectrum metadata is missing its native pixel location labels. "
+        #             "Proceeding by assuming contiguous pixel labels, which may not be what you want."
+        #         )
+        #         x_values = np.arange(len(self.wavelength))
+        x_values = np.arange(len(self.wavelength))
         keep_indices = (x_values > lo) & (x_values < hi)
 
         return self.apply_boolean_mask(keep_indices)
@@ -1030,6 +1046,34 @@ class EchelleSpectrum(Spectrum1D):
         return self.__class__(
             spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
 
+    def __add__(self, other):
+        """Bandmath addition"""
+        if  hasattr(other, "flux"):
+            return self.__class__((Spectrum1D(self) + Spectrum1D(other)))
+        else:
+            return self.__class__((Spectrum1D(self) + other))            
+
+    def __sub__(self, other):
+        """Bandmath subtraction"""
+        if  hasattr(other, "flux"):
+            return self.__class__((Spectrum1D(self) - Spectrum1D(other)))
+        else:
+            return self.__class__((Spectrum1D(self) - other))       
+
+    def __mul__(self, other):
+        """Bandmath multiplication"""
+        if  hasattr(other, "flux"):
+            return self.__class__((Spectrum1D(self) * Spectrum1D(other)))
+        else:
+            return self.__class__((Spectrum1D(self) * other))       
+
+    def __truediv__(self, other):
+        """Bandmath division"""
+        if  hasattr(other, "flux"):
+            return self.__class__((Spectrum1D(self) / Spectrum1D(other)))
+        else:
+            return self.__class__((Spectrum1D(self) / other))       
+
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
         Uuseful for airmass correction.  Uncertainty is propogated by keeping the 
@@ -1131,7 +1175,7 @@ class EchelleSpectrumList(SpectrumList):
         return spec_out
 
 
-    def remove_outliers(self, threshold=5):
+    def remove_outliers(self, threshold=5, size=50):
         """Remove all the outliers
 
         Parameters
@@ -1141,7 +1185,7 @@ class EchelleSpectrumList(SpectrumList):
         """
         spec_out = copy.deepcopy(self)
         for i in range(len(spec_out)):
-            spec_out[i] = spec_out[i].remove_outliers(threshold=threshold)
+            spec_out[i] = spec_out[i].remove_outliers(threshold=threshold, size=size)
 
         return spec_out
 
@@ -1238,21 +1282,21 @@ class EchelleSpectrumList(SpectrumList):
         else:
             unc_out = None
 
-        # Stack the x_values:
-        x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
+        # # Stack the x_values:
+        # x_values = np.hstack([spec[i].meta["x_values"] for i in range(len(spec))])
 
         meta_out = copy.deepcopy(spec[0].meta)
-        meta_out["x_values"] = x_values
+        # meta_out["x_values"] = x_values
         for ancillary_spectrum in spec[0].available_ancillary_spectra:
             if spec[0].meta[ancillary_spectrum].meta is not None:
                 meta_of_meta = spec[0].meta[ancillary_spectrum].meta
-                x_values = np.hstack(
-                    [
-                        spec[i].meta[ancillary_spectrum].meta["x_values"]
-                        for i in range(len(spec))
-                    ]
-                )
-                meta_of_meta["x_values"] = x_values
+                # x_values = np.hstack(
+                #     [
+                #         spec[i].meta[ancillary_spectrum].meta["x_values"]
+                #         for i in range(len(spec))
+                #     ]
+                # )
+                # meta_of_meta["x_values"] = x_values
             else:
                 meta_of_meta = None
             wls_anc = np.hstack(
@@ -1306,8 +1350,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(spec_out[i] + other[i])
             else:
                 spec_out[i] = self[i].__class__(spec_out[i] + other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-               spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #    spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __sub__(self, other):
@@ -1319,8 +1363,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] - other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] - other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __mul__(self, other):
@@ -1332,8 +1376,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] * other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] * other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __truediv__(self, other):
@@ -1345,8 +1389,8 @@ class EchelleSpectrumList(SpectrumList):
                 spec_out[i] = self[i].__class__(self[i] / other[i])
             else:
                 spec_out[i] = self[i].__class__(self[i] / other)
-            if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" in self[i].meta and "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def __pow__(self, power):
@@ -1377,8 +1421,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].sort()
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def rv_shift(self, velocity):
@@ -1388,8 +1432,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].rv_shift(velocity)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def flatten(self, **kwargs):
@@ -1400,8 +1444,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].flatten(**kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
     def fill_nans(self, method=median_filter, **kwargs):
@@ -1418,8 +1462,8 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].fill_nans(method=method, **kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
 
 
@@ -1439,6 +1483,6 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(self)):
             spec_out[i] = self[i].apply(method=method, **kwargs)
-            if "x_values" not in spec_out[i].meta:
-                spec_out[i].meta["x_values"] = self[i].meta["x_values"]
+            # if "x_values" not in spec_out[i].meta:
+            #     spec_out[i].meta["x_values"] = self[i].meta["x_values"]
         return spec_out
