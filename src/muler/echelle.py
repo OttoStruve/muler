@@ -1046,6 +1046,23 @@ class EchelleSpectrum(Spectrum1D):
         return self.__class__(
             spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
 
+    def __add__(self, other):
+        """Bandmath addition"""
+        return self.__class__(self + other)
+
+    def __sub__(self, other):
+        """Bandmath subtraction"""
+        return self.__class__(self - other)
+
+    def __mul__(self, other):
+        """Bandmath multiplication"""
+        return self.__class__(self * other)
+
+
+    def __truediv__(self, other):
+        """Bandmath division"""
+        return self.__class__(self / other)
+
     def __pow__(self, power):
         """Take flux to a power while preserving the exiting flux units.
         Uuseful for airmass correction.  Uncertainty is propogated by keeping the 
