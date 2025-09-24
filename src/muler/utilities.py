@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.ndimage import binary_dilation
 from astroquery.simbad import Simbad
-Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
+Simbad.add_votable_fields('flux', 'parallax')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 from astropy.coordinates import SkyCoord
@@ -513,57 +513,61 @@ class Slit:
 
         gg_init = g1 + g2
         fitter = fitting.TRFLSQFitter()
-        gg_fit = fitter(gg_init, x, y, maxiter=10000)
+        try: #Error catch
+            gg_fit = fitter(gg_init, x, y, maxiter=10000)
 
-        # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
-        fine_x = np.arange(-20, 20, 0.00001)
-        integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
-        integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
-        if integrated_g1 > integrated_g2:
-            self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
-        else: #integrated_g1 <= integrated_g2
-            self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
+            # #TESTING FLUX CORRECTION, CURRENTLY NOT IMPLEMENTED
+            fine_x = np.arange(-20, 20, 0.00001)
+            integrated_g1 = np.abs(np.nansum(gg_fit[0](fine_x)))
+            integrated_g2 = np.abs(np.nansum(gg_fit[1](fine_x)))
+            if integrated_g1 > integrated_g2:
+                self.flux_correction = 0.5 + 0.5*(integrated_g1 / integrated_g2)
+            else: #integrated_g1 <= integrated_g2
+                self.flux_correction = 0.5 + 0.5*(integrated_g2 / integrated_g1)
 
-        if plot:
-            plt.figure()
-            plt.plot(x, y, '.', label='Star Data')
-            plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
-            plt.plot(x, y-gg_fit(x), label='Residuals')
-            plt.xlabel('Distance along slit (arcsec)')
-            plt.ylabel('Flux')
-            plt.legend()
-            if plot_title != '':
-                plt.suptitle(plot_title)
-            if self.name != '':
-                plt.title(self.name)
-            if pdfobj is not None: #Save figure to file if PdfPages object is provided
-                pdfobj.savefig()
-        if print_info:
-            #log.info('FWHM A beam:', gg_fit[0].fwhm)
-            #log.info('FWHM B beam:', gg_fit[1].fwhm)
-            print('FWHM A beam:', gg_fit[0].fwhm)
-            print('FWHM B beam:', gg_fit[1].fwhm)
-        #Numerically estimate light through slit
-        g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*self.length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
-        g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
+            if plot:
+                plt.figure()
+                plt.plot(x, y, '.', label='Star Data')
+                plt.plot(x, gg_fit(x), label='Moffat Distribution Fit')
+                plt.plot(x, y-gg_fit(x), label='Residuals')
+                plt.xlabel('Distance along slit (arcsec)')
+                plt.ylabel('Flux')
+                plt.legend()
+                if plot_title != '':
+                    plt.suptitle(plot_title)
+                if self.name != '':
+                    plt.title(self.name)
+                if pdfobj is not None: #Save figure to file if PdfPages object is provided
+                    pdfobj.savefig()
+            if print_info:
+                #log.info('FWHM A beam:', gg_fit[0].fwhm)
+                #log.info('FWHM B beam:', gg_fit[1].fwhm)
+                print('FWHM A beam:', gg_fit[0].fwhm)
+                print('FWHM B beam:', gg_fit[1].fwhm)
+            #Numerically estimate light through slit
+            g1_fit = models.Moffat2D(amplitude=np.abs(gg_fit[0].amplitude), x_0=gg_fit[0].x_0 - 0.5*self.length, alpha=gg_fit[0].alpha, gamma=gg_fit[0].gamma)
+            g2_fit = models.Moffat2D(amplitude=np.abs(gg_fit[1].amplitude), x_0=gg_fit[1].x_0 - 0.5*self.length, alpha=gg_fit[1].alpha, gamma=gg_fit[1].gamma)
 
-        #simulate  guiding error by "smearing out" PSF
-        # position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
-        # fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
-        # diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
-        # diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
-        # g1_fit.x_0 += 0.5*diff_x0
-        # g2_fit.x_0 += 0.5*diff_x0
-        # g1_fit.y_0 += 0.5*diff_y0
-        # g2_fit.y_0 += 0.5*diff_y0
-        # n = 5
-        # for i in range(n):
-        #     self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
-        #     g1_fit.x_0 -= (1/(n-1))*diff_x0
-        #     g2_fit.x_0 -= (1/(n-1))*diff_x0
-        #     g1_fit.y_0 -= (1/(n-1))*diff_y0
-        #     g2_fit.y_0 -= (1/(n-1))*diff_y0
-        self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+            #simulate  guiding error by "smearing out" PSF
+            # position_angle_in_radians = self.PA * (np.pi)/180.0 #PA in radians
+            # fraction_guiding_error = np.cos(position_angle_in_radians)*self.guiding_error #arcsec, estimated by doubling average fwhm of moffet functions
+            # diff_x0 = fraction_guiding_error * np.sin(position_angle_in_radians)
+            # diff_y0 = fraction_guiding_error * np.cos(position_angle_in_radians)
+            # g1_fit.x_0 += 0.5*diff_x0
+            # g2_fit.x_0 += 0.5*diff_x0
+            # g1_fit.y_0 += 0.5*diff_y0
+            # g2_fit.y_0 += 0.5*diff_y0
+            # n = 5
+            # for i in range(n):
+            #     self.f2d += (1/n)*(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+            #     g1_fit.x_0 -= (1/(n-1))*diff_x0
+            #     g2_fit.x_0 -= (1/(n-1))*diff_x0
+            #     g1_fit.y_0 -= (1/(n-1))*diff_y0
+            #     g2_fit.y_0 -= (1/(n-1))*diff_y0
+            self.f2d = np.abs(g1_fit(self.y2d, self.x2d) + g2_fit(self.y2d, self.x2d))
+        except: #if bad fit, just return a bunch of nans
+            self.f2d = np.zeros(np.shape(self.x2d))
+            self.f2d[:] = np.nan
 
     def ONOFF(self, y, x=None, print_info=True, plot=False, plot_title='', pdfobj=None):
         """
@@ -815,11 +819,11 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['B'][0] 
-            self.V = query_result['V'][0]
-            self.J = query_result['J'][0]
-            self.H = query_result['H'][0]
-            self.K = query_result['K'][0]
+            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #if the given object name returns a SIMBAD result
         elif len(query_result) > 0:
@@ -828,11 +832,17 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['B'][0] 
-            self.V = query_result['V'][0]
-            self.J = query_result['J'][0]
-            self.H = query_result['H'][0]
-            self.K = query_result['K'][0]
+            # self.B = query_result['B'][0] 
+            # self.V = query_result['V'][0]
+            # self.J = query_result['J'][0]
+            # self.H = query_result['H'][0]
+            # self.K = query_result['K'][0]
+            #set the object's magnitudes attributes with the result of the search.
+            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #the object name is not SIMBAD searchable and the coords are not given
         else:

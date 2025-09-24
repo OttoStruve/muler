@@ -43,7 +43,6 @@ log = logging.getLogger("logger")
 log.setLevel(logging.DEBUG)
 
 
-
 #  See Issue: https://github.com/astropy/specutils/issues/779
 warnings.filterwarnings(
     "ignore", category=astropy.utils.exceptions.AstropyDeprecationWarning
@@ -516,10 +515,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     igrins_slit.ONOFF(y, x=x, print_info=False, plot=False)
                 else: #nod-on-slit
                     igrins_slit.ABBA(y, x=x, print_info=False, plot=False)
-            flux_corrections[order] = igrins_slit.flux_correction
-            f_through_slit[order] = igrins_slit.estimate_slit_throughput()
+            if not np.all(np.isnan(igrins_slit.f2d)): #If fit was good
+                flux_corrections[order] = igrins_slit.flux_correction
+                f_through_slit[order] = igrins_slit.estimate_slit_throughput()
+            else:
+                flux_corrections[order] = np.nan
+                f_through_slit[order] = np.nan
             wave[order] = np.nanmedian(self[order].wavelength.um[col1:col2])
-        good_orders = np.isfinite(f_through_slit)  #mask out nans
+        good_orders = np.isfinite(f_through_slit) &  ~np.isnan(f_through_slit)  #mask out nans
         f_through_slit = f_through_slit[good_orders]
         wave = wave[good_orders]
         flux_corrections = flux_corrections[good_orders]
@@ -581,7 +584,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
 
         #Memory cleanup when done
-        del spec2d_H, spec2d_K, normed_spec2d_order, igrins_slit, fitter, outlier_fitter, init_line, flux_corrections_fitted_line
+        del spec2d_H, spec2d_K, spec2d_list, normed_spec2d_order, igrins_slit, fitter, outlier_fitter, init_line, flux_corrections_fitted_line
+        plt.close('all')
         gc.collect()
 
         return f_throughput, m, b, flux_correction, flux_corrections_m, flux_corrections_b
@@ -838,10 +842,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         del d, wave_trans, wave1d, flux1d, rolled_wave1d, best_fit_alphas, chisq, molec_original_grid_trans, \
             interp_molec_original_grid_trans, corrected_flux, smoothed_corrected_flux, lambda2, streached_rolled_wave1d, \
             trans_other_molecules_best_fit, interp_obj_molec_trans, total_original_grid_trans, \
-            chunk_interpolated_total_trans, interp_obj, interp_obj_total_original_grid_trans, best_fit_rolled_wave1d
+            chunk_interpolated_total_trans, interp_obj, interp_obj_total_original_grid_trans, best_fit_rolled_wave1d, \
+            total_trans, best_fit_stretched_rolled_wave1d, stretched_rolled_wave1d, goodpix
         plt.close('all')
         gc.collect()
-            
+
         return final_trans
 
     def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
@@ -1244,7 +1249,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         del new_grid, chisq, br14_spec, br10_spec, brgamma_spec, br14_window, brgamma_window, \
             brgamma_spec_smoothed_flux, br10_spec_smoothed_flux, br14_spec_smoothed_flux, \
             result_rotational_broadening, result_velocities, result_alphas, interp1d_model, continuum_points, interp1d_cont, cont, \
-            scaled_model_spec_flux
+            scaled_model_flux, scaled_model_spec_flux, blue_side, red_side
         plt.close('all')
         gc.collect()
 
