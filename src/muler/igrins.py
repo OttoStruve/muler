@@ -1066,9 +1066,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 for radial_velocity in radial_velocities:
                     shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec) #RV shift
                     shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = radial_velocity*(u.km/u.s))
-                    shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
-                    shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
-                    shifted_broadened_model_spec.__redshift__ = 0
+                    shifted_broadened_model_spec = shifted_broadened_model_spec.__class__(
+                            spectral_axis=shifted_broadened_model_spec.wavelength.value * shifted_broadened_model_spec.wavelength.unit,
+                            flux=shifted_broadened_model_spec.flux,
+                            uncertainty=shifted_broadened_model_spec.uncertainty,
+                            meta=copy.deepcopy(shifted_broadened_model_spec.meta),
+                            wcs=None
+                        )
                     br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec)).flux.value[br14_window] #Isolate and continuum normalize HI br14 and brgamma lines
                     brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=shifted_broadened_model_spec.resample(brgamma_spec)).flux.value[brgamma_window]
                     for alpha in np.arange(alpha_range[0], alpha_range[1]+0.025, 0.025): #Iterate over HI line depth fudge factor alpha
@@ -1099,11 +1103,15 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             for model_spec in new_grid:
                 count = count+1
                 broadened_model_spec = model_spec.rotationally_broaden(best_fit_rotational_broadening).instrumental_broaden(45000) #Fix rotational broadening and RV to best fit from above
-                shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec)
+                shifted_broadened_model_spec = copy.deepcopy(broadened_model_spec) #RV shift
                 shifted_broadened_model_spec.shift_spectrum_to(radial_velocity = best_fit_radial_velocity*(u.km/u.s))
-                shifted_broadened_model_spec.radial_velocity.fill(0*u.km/u.s)
-                shifted_broadened_model_spec.__radial_velocity__ = 0*u.km/u.s
-                shifted_broadened_model_spec.__redshift__ = 0
+                shifted_broadened_model_spec = shifted_broadened_model_spec.__class__(
+                        spectral_axis=shifted_broadened_model_spec.wavelength.value * shifted_broadened_model_spec.wavelength.unit,
+                        flux=shifted_broadened_model_spec.flux,
+                        uncertainty=shifted_broadened_model_spec.uncertainty,
+                        meta=copy.deepcopy(shifted_broadened_model_spec.meta),
+                        wcs=None
+                    )
                 br14_synth = edge_normalize(x1=br14_x1, x2=br14_x2, specobj=shifted_broadened_model_spec.resample(br14_spec)) #Normalize HI lines
                 diff_br14 = (br14_spec_smoothed_flux-br14_synth.flux.value**best_fit_alpha)
                 brgamma_synth = edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=shifted_broadened_model_spec.resample(brgamma_spec))
@@ -1144,9 +1152,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         grid_index = np.where((new_grid_logg == best_fit_logg) & (new_grid_z == best_fit_z))[0][0]
         model_spec = new_grid[grid_index].rotationally_broaden(best_fit_rotational_broadening)
         model_spec.shift_spectrum_to(radial_velocity=best_fit_radial_velocity*(u.km/u.s))
-        model_spec.radial_velocity.fill(0*u.km/u.s)
-        model_spec.__radial_velocity__ = 0*u.km/u.s
-        model_spec.__redshift__ = 0
+        model_spec = model_spec.__class__(
+                spectral_axis=model_spec.wavelength.value * model_spec.wavelength.unit,
+                flux=model_spec.flux,
+                uncertainty=model_spec.uncertainty,
+                meta=copy.deepcopy(model_spec.meta),
+                wcs=None
+            )
         x = np.array([1.52, 1.6, 1.62487, 1.66142, 1.7, 1.9, 2.0, 2.1, 2.2, 2.25])*1e4 #Coordinates tracing continuum of Vega, taken between H I lines in the model spectrum vegallpr25.50000resam5
         interp1d_model = interp1d(model_spec.spectral_axis.value, model_spec.flux.value, kind='linear', bounds_error=False)
         continuum_points = interp1d_model(x)

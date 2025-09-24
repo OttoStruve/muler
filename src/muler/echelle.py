@@ -180,7 +180,7 @@ class EchelleSpectrum(Spectrum1D):
         )
         return extracted_spectrum
 
-    def estimate_barycorr(self):
+    def f(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
 
         Returns
@@ -566,32 +566,19 @@ class EchelleSpectrum(Spectrum1D):
         """
         Shift velocity of spectrum in astropy units (or km/s if input velocity is just a float)
         """
-        if (
-            type(velocity) == float
-        ):  # If supplied velocity is not using astropy units, default to km/s
+        if type(velocity) == float: # If supplied velocity is not using astropy units, default to km/s
             velocity = velocity * (u.km / u.s)
         try:
             new_spec = copy.deepcopy(self)
             new_spec.shift_spectrum_to(radial_velocity=velocity)
 
-            #Crazy roundabout fix to remove the stored radial_velocity and redshift from the object so band math doesn't later shift the spectrum
-            old_class = new_spec.__class__  
-            new_spec.__class__ = Spectrum1D
-            #we have to set the intrinsic properties of the object /not/ call the .set_radial_velocity_to() (this shifts the wavelength axis in place when called to the new RV)
-            new_spec.radial_velocity.fill(0*u.km/u.s)
-            new_spec.__radial_velocity__ = 0*u.km/u.s
-            #again if you call .set_redshift_to() the wavelength axis will shift
-            new_spec.__redshift__ = 0
-            #return the class to an IGRINSSpectrum object
-            new_spec.__class__ = old_class
-            
-            return new_spec
-            #new_spec.radial_velocity = velocity
-            # return new_spec._copy(
-            #     spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
-            #     wcs=None,
-            #     radial_velocity=None,
-            # )
+            return self.__class__(
+                    spectral_axis=new_spec.wavelength.value * new_spec.wavelength.unit,
+                    flux=self.flux,
+                    uncertainty=self.uncertainty,
+                    meta=copy.deepcopy(self.meta),
+                    wcs=None
+                )
 
         except:
             log.error(
