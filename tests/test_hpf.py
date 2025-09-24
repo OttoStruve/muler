@@ -33,7 +33,7 @@ def test_basic(file):
 
     new_spec = spec.remove_nans()
 
-    assert new_spec.shape[0] <= spec.shape[0]
+    assert new_spec.shape[0] < spec.shape[0]
     assert new_spec.shape[0] > 0
     assert new_spec.mask is not None
 
