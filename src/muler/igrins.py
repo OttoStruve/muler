@@ -616,7 +616,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         #Read in model tellurics from the Planetary Spectrum Generator
         psg_tellurics_file = files(templates).joinpath("psg_trn_r100000_1.4_2.5_um.txt")
-        d = ascii.read(psg_tellurics_file, header_start=6)
+        d = ascii.read(psg_tellurics_file, header_start=6, fast_reader=False)
         wave_trans = d["Wave/freq"].data
         delta_lambda_trans = np.nanmedian(wave_trans[1:] - wave_trans[:-1])
         trans_resolution = 100000
@@ -964,11 +964,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
         brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1 ) & (brgamma_spec.spectral_axis.value <= brgamma_x2 ))
-        g = Gaussian1DKernel(stddev=8.5) #Do a little bit of smoothing of the blaze functions
-        b = Box1DKernel(width=45)
-        br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, b), g)) ).flux.value
-        br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(convolve(br10_spec.flux.value, b), g)) ).flux.value
-        brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, b), g)) ).flux.value
+        g = Gaussian1DKernel(stddev=7.5) #Do a little bit of smoothing of the blaze functions
+        b = Box1DKernel(width=35)
+        mask = np.abs(br14_spec.flux.value - median_filter(br14_spec.flux.value, 20)) > 0.1
+        br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
+        mask = np.abs(br10_spec.flux.value - median_filter(br10_spec.flux.value, 20)) > 0.1
+        br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(convolve(br10_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
+        mask = np.abs(brgamma_spec.flux.value - median_filter(brgamma_spec.flux.value, 20)) > 0.1
+        brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
         br14_spec_windowed = br14_spec_smoothed_flux[br14_window]
         brgamma_spec_windowed = brgamma_spec_smoothed_flux[brgamma_window]
         weights_br14 = np.abs(br14_spec_windowed - 1)
