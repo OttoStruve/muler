@@ -935,7 +935,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             total_trans = self.fitTellurics(verbose=verbose, plot=plot, name=plot_title, pdfobj=pdfobj)
         #Fit standard star spectrum
         #Get initial guess
-        best_fit_z = 0.0
+        best_fit_z = -1.0
         best_fit_logg = 4.5
         best_fit_rotational_broadening = 40.0
         best_fit_radial_velocity = 0.
@@ -986,7 +986,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         iteration = 0
         last_best_fit_teff = 0
         last_best_fit_logg = 0
-        last_best_fit_z = 0
+        last_best_fit_z = -1
         last_best_fit_rotational_broadening = 0
         last_best_fit_radial_velocity = 0
         last_best_fit_alpha = 0
