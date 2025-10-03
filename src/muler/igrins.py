@@ -849,7 +849,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         return final_trans
 
-    def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
+    def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,-1.0), 
             # alpha_range=(0.8,1.5),
             alpha_range=(1.0,1.0),
             rotational_broadening_range=(10, 300), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix='',
