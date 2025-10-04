@@ -850,7 +850,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         return final_trans
 
     def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
-            # alpha_range=(0.8,1.5),
+            #alpha_range=(0.8,1.5),
             alpha_range=(1.0,1.0),
             rotational_broadening_range=(10, 300), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix='',
             total_trans=None):
@@ -974,10 +974,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
         br14_spec_windowed = br14_spec_smoothed_flux[br14_window]
         brgamma_spec_windowed = brgamma_spec_smoothed_flux[brgamma_window]
+        # weights_br14 = np.abs(br14_spec_windowed - 1)
+        # weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
+        # weights_brgamma = np.abs(brgamma_spec_windowed - 1)
+        # weights_brgamma = 3.0*(weights_brgamma / np.nanmax(weights_brgamma))**2
         weights_br14 = np.abs(br14_spec_windowed - 1)
-        weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
+        weights_br14 = (weights_br14 / np.nanmax(weights_br14))
         weights_brgamma = np.abs(brgamma_spec_windowed - 1)
-        weights_brgamma = 3.0*(weights_brgamma / np.nanmax(weights_brgamma))**2
+        weights_brgamma = (weights_brgamma / np.nanmax(weights_brgamma))
         # weights_br14 = 1.0
         # weights_brgamma = 3.0
 
