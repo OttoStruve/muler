@@ -964,8 +964,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
         brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1 ) & (brgamma_spec.spectral_axis.value <= brgamma_x2 ))
-        g = Gaussian1DKernel(stddev=8.5) #Do a little bit of smoothing of the blaze functions
-        b = Box1DKernel(width=45)
+        g = Gaussian1DKernel(stddev=8.0) #Do a little bit of smoothing of the blaze functions
+        b = Box1DKernel(width=40)
         mask = np.abs(br14_spec.flux.value - median_filter(br14_spec.flux.value, 30)) > 0.1
         br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
         mask = np.abs(br10_spec.flux.value - median_filter(br10_spec.flux.value, 30)) > 0.1
@@ -978,10 +978,10 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
         # weights_brgamma = np.abs(brgamma_spec_windowed - 1)
         # weights_brgamma = 3.0*(weights_brgamma / np.nanmax(weights_brgamma))**2
-        weights_br14 = np.abs(br14_spec_windowed - 1)
-        weights_br14 = (weights_br14 / np.nanmax(weights_br14))
-        weights_brgamma = np.abs(brgamma_spec_windowed - 1)
-        weights_brgamma = (weights_brgamma / np.nanmax(weights_brgamma))
+        weights_br14 = (br14_spec_windowed - 1)
+        weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
+        weights_brgamma = (brgamma_spec_windowed - 1)
+        weights_brgamma = 2.5*(weights_brgamma / np.nanmax(weights_brgamma))**2
         # weights_br14 = 1.0
         # weights_brgamma = 3.0
 
