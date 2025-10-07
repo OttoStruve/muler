@@ -979,9 +979,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # weights_brgamma = np.abs(brgamma_spec_windowed - 1)
         # weights_brgamma = 3.0*(weights_brgamma / np.nanmax(weights_brgamma))**2
         weights_br14 = np.abs(br14_spec_windowed - 1)
-        weights_br14 = (weights_br14 / np.nanmax(weights_br14))
+        weights_br14 = (weights_br14 / np.nanmax(weights_br14))**1.25
         weights_brgamma = np.abs(brgamma_spec_windowed - 1)
-        weights_brgamma = 2.5*(weights_brgamma / np.nanmax(weights_brgamma))
+        weights_brgamma = 2.5*(weights_brgamma / np.nanmax(weights_brgamma))**1.25
         # weights_br14 = 1.0
         # weights_brgamma = 3.0
 
