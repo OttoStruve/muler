@@ -997,7 +997,9 @@ class IGRINSSpectrumList(EchelleSpectrumList):
 
         #Full grid from gollum
         nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
-        if (nearest_best_fit_teff < 9000): #For cooler stars we need to limit the metallicity to prevent metal lines from screwing up the fit
+        if (nearest_best_fit_teff < 8600):  #For cooler stars we need to limit the metallicity to prevent metal lines from screwing up the fit
+            z_range=(-1.0, -1.0)
+        elif (nearest_best_fit_teff < 9000):
             z_range=(-1.0, -0.5)
         grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=logg_range, 
                         Z_range=z_range, wl_lo=3450, wl_hi= 25500, download=True)
