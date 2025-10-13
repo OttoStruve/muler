@@ -850,7 +850,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         return final_trans
 
     def fitStandardStar(self, name, coords='', plot=False, verbose=True, max_iterations=10, logg_range=(3.0,5.0), z_range=(-1.0,0.0), 
-            # alpha_range=(0.8,1.5),
+            #alpha_range=(0.8,1.5),
             alpha_range=(1.0,1.0),
             rotational_broadening_range=(10, 300), radial_velocity_range=(-100, 100), pdfobj=None, name_prefix='',
             total_trans=None):
@@ -935,7 +935,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             total_trans = self.fitTellurics(verbose=verbose, plot=plot, name=plot_title, pdfobj=pdfobj)
         #Fit standard star spectrum
         #Get initial guess
-        best_fit_z = 0.0
+        best_fit_z = -1.0
         best_fit_logg = 4.5
         best_fit_rotational_broadening = 40.0
         best_fit_radial_velocity = 0.
@@ -964,20 +964,24 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         brgamma_spec = isolate_and_normalize_hi_order(i=brgamma_order, x1=brgamma_x1, x2=brgamma_x2, specobj=copy.deepcopy(self)/total_trans, mask=True) 
         br14_window = (br14_spec.spectral_axis.value > br14_x1) & (br14_spec.spectral_axis.value <= br14_x2)
         brgamma_window = ((brgamma_spec.spectral_axis.value > brgamma_x1 ) & (brgamma_spec.spectral_axis.value <= brgamma_x2 ))
-        g = Gaussian1DKernel(stddev=7.5) #Do a little bit of smoothing of the blaze functions
-        b = Box1DKernel(width=35)
-        mask = np.abs(br14_spec.flux.value - median_filter(br14_spec.flux.value, 20)) > 0.1
+        g = Gaussian1DKernel(stddev=8.0) #Do a little bit of smoothing of the blaze functions
+        b = Box1DKernel(width=40)
+        mask = np.abs(br14_spec.flux.value - median_filter(br14_spec.flux.value, 30)) > 0.1
         br14_spec_smoothed_flux =  edge_normalize(x1=br14_x1, x2=br14_x2, specobj=br14_spec/(br14_spec/convolve(convolve(br14_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
-        mask = np.abs(br10_spec.flux.value - median_filter(br10_spec.flux.value, 20)) > 0.1
+        mask = np.abs(br10_spec.flux.value - median_filter(br10_spec.flux.value, 30)) > 0.1
         br10_spec_smoothed_flux =   edge_normalize(x1=br10_x1, x2=br10_x2, specobj=br10_spec/(br10_spec/convolve(convolve(br10_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
-        mask = np.abs(brgamma_spec.flux.value - median_filter(brgamma_spec.flux.value, 20)) > 0.1
+        mask = np.abs(brgamma_spec.flux.value - median_filter(brgamma_spec.flux.value, 30)) > 0.1
         brgamma_spec_smoothed_flux =  edge_normalize(x1=brgamma_x1, x2=brgamma_x2, specobj=brgamma_spec/(brgamma_spec/convolve(convolve(brgamma_spec.flux.value, g, mask=mask), b, mask=mask)) ).flux.value
         br14_spec_windowed = br14_spec_smoothed_flux[br14_window]
         brgamma_spec_windowed = brgamma_spec_smoothed_flux[brgamma_window]
+        # weights_br14 = np.abs(br14_spec_windowed - 1)
+        # weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
+        # weights_brgamma = np.abs(brgamma_spec_windowed - 1)
+        # weights_brgamma = 3.0*(weights_brgamma / np.nanmax(weights_brgamma))**2
         weights_br14 = np.abs(br14_spec_windowed - 1)
-        weights_br14 = (weights_br14 / np.nanmax(weights_br14))**2
+        weights_br14 = (weights_br14 / np.nanmax(weights_br14))**1.25
         weights_brgamma = np.abs(brgamma_spec_windowed - 1)
-        weights_brgamma = 2.5*(weights_brgamma / np.nanmax(weights_brgamma))**2
+        weights_brgamma = 2.5*(weights_brgamma / np.nanmax(weights_brgamma))**1.25
         # weights_br14 = 1.0
         # weights_brgamma = 3.0
 
@@ -986,13 +990,17 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         iteration = 0
         last_best_fit_teff = 0
         last_best_fit_logg = 0
-        last_best_fit_z = 0
+        last_best_fit_z = -1
         last_best_fit_rotational_broadening = 0
         last_best_fit_radial_velocity = 0
         last_best_fit_alpha = 0
 
         #Full grid from gollum
         nearest_best_fit_teff = round_to_multiple(best_fit_teff, 200)
+        if (nearest_best_fit_teff < 8600):  #For cooler stars we need to limit the metallicity to prevent metal lines from screwing up the fit
+            z_range=(-1.0, -1.0)
+        elif (nearest_best_fit_teff < 9000):
+            z_range=(-1.0, -0.5)
         grid = PHOENIXGrid(teff_range=(nearest_best_fit_teff, nearest_best_fit_teff), logg_range=logg_range, 
                         Z_range=z_range, wl_lo=3450, wl_hi= 25500, download=True)
         print('\n')
