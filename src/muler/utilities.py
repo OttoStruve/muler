@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.ndimage import binary_dilation
 from astroquery.simbad import Simbad
-Simbad.add_votable_fields('flux', 'parallax')
+#Simbad.add_votable_fields('allfluxes')
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 from astropy.coordinates import SkyCoord
@@ -798,6 +798,7 @@ class photometry:
         """ 
 
         #try querying the object by name
+        Simbad.add_votable_fields('allfluxes')
         query_result = Simbad.query_object(name)
 
         #if the name is not simbad searchable search by coordinates instead (if there are coordinates)
@@ -819,11 +820,16 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
-            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
-            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
-            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
-            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
+            # self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            # self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            # self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            # self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            # self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #if the given object name returns a SIMBAD result
         elif len(query_result) > 0:
@@ -832,17 +838,17 @@ class photometry:
             print(f'\n\033[38;5;{63}mSIMBAD SEARCHABLE MAIN ID IS \033[0m'+ f"\033[38;5;{196}m{query_result['main_id'][0]}\033[0m", '\n')
 
             #set the object's magnitudes attributes with the result of the search.
-            # self.B = query_result['B'][0] 
-            # self.V = query_result['V'][0]
-            # self.J = query_result['J'][0]
-            # self.H = query_result['H'][0]
-            # self.K = query_result['K'][0]
+            self.B = query_result['B'][0] 
+            self.V = query_result['V'][0]
+            self.J = query_result['J'][0]
+            self.H = query_result['H'][0]
+            self.K = query_result['K'][0]
             #set the object's magnitudes attributes with the result of the search.
-            self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
-            self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
-            self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
-            self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
-            self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
+            # self.B = query_result['flux'][query_result['flux.filter']=='B'].item()
+            # self.V = query_result['flux'][query_result['flux.filter']=='V'].item()
+            # self.J = query_result['flux'][query_result['flux.filter']=='J'].item()
+            # self.H = query_result['flux'][query_result['flux.filter']=='H'].item()
+            # self.K = query_result['flux'][query_result['flux.filter']=='K'].item()
 
         #the object name is not SIMBAD searchable and the coords are not given
         else:

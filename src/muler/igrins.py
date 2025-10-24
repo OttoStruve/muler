@@ -25,9 +25,9 @@ from astropy.stats import sigma_clip
 from astropy.modeling import models, fitting
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.nddata import StdDevUncertainty
-from astroquery.simbad import Simbad
+#from astroquery.simbad import Simbad
 #Simbad.add_votable_fields('flux(V)', 'flux(B)', 'flux(J)', 'flux(H)', 'flux(K)', 'parallax')
-Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
+#Simbad.add_votable_fields('V', 'B', 'J', 'H', 'K', 'parallax')
 from specutils.manipulation import LinearInterpolatedResampler
 from astropy.convolution import convolve, Gaussian1DKernel, RickerWavelet1DKernel, Box1DKernel
 from scipy.interpolate import interp1d
