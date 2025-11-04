@@ -355,8 +355,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         # still works
         assert (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file)
         hdus = fits.open(file, memmap=False)
-        if ("SDCH_" in file) or ("SDCK_" in file): #Normal IGRINS PLP file naming convention and format
-            
+        #if ("SDCH_" in file) or ("SDCK_" in file): #Normal IGRINS PLP file naming convention and format
+        if not 'EXTVER' in hdus[1].header:  #Default IGRINS PLP format for IGRINS 1, header keyword EXTVER only applies to Gemini archive file Format
             if  (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file):  #For regular .spec.fits and .spec2d.fits files
                 flux_hdu = hdus[0]
                 if wavefile is not None:
@@ -387,7 +387,8 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
                 wave_hdus = fits.open(wavefile)
                 wave_hdu = wave_hdus[0]
-        elif ("_H." in file) or ("_K." in file): #Gemini IGRINS 
+        #elif ("_H." in file) or ("_K." in file):'EXTVER' in hduls[1].header
+        else: #Gemini archive file format, for IGRINS 1 or 2
             if extension == None:
                 flux_hdu = hdus[1]
                 variance_hdu = hdus[2]
