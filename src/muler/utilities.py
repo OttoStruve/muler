@@ -146,8 +146,12 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
                 resampled_spec = resample_list(input_spec, spec_to_match) #Resample spectrum
             else:
                 resampled_spec = LinInterpResampler(input_spec, spec_to_match.spectral_axis)
-                resampled_spec = spec_to_match.__class__( #Ensure resampled_spec is the same object as spec_to_match
-                    spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=resampled_spec.meta, wcs=None)
+                if resampled_spec.uncertainty is None: #No uncertainity, such as from a model
+                    resampled_spec = spec_to_match.__class__( #Ensure resampled_spec is the same object as spec_to_match
+                        spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, meta=resampled_spec.meta, wcs=None)
+                else: #Has uncertainty so propogate it
+                    resampled_spec = spec_to_match.__class__( #Ensure resampled_spec is the same object as spec_to_match
+                        spectral_axis=resampled_spec.spectral_axis, flux=resampled_spec.flux, uncertainty=resampled_spec.uncertainty, meta=resampled_spec.meta, wcs=None)
 
         if is_list(spec_to_match): #Propogate nans from spec_to_match to avoid wierd errors
             for i in range(len(spec_to_match)):
@@ -167,7 +171,7 @@ def combine_spectra(spec_list):
     return spec_final
 
 
-def combine_spectra_misaligned(spec_list, pixel_midpoints=None, propagate_uncertainty=False):
+def combine_spectra_misaligned(spec_list, pixel_midpoints=None, propagate_uncertainty=True):
     """Combines spectra that might not be aligned pixel-by-pixel
 
     Misaligned spectra can arise when significant Radial Velocity shifts have been applied
