@@ -57,8 +57,18 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 ## For typical operating temperature, offsets should be exact.
 grating_order_offsets = {"H": 98, "K": 71}
 
+def getCalibration(filepath):
+    """
+    Convenience function to read in and return an absolute flux calibration
+    """
+    flux_a0v_filepath = filepath.replace('.spec_a0v.fits','.flux_a0v.fits').replace('.spec.fits','.flux_a0v.fits').replace('.spec2d.fits','.flux_a0v.fits')
+    calibrated_1d_target_spectrum = IGRINSSpectrumList.read(flux_a0v_filepath, extension=1)
+    uncalibrated_1d_target_spectrum = IGRINSSpectrumList.read(flux_a0v_filepath, extension=4)
+    calibration = calibrated_1d_target_spectrum / uncalibrated_1d_target_spectrum
+    return calibration
 
-def readIGRINS(spec_filepath, wave_filepath='', extension=None):
+
+def readIGRINS(spec_filepath, wave_filepath='', extension=None, calibrate=False):
     """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands) given
     the path to a single .spec.fits or .spec2d.fits file and a single wavelength solution file (.wvlsol_v1.fits).
     You only need to provide the path to a file for the H or K band.  It will automatically find the files for the other band.
@@ -77,6 +87,9 @@ def readIGRINS(spec_filepath, wave_filepath='', extension=None):
         but the user can provide their own wavelength solution here
     extension: int (optional)
         Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
+    calibrate: bool (optional)
+        If calibrate=True, read in the absolute flux calibrated .flux_a0v.fits file and apply the absolute flux calibration.  Useful when reading in 2D spectra
+        or in odd situations when not directly reading in the .flux_a0v.fits file.
 
     """
     spec_filename = spec_filepath.split('/')[-1] #To handle only changing the band in the filename, not any paths
@@ -85,18 +98,18 @@ def readIGRINS(spec_filepath, wave_filepath='', extension=None):
         wave_filename = wave_filepath.split('/')[-1]
         wave_filepath = wave_filepath.split(wave_filename)[0]
         spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.', ), #Read in H band
-                                wavefile=wave_filepath+wave_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension)
+                                wavefile=wave_filepath+wave_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension, calibrate=calibrate)
         spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), #Read in K band
-                                wavefile=wave_filepath+wave_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension)
+                                wavefile=wave_filepath+wave_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension, calibrate=calibrate)
     else: #Use wavelength solution built into each fits file (default)
-        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension) #Read in H band
-        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension) #Read in K band       
+        spec_H = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCK_', 'SDCH_').replace('_K.', '_H.'), extension=extension, calibrate=calibrate) #Read in H band
+        spec_K = IGRINSSpectrumList.read(spec_filepath+spec_filename.replace('SDCH_', 'SDCK_').replace('_H.', '_K.'), extension=extension, calibrate=calibrate) #Read in K band       
     spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
     return spec_all
 
 
 
-def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None):
+def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None, calibrate=False):
     """Convience function for easily reading in the full IGRINS Spectrum (both H and K bands)
     from the IGRINS PLP output
 
@@ -118,6 +131,9 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None):
         or "2D" to read in the rectified 2D spectrum from the .spec2d.fits files
     extension: int (optional)
         Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
+    calibrate: bool (optional)
+        If calibrate=True, read in the absolute flux calibrated .flux_a0v.fits file and apply the absolute flux calibration.  Useful when reading in 2D spectra
+        or in odd situations when not directly reading in the .flux_a0v.fits file.
 
     Returns
     -------
@@ -154,10 +170,10 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None):
         else:        
             spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_H'+suffix, #Read in H bandgemini
                                         wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_H.wvlsol_v1.fits',
-                                        extension=extension)
+                                        extension=extension, calibrate=calibrate)
             spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/N'+date+'S'+frameno+'_K'+suffix, #Read in K band
                                         wavefile=plppath+'calib/primary/'+date +'/SKY_N'+date+'S'+waveframeno+'_K.wvlsol_v1.fits',
-                                        extension=extension)
+                                        extension=extension, calibrate=calibrate)
     else:
         if waveframeno=='':
             spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix, extension=extension) #Read in H band
@@ -165,10 +181,10 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None):
         else:        
             spec_H = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCH_'+date+'_'+frameno+suffix, #Read in H band
                                         wavefile=plppath+'calib/primary/'+date +'/SKY_SDCH_'+date+'_'+waveframeno+'.wvlsol_v1.fits',
-                                        extension=extension)
+                                        extension=extension, calibrate=calibrate)
             spec_K = IGRINSSpectrumList.read(plppath+'outdata/'+date +'/'+'SDCK_'+date+'_'+frameno+suffix, #Read in K band
                                         wavefile=plppath+'calib/primary/'+date +'/SKY_SDCK_'+date+'_'+waveframeno+'.wvlsol_v1.fits',
-                                        extension=extension)
+                                        extension=extension, calibrate=calibrate)
     spec_all = concatenate_orders(spec_H, spec_K) #Combine H and K bands
     return spec_all
 
@@ -237,6 +253,9 @@ class IGRINSSpectrum(EchelleSpectrum):
             of file type .wave.fits.
         extension: int (optional)
             Specify fits extension to read in.  For reading in different extensions in the .spec_ao0v.fits and .flux_a0v.fits files.
+        calibrate: bool (optional)
+            If calibrate=True, read in the absolute flux calibrated .flux_a0v.fits file and apply the absolute flux calibration.  Useful when reading in 2D spectra
+            or in odd situations when not directly reading in the .flux_a0v.fits file.
     """
 
 
@@ -337,7 +356,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def read(file, precache_hdus=True, wavefile=None, extension=None):
+    def read(file, precache_hdus=True, wavefile=None, extension=None, calibrate=False):
         """Read in a SpectrumList from a file
 
         Parameters
@@ -356,7 +375,13 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         assert (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file) or (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file)
         hdus = fits.open(file, memmap=False)
         #if ("SDCH_" in file) or ("SDCK_" in file): #Normal IGRINS PLP file naming convention and format
-        if not 'EXTVER' in hdus[1].header:  #Default IGRINS PLP format for IGRINS 1, header keyword EXTVER only applies to Gemini archive file Format
+        if len(hdus) == 1:
+            not_gemini_format = True
+        elif not 'EXTVER' in hdus[1].header:
+            not_gemini_format = True
+        else:
+            not_gemini_format = False
+        if not_gemini_format:  #Default IGRINS PLP format for IGRINS 1, header keyword EXTVER only applies to Gemini archive file Format
             if  (".spec.fits" in file) or (".spec_flattened.fits" in file) or (".spec2d.fits" in file):  #For regular .spec.fits and .spec2d.fits files
                 flux_hdu = hdus[0]
                 if wavefile is not None:
@@ -420,6 +445,11 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             list_out.append(spec)
         specList = IGRINSSpectrumList(list_out)
         specList.file = file
+
+        if calibrate: #Grab absolute flux calibration from .flux_a0v.fits file generated by the IGRINS Absolute Flux Calibrator and apply it to this spectrum
+            calibration = getCalibration(file)
+            specList = specList * calibration
+
         return specList
 
 
