@@ -118,7 +118,7 @@ class EchelleSpectrum(Spectrum1D):
                 ]
         return output
 
-    def extract1D(self, kind='optimal', slit_range=None, size=50, sigma=5.0, Q=1.0):
+    def extract1D(self, kind='optimal', slit_range=None, size=50, sigma=5.0, Q=1.0, profile=None):
         """
         Collapse a 2D spectrum into 1D using either sum or optimal extraction.
         This assumes the 2D spectrum is rectified and sky subracted.
@@ -153,16 +153,20 @@ class EchelleSpectrum(Spectrum1D):
             var2d = var2d[slit_range[0]:slit_range[1],:]
         if kind == 'optimal': #Do Horne et al. (1986) optimal extraction
             #construct spatial profile
-            slit_profile = self.__class__(self/np.nansum(self.flux.value, axis=0)).smooth_spectrum(size=size).enforce_positivity(zero=True).flux.value #normalize and median smooth the spectrum to estimate the slit profile
-            slit_profile = slit_profile / np.nansum(slit_profile, axis=0) #enforce normalization
+            #profile = self.__class__(self/np.nansum(self.flux.value, axis=0)).smooth_spectrum(size=size).enforce_positivity(zero=True).flux.value #normalize and median smooth the spectrum to estimate the slit profile
+            if profile is None: #If user does not provide a profile, create one
+                profile = self.__class__(self/np.nansum(self.flux.value, axis=0)).smooth_spectrum(size=size).flux.value #normalize and median smooth the spectrum to estimate the slit profile
+                profile = profile / np.nansum(profile, axis=0) #enforce normalization
+            elif len(np.shape(profile)) == 1:
+                profile = profile[:,np.newaxis]
             #Revise variance estimate
-            var2d = var2d + (np.abs(slit_profile*flux2d) / Q)
+            var2d = var2d + (np.abs(profile*flux2d) / Q)
             #Mask cosmics (outliers)
             mask = np.ones(np.shape(flux2d))
-            mask[(flux2d - np.nansum(flux2d, axis=0)*slit_profile)**2 > sigma**2 * var2d] = 0
+            mask[(flux2d - np.nansum(flux2d, axis=0)*profile)**2 > sigma**2 * var2d] = 0
             #extract optimal spectrum and variance
-            flux1d = np.nansum(mask * slit_profile * flux2d / var2d, axis=0) / np.nansum(mask * slit_profile**2 / var2d, axis=0)
-            var1d = np.nansum(mask * slit_profile, axis=0) / np.nansum(mask * slit_profile**2 / var2d, axis=0)
+            flux1d = np.nansum(mask * profile * flux2d / var2d, axis=0) / np.nansum(mask * profile**2 / var2d, axis=0)
+            var1d = np.nansum(mask * profile, axis=0) / np.nansum(mask * profile**2 / var2d, axis=0)
         elif kind == 'sum': #Do sum extraction
             flux1d = np.nansum(flux2d, axis=0) 
             var1d = np.nansum(var2d, axis=0) 
@@ -180,7 +184,39 @@ class EchelleSpectrum(Spectrum1D):
         )
         return extracted_spectrum
 
-    def f(self):
+    def smooth_crossdisperse(self, size=5):
+        """
+        Median smooth the cross-dispersion direction of a 2D spectrum.  Possibly useful for smoothing out noise to prepare a 2D spectrum for later extraction.
+        Parameters
+        ----------
+        size: int
+            Size of median filter used to smooth the spectrum in the cross-dispersion direction
+
+        Returns
+        ------
+        EchelleSpectrum object storing the smoothed 2D spectrum
+        """
+        assert len(np.shape(self.flux)) == 2, "Spectrum must be 2D to smooth in the cross-dispersion direction." #Test to make sure this is a 2D spectrum
+
+        flux2d = self.flux.value #grab 2d flux and variance
+        var2d = self.uncertainty.array**2
+
+        smoothed_flux = median_filter(flux2d, size=[size,1], mode='reflect')
+        smoothed_variance = median_filter(var2d, size=[size,1], mode='reflect')
+
+        smoothed_spectrum = self.__class__(
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
+            flux=smoothed_flux * self.flux.unit,
+            uncertainty=StdDevUncertainty(smoothed_variance**0.5 * self.flux.unit),
+            meta=copy.deepcopy(self.meta),
+            wcs=None,
+        )
+
+        return smoothed_spectrum
+
+
+
+    def estimate_barycorr(self):
         """Estimate the Barycentric Correction from the Date and Target Coordinates
 
         Returns
