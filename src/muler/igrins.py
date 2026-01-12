@@ -397,8 +397,12 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 variance_hdu = uncertainty_hdus[0]
             elif (".spec_a0v.fits" in file) or (".flux_a0v.fits" in file): #For .spec_a0v.fits files
                 if extension == None:
-                    flux_hdu = hdus[1]
-                    variance_hdu = hdus[2]
+                    flux_hdu = hdus['SPEC_DIVIDE_A0V']
+                    if 'SPEC_DIVIDE_A0V_VARIANCE' in hdus: #Default look for the header 'SPEC_DIVIDE_A0V_VARIANCE'
+                        variance_hdu = hdus['SPEC_DIVIDE_A0V_VARIANCE'] 
+                    else: #Old IGRINS PLP spec_a0v.fits files do not store the variance so fill in the variance hdu with a dummy array of nothing
+                        fake_variance_data = np.zeros(flux_hdu.data.shape) #Since no actual variance exists for these data, we are just going to feed zeros into the variance hdu
+                        variance_hdu = fits.ImageHDU(data=fake_variance_data)
                 else:
                     if ((".flux_a0v.fits" in file) and (extension >= 8)) or ((".spec_a0v.fits" in file) and (extension == 8)): #Read in A0V model, or throughputs
                         flux_hdu = hdus[extension]
@@ -407,7 +411,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                     else:
                         flux_hdu = hdus[extension]
                         variance_hdu = hdus[extension+1]
-                wave_hdu = hdus[3]
+                wave_hdu = hdus['WAVELENGTH']
                 flux_hdu.header += hdus[0].header #Fix for passing header information from a .spec_a0v file
             if wavefile is not None: #Check if user provided path to wavefile exists, if it does, use that instead
                 wave_hdus = fits.open(wavefile)
