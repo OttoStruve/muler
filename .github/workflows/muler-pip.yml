@@ -45,6 +45,7 @@ jobs:
         run: |
           pip install -U pip setuptools 
           pip install -U astroquery
+          pip install -U tynt
           python setup.py develop
           python -c "import sys; print('Python version: ', sys.version)"
           python -c "import specutils; print('specutils version: ', specutils.__version__)"
