@@ -142,7 +142,7 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=None):
             else:
                 
                 if weights == None:
-                    resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)) #Resample spectra
+                    resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis) #Resample spectra
                 else:
                     resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
