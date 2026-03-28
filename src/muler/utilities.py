@@ -101,7 +101,7 @@ def isolate_and_normalize_hi_order(i, x1, x2, specobj, mask=True):
     return edge_normalize(x1=x1, x2=x2, specobj=specobj[i]/convolve(np.nanmean([left_order, right_order], axis=0), g_large))
 
 
-def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
+def resample_combine_spectra(input_spec, spec_to_match, weights=None):
         """Linearly resample input_spectra, which can be a list of spectra, to match specrum_to_match and return an EchelleSpectrum
         or EchelleSpectrumList object with the same spectral axis and naned pixels as specrum_to_match.  One main applications
         for this is to match multiple synthetic spectra generated from stellar atmosphere models to a real spectrum.
@@ -125,23 +125,24 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
         if is_list(input_spec): #
             weights = np.array(weights) #Check that weights are a list and their sum equals 1
             sum_weights = np.sum(weights)
-            assert (np.size(weights)==1 and weights[0] == 1) or (np.size(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
-            assert sum_weights == 1, "Total weights in weights list is "+str(sum_weights)+" but total must equal to 1."
-           
+            assert (weights is None) or (np.size(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
+            if weights is not None:
+                assert sum_weights == 1, "Total weights in weights list is "+str(sum_weights)+" but total must equal to 1."
+    
             if is_list(spec_to_match):
                 resampled_spec = resample_list(input_spec[0], spec_to_match)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if np.size(weights)==1 and weights[0] == 1:
-                        resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)*(weights[i])
-                    else:
+                    if weights is None:
                         resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)
+                    else:
+                        resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)*(weights[i])
             else:
                 resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if np.size(weights)==1 and weights[0] == 1:
-                        resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)*(weights[i])
-                    else:
+                    if weights is None:
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)
+                    else:
+                        resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)*(weights[i])
         else:
             if is_list(spec_to_match):
                 resampled_spec = resample_list(input_spec, spec_to_match) #Resample spectrum
