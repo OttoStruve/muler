@@ -8,12 +8,13 @@ from astropy.modeling import models, fitting #import the astropy model fitting p
 from astropy import units as u
 from scipy.stats import binned_statistic
 from scipy.interpolate import interp1d
-from specutils.manipulation import LinearInterpolatedResampler
+from specutils.manipulation import LinearInterpolatedResampler, FluxConservingResampler
 from matplotlib import pyplot as plt
 from astropy.convolution import convolve, Gaussian1DKernel
 from scipy.ndimage import binary_dilation
 from astroquery.simbad import Simbad
 #Simbad.add_votable_fields('allfluxes')
+FlxConseResampler = FluxConservingResampler()
 LinInterpResampler = LinearInterpolatedResampler()
 from tynt import FilterGenerator
 from astropy.coordinates import SkyCoord
@@ -124,20 +125,20 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=1.0):
         if is_list(input_spec): #
             weights = np.array(weights) #Check that weights are a list and their sum equals 1
             sum_weights = np.sum(weights)
-            assert (len(weights)==1 and weights[0] == 1) or (len(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
+            assert (np.size(weights)==1 and weights[0] == 1) or (np.size(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
             assert sum_weights == 1, "Total weights in weights list is "+str(sum_weights)+" but total must equal to 1."
            
             if is_list(spec_to_match):
                 resampled_spec = resample_list(input_spec[0], spec_to_match)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if len(weights)==1 and weights[0] == 1:
+                    if np.size(weights)==1 and weights[0] == 1:
                         resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)*(weights[i])
                     else:
                         resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)
             else:
                 resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if len(weights)==1 and weights[0] == 1:
+                    if np.size(weights)==1 and weights[0] == 1:
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)*(weights[i])
                     else:
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)
@@ -701,14 +702,14 @@ class absoluteFluxCalibration:
 
 
 class photometry:
-    def __init__(self):
+    def __init__(self, bin=1e-6):
         f = FilterGenerator()
         johnson_bands = np.array(['U', 'B','V','R','I']) #2MASS
         twoMass_bands = np.array(['J', 'H', 'Ks']) #Johnson filters
         self.bands =  np.concatenate((johnson_bands, twoMass_bands))
         self.f0_lambda = np.array([3.96526e-9*1e4, 6.13268e-9*1e4, 3.62708e-9*1e4, 2.17037e-9*1e4, 1.12588e-9*1e4, #Source: http://svo2.cab.inta-csic.es/theory/fps3/index.php?mode=browse&gname=Generic&gname2=Bessell&asttype=, with units converted from erg cm^-2 s^-1 ang^-1 to erg cm^-2 s^-1 um^-1 by multiplying by 1e-4
                 3.129e-13*1e7, 1.133e-13*1e7, 4.283e-14*1e7]) #2MASS: Convert units to from W cm^-2 um^-1 to erg s^-1 cm^-2 um^-1
-        self.x = np.arange(0.0, 10.0, 1e-6)
+        self.x = np.arange(0.0, 10.0, bin)
         self.delta_lambda = np.abs(self.x[1]-self.x[0])
         n = len(self.bands)
         tcurve_interp = []
@@ -752,6 +753,7 @@ class photometry:
     def scale(self, synth_spec, band='V', mag=0.0):
         i = self.grab_band_index(band)
         resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
+        #resampled_synthetic_spectrum =  FlxConseResampler(synth_spec , self.x*u.um).flux.value
         f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
         magnitude_scale = 10**(0.4*(-mag))
         # print('self.f0_lambda', self.f0_lambda[i])
@@ -761,27 +763,100 @@ class photometry:
         scaled_synth_spec = synth_spec.__class__(scaled_synth_spec) #Force class after band math to be the same as original class
         return scaled_synth_spec
 
-    def get(self, synth_spec, band='V', resample=True, nan_catch=True):
+    def get(self, synth_spec, band='V', resample=True, bin=False, nan_catch=True, inverse_variance_weighted=False, mask_pixels=True, getflux=False):
         i = self.grab_band_index(band)
-        if resample:
-            resampled_synthetic_spectrum =  LinInterpResampler(synth_spec , self.x*u.um).flux.value
-            f_lambda = np.nansum(resampled_synthetic_spectrum * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
-            if np.isinf(f_lambda):
-                breakpoint()
-        else:
-            x = synth_spec.wavelength.to('um').value
-            delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
-            interp_obj = interp1d(self.x, self.tcurve_resampled[i], kind='linear', fill_value=0.0, bounds_error=False)
-            resampled_tcurve = interp_obj(x)
-            goodpix = (synth_spec.flux.value > 1e-20) & (synth_spec.flux.value < 1e10)
-            f_lambda = np.nansum(synth_spec.flux.value[goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix]) / np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix])
-            print(np.sum(np.isfinite(synth_spec.flux.value)))
-            #print(np.nansum(synth_spec.flux.value * resampled_tcurve * x * delta_lambda))
-            print(np.nansum(resampled_tcurve * x * delta_lambda))
+        goodpix = np.isfinite(synth_spec.flux.value) & ~np.isnan(synth_spec.flux.value)
+        if mask_pixels:
+            goodpix = goodpix & (synth_spec.flux.value > 1e-20) & (synth_spec.flux.value < 1e10)
+
+        if synth_spec.flux.ndim == 2: #2D spectrum (returns a column in the cross-dispersion direction)
+            goodpix = np.all(goodpix, axis=0)
+            if bin: #Inverse variance weighting applied
+                resampled_synthetic_spectrum = synth_spec[goodpix].bin(self.x*u.um)
+                new_x = resampled_synthetic_spectrum.wavelength.to_value(u.um)
+                new_x_deltas = resampled_synthetic_spectrum.deltas.to_value(u.um)
+                interpolated_tcurve = self.tcurve_interp[i](resampled_synthetic_spectrum.wavelength.to_value(u.um))
+                if inverse_variance_weighted:
+                    resampled_synthetic_spectrum_variance =  resampled_synthetic_spectrum.uncertainty.array**2
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * interpolated_tcurve * new_x * new_x_deltas / resampled_synthetic_spectrum_variance, axis=1) / \
+                                     np.nansum(interpolated_tcurve * new_x * new_x_deltas / resampled_synthetic_spectrum_variance, axis=1)
+                else: #Default
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * interpolated_tcurve * new_x * new_x_deltas, axis=1) / np.nansum(interpolated_tcurve * new_x * new_x_deltas)
+                if np.all(np.isinf(f_lambda)):
+                    breakpoint()
+            elif resample: #Inverse variance weighting applied
+                resampled_synthetic_spectrum = LinInterpResampler(synth_spec[goodpix], self.x*u.um)
+                if inverse_variance_weighted:
+                    resampled_synthetic_spectrum_variance =  resampled_synthetic_spectrum.uncertainty.array**2
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * self.tcurve_resampled[i] * self.x * self.delta_lambda / resampled_synthetic_spectrum_variance, naxis=1) / \
+                                     np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda / resampled_synthetic_spectrum_variance, naxis=1)
+                else: #Default
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * self.tcurve_resampled[i] * self.x * self.delta_lambda, naxis=1) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+                if np.all(np.isinf(f_lambda)):
+                    breakpoint()
+            else:
+                x = synth_spec.wavelength.to('um').value
+                delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
+                interp_obj = interp1d(self.x, self.tcurve_resampled[i], kind='linear', fill_value=0.0, bounds_error=False)
+                resampled_tcurve = interp_obj(x)
+                
+                if inverse_variance_weighted: #Inverse variance weighting applied
+                    f_lambda = np.nansum(synth_spec.flux.value[:,goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix] / synth_spec.uncertainty.array[:,goodpix]**2, axis=1) / \
+                                np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix] / synth_spec.uncertainty.array[:,goodpix]**2, axis=1)
+                else: #Default
+                    f_lambda = np.nansum(synth_spec.flux.value[:,goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix], axis=1) / np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix])
+
+
+        else: #1D spectrum
+
+            if bin: #Inverse variance weighting applied
+                resampled_synthetic_spectrum = synth_spec[goodpix].bin(self.x*u.um)
+                new_x = resampled_synthetic_spectrum.wavelength.to_value(u.um)
+                new_x_deltas = resampled_synthetic_spectrum.deltas.to_value(u.um)
+                interpolated_tcurve = self.tcurve_interp[i](resampled_synthetic_spectrum.wavelength.to_value(u.um))
+                if inverse_variance_weighted:
+                    resampled_synthetic_spectrum_variance =  resampled_synthetic_spectrum.uncertainty.array**2
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * interpolated_tcurve * new_x * new_x_deltas / resampled_synthetic_spectrum_variance) / \
+                                     np.nansum(interpolated_tcurve * new_x * new_x_deltas / resampled_synthetic_spectrum_variance)
+                else: #Default
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * interpolated_tcurve * new_x * new_x_deltas) / np.nansum(interpolated_tcurve * new_x * new_x_deltas)
+                if np.isinf(f_lambda):
+                    breakpoint()
+            elif resample: #Inverse variance weighting applied
+                resampled_synthetic_spectrum = LinInterpResampler(synth_spec[goodpix], self.x*u.um)
+                if inverse_variance_weighted:
+                    resampled_synthetic_spectrum_variance =  resampled_synthetic_spectrum.uncertainty.array**2
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * self.tcurve_resampled[i] * self.x * self.delta_lambda / resampled_synthetic_spectrum_variance) / \
+                                     np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda / resampled_synthetic_spectrum_variance)
+                else: #Default
+                    f_lambda = np.nansum(resampled_synthetic_spectrum.flux.value * self.tcurve_resampled[i] * self.x * self.delta_lambda) / np.nansum(self.tcurve_resampled[i] * self.x * self.delta_lambda)
+                if np.isinf(f_lambda):
+                    breakpoint()
+            else:
+                x = synth_spec.wavelength.to('um').value
+                delta_lambda = np.concatenate([[x[1]-x[0]], x[1:] - x[:-1]])
+                #interp_obj = interp1d(self.x, self.tcurve_resampled[i], kind='linear', fill_value=0.0, bounds_error=False)
+                #resampled_tcurve = interp_obj(x)
+                resampled_tcurve = self.tcurve_interp[i](x)
+                
+                if inverse_variance_weighted: #Inverse variance weighting applied
+                    f_lambda = np.nansum(synth_spec.flux.value[goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix] / synth_spec.uncertainty.array[goodpix]**2) / \
+                                np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix] / synth_spec.uncertainty.array[goodpix]**2)
+                else: #Default
+                    f_lambda = np.nansum(synth_spec.flux.value[goodpix] * resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix]) / np.nansum(resampled_tcurve[goodpix] * x[goodpix] * delta_lambda[goodpix])
+
+
+
+
+
         magnitude = -2.5 * np.log10(f_lambda / self.f0_lambda[i])
-        if nan_catch and (np.isnan(magnitude) or ~np.isfinite(magnitude)): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans, if a nan is found, return -999 to indicate the result was indefinite
-            return -999
-        return magnitude
+        if getflux:
+            return 10**(-0.4*magnitude) / self.f0_lambda[i]
+            #return f_lambda #/ self.f0_lambda[i]
+        else: #Return magnitude
+            if nan_catch and (np.isnan(magnitude) or ~np.isfinite(magnitude)): #Catch to prevent nan values from being passed, since FITS headers are incompatible with nans, if a nan is found, return -999 to indicate the result was indefinite
+                return -999
+            return magnitude
 
     def grab_band_index(self, band):
         if band == 'K':

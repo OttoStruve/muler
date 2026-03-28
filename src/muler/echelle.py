@@ -170,6 +170,9 @@ class EchelleSpectrum(Spectrum1D):
         elif kind == 'sum': #Do sum extraction
             flux1d = np.nansum(flux2d, axis=0) 
             var1d = np.nansum(var2d, axis=0) 
+        elif kind == 'median': #Do median extraction
+            flux1d = np.nanmedian(flux2d, axis=0) 
+            var1d = np.nanmedian(var2d, axis=0)         
         else:
             raise Exception(
                     "Argument 'kind' in extract1D must be either 'optimal' or 'sum.'"
@@ -1069,6 +1072,53 @@ class EchelleSpectrum(Spectrum1D):
         return self.__class__(
             spectral_axis=self.spectral_axis, flux=flux, uncertainty=StdDevUncertainty(unc), meta=self.meta, wcs=None)
 
+    def bin(self, x):
+        """
+        Bin a spectrum and its uncertainty to a predefined wavelength array with each bin spanning between each.
+
+        Parameters
+        ----------
+        x: wavelength array with units, bins will be half way between each pixel in this array.
+        """
+        x_in_um = x.to_value(u.um)
+        n_bins = len(x_in_um)-1
+
+        binned_wavelengths = np.zeros(n_bins)
+        binned_deltas = np.zeros(n_bins)
+        left_sides = x_in_um[0:-1]
+        right_sides =  x_in_um[1:]
+        binned_deltas = right_sides - left_sides
+        binned_wavelengths = 0.5*(right_sides + left_sides)
+        if self.flux.ndim == 2: #2D spectrum
+            ny = np.shape(self.flux)[0]
+            binned_flux = np.zeros([ny,n_bins])
+            binned_variance = np.zeros([ny,n_bins])
+            for i in range(n_bins):
+                indxs = (self.wavelength.um >= left_sides[i]) & (self.wavelength.um <= right_sides[i])
+                if len(indxs) > 0:
+                    variance = 1 / np.nansum(self.uncertainty.array[:,indxs]**-2, axis=1) #Inverse variance weighting
+                    binned_flux[:,i] = np.nansum(self.flux.value[:,indxs]/self.uncertainty.array[:,indxs]**2, axis=1) * variance
+                    binned_variance[:,i] = variance
+            good_bins = np.any(binned_flux != 0., axis=0) &  np.any(binned_variance != 0., axis=0) #Removed bins that are not filled
+            binned_spectrum = self.__class__(
+                spectral_axis=binned_wavelengths[good_bins]*u.um, flux=binned_flux[:,good_bins]*self.flux.unit, \
+                    uncertainty=StdDevUncertainty(binned_variance[:,good_bins]**0.5*self.flux.unit), meta=self.meta, wcs=None)
+        else: #1D spectrum
+            binned_flux = np.zeros(n_bins)
+            binned_variance = np.zeros(n_bins)
+            for i in range(n_bins):
+                indxs = (self.wavelength.um >= left_sides[i]) & (self.wavelength.um <= right_sides[i])
+                if len(indxs) > 0:
+                    variance = 1 / np.nansum(self.uncertainty.array[indxs]**-2) #Inverse variance weighting
+                    binned_flux[i] = np.nansum(self.flux.value[indxs]/self.uncertainty.array[indxs]**2) * variance
+                    binned_variance[i] = variance
+            good_bins = (binned_flux != 0.) &  (binned_variance != 0.) #Removed bins that are not filled
+            binned_spectrum = self.__class__(
+                spectral_axis=binned_wavelengths[good_bins]*u.um, flux=binned_flux[good_bins]*self.flux.unit, \
+                    uncertainty=StdDevUncertainty(binned_variance[good_bins]**0.5*self.flux.unit), meta=self.meta, wcs=None)
+        binned_spectrum.deltas = binned_deltas[good_bins]*u.um
+        return binned_spectrum
+
     def __add__(self, other):
         """Bandmath addition"""
         if  hasattr(other, "flux"):
@@ -1117,6 +1167,30 @@ class EchelleSpectrum(Spectrum1D):
 
         return self.__class__(
             spectral_axis=self.spectral_axis, flux=flux, uncertainty=unc, meta=self.meta, wcs=None)
+    def __getitem__(self, key):
+        """Return subset of pixels in spectrum by indexing the wavelength, flux, and uncertainty arrays"""
+
+        if self.flux.ndim == 2: #2D spectrum
+            if not hasattr(self, 'uncertainty'):
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[:,key], meta=self.meta, wcs=None)
+            elif self.uncertainty is None: #If no uncertainty array exists but is None
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[:,key], meta=self.meta, wcs=None)
+            else:
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[:,key], uncertainty=self.uncertainty[:,key], meta=self.meta, wcs=None)
+        else: #1D spectrum
+            if not hasattr(self, 'uncertainty'):
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[key], meta=self.meta, wcs=None)
+            elif self.uncertainty is None: #If no uncertainty array exists but is None
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[key], meta=self.meta, wcs=None)
+            else:
+                return self.__class__(
+                    spectral_axis=self.spectral_axis[key], flux=self.flux[key], uncertainty=self.uncertainty[key], meta=self.meta, wcs=None)
+
 
 class EchelleSpectrumList(SpectrumList):
     r"""

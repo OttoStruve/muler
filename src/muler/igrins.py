@@ -877,13 +877,14 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 plt.title('Telluric Correction Br-gamma')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
+            del goodpix
 
         #Memory clean up after done running
         del d, wave_trans, wave1d, flux1d, rolled_wave1d, best_fit_alphas, chisq, molec_original_grid_trans, \
             interp_molec_original_grid_trans, corrected_flux, smoothed_corrected_flux, lambda2, streached_rolled_wave1d, \
             trans_other_molecules_best_fit, interp_obj_molec_trans, total_original_grid_trans, \
             chunk_interpolated_total_trans, interp_obj, interp_obj_total_original_grid_trans, best_fit_rolled_wave1d, \
-            total_trans, best_fit_stretched_rolled_wave1d, stretched_rolled_wave1d, goodpix
+            total_trans, best_fit_stretched_rolled_wave1d, stretched_rolled_wave1d
         plt.close('all')
         gc.collect()
 
@@ -1303,6 +1304,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             plt.plot(x, scaled_model_flux, color='red')
             if pdfobj is not None: #Save figure to file if PdfPages object is provided
                 pdfobj.savefig()
+            del scaled_model_flux
         scaled_model_spec_flux = ((model_spec.flux.value/ cont)**(best_fit_alpha))*cont
         model_spec = model_spec.__class__(model_spec * (scaled_model_spec_flux / model_spec.flux.value))
         model_spec = std_phot.scale_to_v(model_spec) #Scale syntehtic spectrum to match V band for standard star from Simbad
@@ -1312,7 +1314,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
         del new_grid, chisq, br14_spec, br10_spec, brgamma_spec, br14_window, brgamma_window, \
             brgamma_spec_smoothed_flux, br10_spec_smoothed_flux, br14_spec_smoothed_flux, \
             result_rotational_broadening, result_velocities, result_alphas, interp1d_model, continuum_points, interp1d_cont, cont, \
-            scaled_model_flux, scaled_model_spec_flux, blue_side, red_side
+            scaled_model_spec_flux, blue_side, red_side
         plt.close('all')
         gc.collect()
 
