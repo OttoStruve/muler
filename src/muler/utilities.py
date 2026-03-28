@@ -125,21 +125,21 @@ def resample_combine_spectra(input_spec, spec_to_match, weights=None):
         if is_list(input_spec): #
             weights = np.array(weights) #Check that weights are a list and their sum equals 1
             sum_weights = np.sum(weights)
-            assert (weights is None) or (np.size(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
-            if weights is not None:
+            assert (weights==None) or (np.size(weights) > 1), "If providing weights, You need to provide a weight for each input spectrum.."
+            if weights != None:
                 assert sum_weights == 1, "Total weights in weights list is "+str(sum_weights)+" but total must equal to 1."
     
             if is_list(spec_to_match):
                 resampled_spec = resample_list(input_spec[0], spec_to_match)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if weights is None:
+                    if weights == None:
                         resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)
                     else:
                         resampled_spec = resampled_spec + resample_list(input_spec[i], spec_to_match)*(weights[i])
             else:
                 resampled_spec = LinInterpResampler(input_spec[0], spec_to_match.spectral_axis)*(weights[0]) #Resample spectra
                 for i in range(1, len(input_spec)):
-                    if weights is None:
+                    if weights == None:
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)
                     else:
                         resampled_spec = resampled_spec + LinInterpResampler(input_spec[i], spec_to_match.spectral_axis)*(weights[i])
