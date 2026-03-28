@@ -4,6 +4,8 @@ import pytest
 import time
 from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList
 from specutils import Spectrum1D
+from specutils.manipulation import LinearInterpolatedResampler
+LinInterpResampler = LinearInterpolatedResampler()
 
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
@@ -265,6 +267,7 @@ def test_bandmath():
     spec1 = IGRINSSpectrumList.read(file=file)
     # spec2 = IGRINSSpectrumList.read(file=file_2, wavefile="SKY_SDCH_20201202_0033.wvlsol_v1.fits")
     spec2 = IGRINSSpectrumList.read(file=file_2)
+    spec2 = LinInterpResampler(spec2, spec1)
 
     #Test band math for orders
     new_order = spec1[10] + spec2[10]
