@@ -3,7 +3,8 @@ import astropy
 import pytest
 import time
 from muler.igrins import IGRINSSpectrum, IGRINSSpectrumList
-from specutils import Spectrum1D, resample_combine_spectra
+from muler.utilities import resample_combine_spectra
+from specutils import Spectrum1D
 
 # from astropy.nddata.nduncertainty import StdDevUncertainty
 import numpy as np
