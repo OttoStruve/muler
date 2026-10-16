@@ -23,7 +23,7 @@ from scipy.stats import median_abs_deviation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from specutils.analysis import equivalent_width
 from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.signal import savgol_filter
+from scipy.signal import savgol_filter, butter, filtfilt, sosfiltfilt
 from astropy.constants import R_jup, R_sun, G, M_jup, R_earth, c
 from astropy.modeling.physical_models import BlackBody
 from scipy.ndimage import median_filter, gaussian_filter1d
@@ -696,6 +696,56 @@ class EchelleSpectrum(Spectrum1D):
         return smoothed_spectrum
 
 
+    def butter_filter(self, order=4, freq=[1/30, 1/4], btype='bandpass', keep_nans=False, smooth_variance=True):
+        """Apply a butter band pass fiter to smooth out small scale variations.
+        This is mean tto be an antialiasing filter.
+
+        Paramaters
+        ------
+        order: (int)
+            Butter filter order.  Default is 4.
+        freq: (float)
+            Cutoff frequency usually given as 1/n where n is the max discreet
+            pixel-to-pixel variation you want to filter out.  Default is 1/4.
+        btype:
+            Type of bandpass: 'lowpass’, ‘highpass’, ‘bandpass’, ‘bandstop’
+        keep_nans: (bool)
+            Set to true to propogate nans to the smoothed spectrum.  Default is False.
+
+        """
+        copied_flux = copy.deepcopy(self.flux.value)
+        copied_variance = copy.deepcopy(self.uncertainty.array**2)
+        nanpix = np.isnan(copied_flux) #Make nans zeros so filtering doesn't error
+        copied_flux[nanpix] = 0
+        copied_variance[nanpix] = 0
+        sos = butter(order, freq, btype=btype, analog=False, output='sos')
+        if self.flux.ndim == 2: #2D spectrum
+            smoothed_flux = sosfiltfilt(sos, copied_flux, axis=1) #apply low-pass filter
+            if smooth_variance:
+                smoothed_variance = sosfiltfilt(sos, copied_variance, axis=1)
+            else:
+                smoothed_variance = copied_variance
+        else: #1D spectrum
+            smoothed_flux = sosfiltfilt(sos, copied_flux) #apply low-pass filter
+            if smooth_variance:
+                smoothed_variance = sosfiltfilt(sos, copied_variance)
+            else:
+                smoothed_variance = copied_variance
+        if keep_nans:
+            smoothed_flux[nanpix] = np.nan #Restore nans
+            smoothed_variance[nanpix] = np.nan
+        smoothed_spectrum = self.__class__(
+            spectral_axis=self.wavelength.value * self.wavelength.unit,
+            flux=smoothed_flux * self.flux.unit,
+            uncertainty=StdDevUncertainty(smoothed_variance**0.5 * self.flux.unit),
+            meta=copy.deepcopy(self.meta),
+            wcs=None,
+        )
+        return smoothed_spectrum
+
+
+
+
 
 
     def gaussian_process_smooth_spectrum(
@@ -1330,6 +1380,27 @@ class EchelleSpectrumList(SpectrumList):
         spec_out = copy.deepcopy(self)
         for i in range(len(spec_out)):
             spec_out[i] = spec_out[i].deblaze(method=method)
+        return spec_out
+
+    def butter_filter(self, order=4, freq=[1/30, 1/4], btype='bandpass', keep_nans=False, smooth_variance=True):
+        """Apply a low pass fiter to smooth out small scale variations
+        with frequencies corrisponding to detector pixels.  This is meant
+        to be an antialiasing filter
+
+        Paramaters
+        ------
+        order: (int)
+            Butter filter order.  Default is 4.
+        cutoff: (float)
+            Cutoff frequency usually given as 1/n where n is the max discreet
+            pixel-to-pixel variation you want to filter out.  Default is 1/4.
+        keep_nans: (bool)
+            Set to true to propogate nans to the smoothed spectrum.  Default is False.
+
+        """
+        spec_out = copy.deepcopy(self)
+        for i in range(len(spec_out)):
+            spec_out[i] = spec_out[i].butter_filter(order=order, freq=freq, btype=btype, keep_nans=keep_nans, smooth_variance=smooth_variance)
         return spec_out
 
     def flatten_by_black_body(self, Teff):
