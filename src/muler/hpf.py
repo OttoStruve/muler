@@ -60,6 +60,10 @@ STATIC_A0V_DATAFRAME = pd.read_csv(static_A0V_file)
 static_telfit_file = files(templates).joinpath("telfit_HPFtemplate_temp286_hum050.csv")
 STATIC_TELFIT_DATAFRAME = pd.read_csv(static_telfit_file)
 
+# PCATelluric template
+static_pcatel_file = files(templates).joinpath("hpf_pca_telluric.fits")
+STATIC_PCATEL_FITSFRAME = fits.open(static_pcatel_file)
+
 
 class HPFSpectrum(EchelleSpectrum):
     r"""
@@ -362,6 +366,9 @@ class HPFSpectrum(EchelleSpectrum):
         # These steps should propagate uncertainty?
         sky_estimator = spec.sky_resample().sky.multiply(beta, handle_meta="first_found")
         return spec.subtract(sky_estimator, handle_meta="first_found")
+
+    def estimate_telluric(self):
+        pass
 
     def mask_tellurics(self, method="TelFit", threshold=0.999, dilation=5):
         """Mask known telluric lines based on a static TelFit template or heuristics
