@@ -32,8 +32,11 @@ from specutils.manipulation import LinearInterpolatedResampler
 from astropy.convolution import convolve, Gaussian1DKernel, RickerWavelet1DKernel, Box1DKernel
 from scipy.interpolate import interp1d
 from scipy.ndimage import median_filter
+from astropy.coordinates import EarthLocation, SkyCoord, ICRS, FK5, Angle,  LSR, HeliocentricTrueEcliptic
+
 LinInterpResampler = LinearInterpolatedResampler()
 from importlib_resources import files
+
 from . import templates
 
 import copy
@@ -56,6 +59,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 ## Note that these technically depend on grating temperature
 ## For typical operating temperature, offsets should be exact.
 grating_order_offsets = {"H": 98, "K": 71}
+
 
 def getCalibration(filepath):
     """
@@ -145,7 +149,7 @@ def readPLP(plppath, date, frameno, waveframeno='', dim='1D',  extension=None, c
         frameno = '%.4d' % int(frameno)
     if type(waveframeno) is not str:
         waveframeno = '%.4d' % int(waveframeno)
-    if dim.upper() == '1D': #Use proper filename for 1D or 2D extractions
+    if dim.upper() == '1D' and (): #Use proper filename for 1D or 2D extractions
         suffix = '.spec.fits'
     elif dim.upper() == '2D':
         suffix = '.spec2d.fits'
@@ -267,6 +271,7 @@ class IGRINSSpectrum(EchelleSpectrum):
 
         self.noisy_edges = (450, 1950)
         self.instrumental_resolution = 45_000.0
+
      
         if cached_hdus is not None:
 
@@ -296,6 +301,7 @@ class IGRINSSpectrum(EchelleSpectrum):
         elif file != '':
             specList = IGRINSSpectrumList.read(file, wavefile=wavefile, extension=extension)
             spec = specList[order]
+            spec.meta['file'] = specList[file]
             super().__init__(
                 spectral_axis=spec.spectral_axis,
                 flux=spec.flux,
@@ -337,6 +343,66 @@ class IGRINSSpectrum(EchelleSpectrum):
         mjd = self.meta["header"]["MJD-OBS"]
         return Time(mjd, format="mjd", scale="utc")
 
+    def velocity_correction(self, kind='barycentric', indata_path=''):
+        """
+        Calculate barycentric, LSR, or heliocentric velocity correction for IGRINS or IGRINS-2 data.
+        The user must provide a path to the raw data with indata_path.
+        Combine with rv_shift to apply correction.
+
+        Parameters
+        ----------
+        kind: string
+            Kind of velocity correction to calcualte: Barycentric, LSR, or Heliocentric
+        indata_path: string
+            Allows user to specify the path to the raw data (indata) directory for IGRINS or IGRINS-2 PLP.
+            Usually this is left blank and this object's own file path is used to find indata_path
+        """
+        
+        kind = kind.lower() #Remove case
+        if indata_path == '': #By default try to use the path of the file to try to find the raw data
+            indata_path = self.meta['file'].rsplit('/', 3)[0] + '/indata/'
+
+
+        all_obsids = self.meta['header']['OBSIDS'].split(',') #Grab all obsids for the exposures used in the observation
+        date = self.meta['header']['OBSDATE']
+
+        #Find midpoint in time for observation
+        jd_obs_start = [] #Units are julian date
+        jd_obs_end = []
+        for i in range(len(all_obsids)): #Loop through each individual exposure and grab the date the exposure started and ended
+            raw_fits_fname = indata_path +str(date)+'/SDCH_'+str(date)+'_'+'%.4d' % int(all_obsids[i].strip())+'.fits'
+            raw_fits_header = fits.getheader(raw_fits_fname)
+            jd_obs_start.append(raw_fits_header['JD-OBS'])
+            jd_obs_end.append(raw_fits_header['JD-END'])
+        mid_jd = 0.5 * (np.max(jd_obs_end) + np.min(jd_obs_start)) #Find mid point JD of observation
+        obs_time = Time(mid_jd, format='jd')
+        obs_name = self.meta['header']['OBSERVAT'] #Grab name of observatory
+        tel_ra = self.meta['header']['TELRA'] #Grab coordinates and epoch of telescope
+        tel_dec = self.meta['header']['TELDEC']
+        tel_epoch = self.meta['header']['TELEPOCH']
+
+        #Build information about the observation
+        obs_coords = EarthLocation.of_site(obs_name)
+        target_coords = SkyCoord(tel_ra, tel_dec, frame=FK5(equinox=Time(tel_epoch, format='decimalyear')), unit='hourangle,deg').transform_to('icrs')
+
+        #Calculate the barycentric correction
+        barycorr = target_coords.radial_velocity_correction(kind='barycentric', obstime=obs_time, location=obs_coords)
+        if kind == 'barycentric': #Barycentric 
+            return barycorr
+        elif kind == 'lsr': #Local Standard of Rest
+            return barycorr + SkyCoord(target_coords.ra, target_coords.dec,
+                              distance=1*u.pc,
+                              pm_ra_cosdec=0*u.mas/u.yr,
+                              pm_dec=0*u.mas/u.yr,
+                              radial_velocity=0*u.km/u.s,
+                              frame='icrs').transform_to(LSR()).radial_velocity
+        elif kind == 'heliocentric': #Heliocentric
+            return barycorr + SkyCoord(target_coords.ra, target_coords.dec,
+                              distance=1*u.pc,
+                              pm_ra_cosdec=0*u.mas/u.yr,
+                              pm_dec=0*u.mas/u.yr,
+                              radial_velocity=0*u.km/u.s,
+                              frame='icrs').transform_to(HeliocentricTrueEcliptic()).radial_velocity
 
 
 
@@ -446,6 +512,7 @@ class IGRINSSpectrumList(EchelleSpectrumList):
                 #file=file, wavefile=wavefile, order=i, sn_used=sn_used, cached_hdus=cached_hdus
                 order=i, cached_hdus=cached_hdus, band=band,
             )
+            spec.meta['file'] = file
             list_out.append(spec)
         specList = IGRINSSpectrumList(list_out)
         specList.file = file
@@ -1359,9 +1426,20 @@ class IGRINSSpectrumList(EchelleSpectrumList):
             data_list.reverse()
             data_array = np.array(data_list)
             return data_array
+    def velocity_correction(self, kind='barycentric', indata_path=''):
+        """
+        Calculate barycentric, LSR, or heliocentric velocity correction for IGRINS or IGRINS-2 data.
+        The user must provide a path to the raw data with indata_path.
+        Combine with rv_shift to apply correction.
 
-
-
-
+        Parameters
+        ----------
+        kind: string
+            Kind of velocity correction to calcualte: Barycentric, LSR, or Heliocentric
+        indata_path: string
+            Allows user to specify the path to the raw data (indata) directory for IGRINS or IGRINS-2 PLP.
+            Usually this is left blank and this object's own file path is used to find indata_path
+        """
+        return self[0].velocity_correction(kind=kind, indata_path=indata_path)
 
 
